@@ -1,0 +1,14 @@
+node_modules/
+dist/
+dist-electron/
+release/
+HardwareService/bin/
+HardwareService/obj/
+HardwareService/publish-win/
+HardwareService/Resources/PawnIO/
+.test-build/
+*.log
+.DS_Store
+.env
+.env.*
+!.env.example
