@@ -111,7 +111,7 @@ jobs:
 
       - name: Build Windows NSIS installer
         if: steps.source.outputs.has_source == 'true' && steps.release.outputs.needs_release == 'true'
-        run: npm.cmd run package:win
+        run: npm.cmd run package:win -- --publish never
 
       - name: Generate installer checksum
         if: steps.source.outputs.has_source == 'true' && steps.release.outputs.needs_release == 'true'
