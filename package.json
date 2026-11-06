@@ -1,0 +1,90 @@
+{
+  "name": "nexus-monitor",
+  "version": "2.1.8",
+  "private": true,
+  "description": "A customizable Windows hardware HUD, Turing display and USB extended-display companion with media playback.",
+  "author": "NexusMonitor",
+  "main": "dist-electron/main/index.js",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "dev": "npm run build:main && concurrently -k \"vite --host 127.0.0.1\" \"wait-on http://127.0.0.1:5173 && electron .\"",
+    "build:main": "tsc -p tsconfig.electron.json",
+    "build:renderer": "tsc -p tsconfig.renderer.json && vite build",
+    "build": "npm run build:main && npm run build:renderer",
+    "test:main": "npm run build:main && npm run build:test-utils && node --test",
+    "test:storage": "dotnet run --project tests/HardwareService.Tests/HardwareService.Tests.csproj -c Debug",
+    "preview": "vite preview --host 127.0.0.1",
+    "service:run": "dotnet run --project HardwareService/HardwareService.csproj",
+    "service:publish": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/publish-service.ps1",
+    "package:win": "npm run build && npm run service:publish && electron-builder --win nsis --x64",
+    "package:portable": "npm run build && npm run service:publish && electron-builder --win portable --x64",
+    "build:test-utils": "tsc -p tsconfig.test-utils.json"
+  },
+  "dependencies": {
+    "lucide-react": "1.61.0",
+    "react": "19.3.1",
+    "react-dom": "19.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "24.10.0",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@vitejs/plugin-react": "6.1.2",
+    "concurrently": "9.2.1",
+    "electron": "45.2.1",
+    "electron-builder": "26.18.0",
+    "typescript": "7.0.2",
+    "vite": "8.3.5",
+    "wait-on": "8.0.4"
+  },
+  "build": {
+    "appId": "com.nexusmonitor.desktop",
+    "productName": "NexusMonitor",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**",
+      "dist-electron/**",
+      "package.json",
+      "build/**"
+    ],
+    "extraResources": [
+      {
+        "from": "HardwareService/publish-win",
+        "to": "hardware-service"
+      },
+      {
+        "from": "build/widget-window-monitor.ps1",
+        "to": "widget-window-monitor.ps1"
+      }
+    ],
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "artifactName": "NexusMonitor-${version}-Setup.${ext}",
+      "requestedExecutionLevel": "requireAdministrator",
+      "icon": "build/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": "always",
+      "createStartMenuShortcut": true
+    },
+    "asar": true,
+    "fileAssociations": [
+      {
+        "ext": [
+          "nexusplugin"
+        ],
+        "name": "NexusMonitor Plugin Manifest",
+        "role": "Editor"
+      }
+    ]
+  },
+  "type": "commonjs"
+}

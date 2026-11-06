@@ -1,0 +1,16 @@
+NexusMonitor 2.1.8 — Windows 构建与启动验收
+
+$ErrorActionPreference = 'Stop'
+Set-Location 'O:\6\NexusMonitor-2.1.8'
+
+npm.cmd ci --include=dev --no-audit --no-fund
+if ($LASTEXITCODE -ne 0) { throw 'npm ci failed' }
+
+node '.\NexusMonitor-2.1.8-BUILD-RELEASE.cjs' --validate-only
+if ($LASTEXITCODE -ne 0) { throw 'Version validation failed' }
+
+node '.\NexusMonitor-2.1.8-BUILD-RELEASE.cjs'
+if ($LASTEXITCODE -ne 0) { throw 'Build or release failed' }
+
+预期安装包：release\NexusMonitor-2.1.8-Setup.exe
+验收：主界面首次启动完整显示；悬浮窗默认出现；第一次展开详情立即显示内容；USB 副屏负坐标布局无内容泄漏。

@@ -1,14 +1,17 @@
 node_modules/
 dist/
-dist-electron/
 release/
 HardwareService/bin/
 HardwareService/obj/
 HardwareService/publish-win/
-HardwareService/Resources/PawnIO/
-.test-build/
 *.log
 .DS_Store
+dist-electron/
+
+.test-build/
+
+# Generated hardware resources and local secrets
+HardwareService/Resources/PawnIO/
 .env
 .env.*
 !.env.example

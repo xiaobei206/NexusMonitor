@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>HardwareService</AssemblyName>
+    <Version>2.1.8</Version>
+    <AssemblyVersion>2.1.8.0</AssemblyVersion>
+    <FileVersion>2.1.8.0</FileVersion>
+    <InformationalVersion>2.1.8</InformationalVersion>
+    <RootNamespace>NexusMonitor.HardwareService</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="LibreHardwareMonitorLib" Version="0.9.6" />
+    <PackageReference Include="System.IO.Ports" Version="10.0.3" />
+    <PackageReference Include="System.Management" Version="10.0.2" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Resources\PawnIO\IntelMCHBAR.bin" LogicalName="NexusMonitor.HardwareService.Resources.PawnIO.IntelMCHBAR.bin" />
+  </ItemGroup>
+  <Target Name="ValidateIntelMchbarModule" BeforeTargets="PrepareForBuild">
+    <Error Condition="!Exists('Resources\PawnIO\IntelMCHBAR.bin')"
+           Text="Required signed PawnIO module IntelMCHBAR.bin is missing. Run: powershell -ExecutionPolicy Bypass -File scripts/fetch-mchbar-module.ps1" />
+  </Target>
+</Project>

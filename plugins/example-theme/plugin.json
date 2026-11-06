@@ -1,0 +1,11 @@
+{
+  "id": "example-theme-pack",
+  "name": "Example Theme Pack",
+  "version": "1.0.0",
+  "description": "A manifest-only example showing how a NexusMonitor extension is declared.",
+  "author": "NexusMonitor",
+  "type": "theme-pack",
+  "minAppVersion": "2.0.0",
+  "capabilities": ["theme.tokens", "theme.layout"],
+  "entry": null
+}

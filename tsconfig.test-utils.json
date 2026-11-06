@@ -1,0 +1,32 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "Node16",
+    "moduleResolution": "Node16",
+    "lib": [
+      "ES2022",
+      "DOM",
+      "DOM.Iterable"
+    ],
+    "rootDir": "src",
+    "outDir": ".test-build",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "types": []
+  },
+  "include": [
+    "src/renderer/turing-dashboard.ts",
+    "src/renderer/turing-selection.ts",
+    "src/renderer/turing-autoconnect.ts",
+    "src/renderer/turing-auto-brightness.ts",
+    "src/renderer/power-summary.ts",
+    "src/renderer/weather-scene.ts",
+    "src/main/window-layout.ts",
+    "src/main/widget-docking.ts",
+    "src/main/widget-detail-window.ts",
+    "src/main/fullscreen-detection.ts",
+    "src/main/usb-display-window.ts",
+    "src/renderer/storage-view.ts"
+  ]
+}

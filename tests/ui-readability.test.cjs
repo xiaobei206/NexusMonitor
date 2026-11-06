@@ -1,0 +1,70 @@
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const { readFileSync } = require('node:fs');
+const { join } = require('node:path');
+
+const css = readFileSync(join(__dirname, '..', 'src', 'renderer', 'styles.css'), 'utf8');
+const app = readFileSync(join(__dirname, '..', 'src', 'renderer', 'App.tsx'), 'utf8');
+const rootLine = css.split(/\r?\n/).find(line => line.startsWith(':root{')) ?? '';
+
+function token(name) {
+  const match = rootLine.match(new RegExp(`--${name}:(\\d+(?:\\.\\d+)?)px`));
+  return match ? Number(match[1]) : null;
+}
+
+test('normal reading tokens are no smaller than the approved minimums', () => {
+  assert.equal(token('text-xs'), 11);
+  assert.equal(token('text-micro'), 12);
+  assert.equal(token('text-meta'), 13);
+  assert.equal(token('text-label'), 14);
+  assert.equal(token('text-control'), 15);
+  assert.equal(token('text-body'), 16);
+});
+
+test('navigation and page headings use the larger readability scale', () => {
+  assert.equal(token('text-nav'), 16);
+  assert.equal(token('text-page'), 34);
+});
+
+test('floating HUD labels use readable metadata text instead of micro text', () => {
+  assert.match(css, /\.widget-stat>span\{font-size:var\(--text-meta\)/);
+  assert.match(css, /\.widget-net\{font:var\(--text-meta\)/);
+});
+
+
+test('vertical HUD uses a wider rail and readable primary values', () => {
+  assert.match(css, /\.widget-shell\.vertical \.widget-bar\{width:340px;min-width:340px;flex:0 0 340px/);
+  assert.match(css, /\.widget-shell\.vertical \.widget-stat-heading>b\{font-size:27px/);
+  assert.match(css, /\.widget-shell\.vertical \.widget-stat-meta\{font-size:14px/);
+});
+
+test('weather and custom sensor blocks have responsive HUD layouts', () => {
+  assert.match(css, /\.widget-weather-detail,\.widget-custom-sensors\{grid-column:span 2/);
+  assert.match(css, /\.weather-card\{grid-column:span 2;min-height:242px/);
+  assert.match(css, /\.widget-visibility-grid\{display:grid/);
+});
+
+test('GPU overview includes power alongside clock and memory', () => {
+  assert.match(app, /<span>功耗<\/span><b>\{fmt\(gpu\?\.powerW,1\)\}/);
+  assert.match(css, /gpu-numbers\{grid-template-columns:repeat\(4,minmax\(52px,1fr\)\)/);
+});
+
+test('estimated CPU clock is clearly marked and never presented as a measured LHM clock', () => {
+  assert.match(app, /WindowsPerformanceEstimate/);
+  assert.match(app, /不是直接硬件时钟|不是直接硬件测量/);
+  assert.match(app, /cpu\.clockSource === 'WindowsPerformanceEstimate' \? '~'/);
+});
+
+
+test('detached detail card has a dedicated larger typography scale without changing compact HUD typography', () => {
+  assert.match(css, /\.widget-shell\.detail-only \.widget-panel \{[^}]*font-size:15px/);
+  assert.match(css, /\.widget-shell\.detail-only \.widget-detail-values small[^}]*font-size:14px/);
+  assert.match(css, /\.widget-shell\.detail-only \.widget-detail-foot \{[^}]*font-size:13px/);
+  assert.match(css, /\.widget-shell\.detail-only \.widget-detail-title>strong \{[^}]*font-size:26px/);
+});
+
+test('compact HUD clock includes seconds in both horizontal and vertical layouts', () => {
+  assert.match(app, /const timeText = localNow\.toLocaleTimeString\('zh-CN', \{[^}]*second: '2-digit'[^}]*hour12: false\s*\}\)/);
+  assert.match(app, /<div className="widget-clock"><b>\{timeText\}<\/b>/);
+  assert.match(app, /<div className="widget-vertical-clock"><b>\{timeText\}<\/b>/);
+});
