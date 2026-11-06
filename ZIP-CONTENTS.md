@@ -45,10 +45,10 @@ Control files `ZIP-CONTENTS.md` and the source manifest are included in the ZIP;
 | `index.html` | 361 |
 | `install-and-run.bat` | 2176 |
 | `NexusMonitor-2.1.8-BUILD-RELEASE.cjs` | 3050 |
-| `NexusMonitor-2.1.8-BUILD-REPORT.md` | 1721 |
-| `NexusMonitor-2.1.8-HANDOFF-CN.md` | 1731 |
+| `NexusMonitor-2.1.8-BUILD-REPORT.md` | 3404 |
+| `NexusMonitor-2.1.8-HANDOFF-CN.md` | 3884 |
 | `NexusMonitor-2.1.8-Windows-验收命令.txt` | 668 |
-| `NexusMonitor-DEVELOPMENT-LOG-CN.md` | 29636 |
+| `NexusMonitor-DEVELOPMENT-LOG-CN.md` | 33049 |
 | `package-lock.json` | 174377 |
 | `package-windows.bat` | 1052 |
 | `package.json` | 2847 |
@@ -81,7 +81,7 @@ Control files `ZIP-CONTENTS.md` and the source manifest are included in the ZIP;
 | `public/turing-weather/weather-snowfall.webp` | 45760 |
 | `public/turing-weather/weather-snowy-clear.webp` | 38870 |
 | `public/turing-weather/weather-thunderstorm.webp` | 12794 |
-| `README.md` | 7280 |
+| `README.md` | 8297 |
 | `scripts/diagnose-network.ps1` | 8206 |
 | `scripts/fetch-mchbar-module.ps1` | 2672 |
 | `scripts/publish-service.ps1` | 657 |

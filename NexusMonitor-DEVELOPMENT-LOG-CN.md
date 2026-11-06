@@ -317,3 +317,49 @@ Property 'volume' does not exist on type 'AudioHTMLAttributes<HTMLAudioElement>'
 - 修复 2.1.7 主进程 `src/main/index.ts` 中 `console-message` 事件监听器错误地把第二个参数当作 details 对象的问题。Electron 45.2.1 的类型定义采用兼容旧式位置参数：`event, level, message, line, sourceId`。
 - 改为按 Electron 45 的真实事件签名记录 Renderer 控制台日志，不影响主窗口首帧门控、Error Boundary、旧设置容错、默认启动 HUD 或 USB 副屏 Bounds 行为。
 - 这次错误此前阻断了 `tsc -p tsconfig.electron.json`，因此 2.1.7 的主进程完整编译没有通过；本版必须在 Electron 45.2.1 类型包下复验。
+
+
+---
+
+## 2.1.8 GitHub 仓库导入、CI 修复与正式 Windows 发布（2026-11-06）
+
+### 仓库与源码基线
+
+- 建立公开仓库：[xiaobei206/NexusMonitor](https://github.com/xiaobei206/NexusMonitor)。
+- 将完整 2.1.8 源码树导入 `main`，初始源码导入提交：`b58fada138472b29e2ef5b1d5e67dec3b117435d`。
+- 本节记录的是同一应用版本 2.1.8 的锁文件和 CI 发布流程修正；没有改变应用功能或版本号。
+
+### CI 首轮暴露的问题及修复
+
+1. `npm ci` 首次失败：锁文件两处 `brace-expansion` 子依赖指向不存在的 `2.1.8` tarball。实际哈希对应 `2.1.7`。修正版本和下载地址，保留原 integrity；提交 `20a2fb36a75d0aa410e86405698c871cc0100948`。
+2. 下一轮依赖安装暴露 `detect-libc@2.1.3` tarball 返回 404。按锁文件中原有 integrity 对应的可用发布版本修正为 `2.1.2`；提交 `5d4c96cf00816f8376ba433b6345c5066c41cb11`。
+3. 完整应用编译和测试通过后，发布检查步骤的 PowerShell 原生进程退出码残留导致步骤被错误判失败。将查询结果退出码显式保存并清零；提交 `3b5ea5f92eb2d4677f5130ac6a35995a6c30b0d8`。
+4. 第一次 NSIS 打包因 electron-builder 在 CI 自动触发隐式发布、但没有配置其专用 `GH_TOKEN` 而失败。改为 `npm.cmd run package:win -- --publish never`，由后续经过验证的 `gh release create` 步骤统一上传安装包；提交 `6ff189829829b1b16802b276f5ad4784674b4d46`。
+
+### 最终 Windows CI 结果
+
+[最终成功运行：42239092025](https://github.com/xiaobei206/NexusMonitor/actions/runs/42239092025)
+
+- Windows Server 2025 runner；Node 24.22.2、npm 11.19.1、.NET SDK 10.0.403。
+- `npm ci`：成功安装 321 个依赖。
+- 版本同步检查：14/14 通过，均为 2.1.8。
+- `npm.cmd run test:main`：主进程 TypeScript 构建和 Node 回归测试步骤成功。
+- `npm.cmd run build:renderer`：Renderer 类型检查和 Vite 生产构建成功。
+- PawnIO 官方模块归档 SHA-256 校验成功；提取的 IntelMCHBAR 模块 SHA-256：`3f82b832d99b4aac37d2a20fdb7c9baa2a3bc0488612c9019c9484eb0e8a6eae`。
+- .NET HardwareService Release 构建：0 Warning、0 Error。
+- `npm.cmd run test:storage`：HardwareService 测试成功。
+- Windows x64 NSIS 安装包生成成功，随后生成 SHA-256 并发布 GitHub Release。
+- 最终 workflow 所有必需步骤成功；不是仅靠源码扫描或静态语法检查。
+
+### 正式交付物
+
+- Release：[`v2.1.8`](https://github.com/xiaobei206/NexusMonitor/releases/tag/v2.1.8)。
+- 安装包：`NexusMonitor-2.1.8-Setup.exe`，159,898,662 bytes。
+- 安装包 SHA-256：`ee173577851a025b95450422a9ec31c7aebcc9ec556dce9e09d31ad7299426e3`。
+- 同一 Release 上传了 `.sha256` 校验文件；Actions 还保留了 30 天的 workflow artifact。
+
+### 验证边界与记录保存
+
+- Hosted Windows CI 已完成构建、自动化测试和安装包制作；但没有连接用户的 Turing COM3、ESP32-P4 5 寸屏或用户实际多屏桌面，不能由 CI 结果推断这些设备的实机表现已验收。
+- 本次 NSIS EXE 没有代码签名证书，Windows 可能显示 SmartScreen 或未知发布者提示。
+- GitHub Actions 运行页面保留完整 workflow 日志；本文件保留长期开发原因、修复和最终结论。每用户的应用运行日志、设置和设备数据不上传仓库，以免混入个人机器数据。

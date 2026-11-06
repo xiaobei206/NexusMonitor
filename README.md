@@ -60,7 +60,7 @@ See [Chinese setup guide](docs/SETUP_CN.md), [USB display notes](docs/USB_DISPLA
 - Disk read/write throughput and active time use Windows PhysicalDisk performance data; temperature still depends on whether the hardware/controller exposes an LHM sensor. The 16GB Intel Optane device may be hidden behind Intel RST caching; independent drive telemetry depends on how Windows enumerates it.
 - The Turing Revision A protocol is based on the public 1A86:5722 reference: 6 × `0x45` handshake, 115200 baud with RTS/CTS, orientation command 121, bitmap command 197, RGB565 little-endian. Handshake, brightness, screen power, all four orientations and full/16×8 image output were tested on the target COM3 screen. Long-run stability and USB unplug/replug remain for Phase 4F. Do not leave the original `UsbMonitor.exe` connected at the same time.
 - Plugin manifests can be imported and enabled/disabled; this release does not execute arbitrary third-party code. Sensor-provider, dashboard-widget, theme-pack and output-adapter runtime contracts are documented, but a third-party plugin execution sandbox is not included yet.
-- The NSIS packaging script is Windows-only. Earlier baseline work was built on a Windows PC with Node.js 26.13.0, npm 11.20.0 and .NET SDK 10.0.403. The 2.0.3 source changes passed 77 Node regression tests in the handoff environment. The 2.0.4 Node regression suite passed 96/96. Main and renderer TypeScript checks also passed with temporary local host-type declarations; this is not a substitute for a dependency-backed Vite/Electron production build. `npm ci` timed out against the package registry in this environment, and the .NET SDK is unavailable here, so the full npm build, .NET build/tests, Windows GUI/fullscreen behaviour and real COM3 output remain unverified. The NSIS installer has not been built.
+- **2.1.8 Windows build is verified by GitHub Actions** on the hosted Windows 2025 runner: Node 24.22.2 / npm 11.19.1, version consistency 14/14, `npm.cmd run test:main`, Renderer/Vite production build, verified official PawnIO MCHBAR resource, .NET 10 Release build (0 warnings / 0 errors), `npm.cmd run test:storage`, NSIS packaging, SHA-256 generation and GitHub Release publication all succeeded in [workflow run 42239092025](https://github.com/xiaobei206/NexusMonitor/actions/runs/42239092025). The resulting installer is `NexusMonitor-2.1.8-Setup.exe` (159,898,662 bytes; SHA-256 `ee173577851a025b95450422a9ec31c7aebcc9ec556dce9e09d31ad7299426e3`). This hosted build does not replace physical validation of the 3.5-inch COM3 screen, 5-inch USB display, multi-monitor placement or first-launch GUI behaviour. The installer is **not code-signed** because no signing certificate was configured.
 
 ## License notes
 
@@ -71,9 +71,17 @@ NexusMonitor source in this package is provided for the user's development/testi
 
 For the current version, read `NexusMonitor-2.1.8-HANDOFF-CN.md` first, then the single cross-version history `NexusMonitor-DEVELOPMENT-LOG-CN.md`. All historical release reports and duplicate handoff/prompt documents have been consolidated into those two files. The Turing protocol remains documented in `PROTOCOL_REFERENCE.md`; focused engineering references remain under `docs/`.
 
-This source package does not imply that the latest Windows Electron/Renderer/.NET build, NSIS installer, or COM3 hardware behavior has been fully verified. Consult the versioned handoff for exact status and commands.
+The 2.1.8 Windows Electron/Renderer/.NET build and NSIS installer are verified by [GitHub Actions run 42239092025](https://github.com/xiaobei206/NexusMonitor/actions/runs/42239092025), and the installer is published under [Release v2.1.8](https://github.com/xiaobei206/NexusMonitor/releases/tag/v2.1.8). This does **not** claim physical COM3, USB 5-inch display, multi-monitor placement or first-launch GUI acceptance; those still require the target Windows machine.
 
 
 ## Intel Alder Lake Iris Xe GT temperature experiment
 
 For an Intel Alder Lake system where IGCL exposes GPU clocks/power but not temperature, see `docs/ALDERLAKE_GT_TEMPERATURE_CN.md`. The probe uses the official PawnIO `IntelMCHBAR` read module and only reads `THERM_STATUS_GT` at MCHBAR offset `0x59C0`; it never writes PCI configuration or hardware control registers. Run `powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\fetch-mchbar-module.ps1` once before building the hardware service. The project now fails the .NET build if the resource is missing, instead of silently omitting it. If the module or register validation is unavailable, the GPU temperature remains `—`.
+
+
+## Repository history and operating records
+
+- The canonical cross-version development record is `NexusMonitor-DEVELOPMENT-LOG-CN.md`.
+- Current-version handoff and verified build status are in `NexusMonitor-2.1.8-HANDOFF-CN.md` and `NexusMonitor-2.1.8-BUILD-REPORT.md`.
+- Each GitHub Actions run retains its complete build/test log; see the linked 2.1.8 run above. Per-user application runtime logs and settings remain local under `%APPDATA%\\NexusMonitor` and are intentionally not committed.
+- Versioned engineering references and the historical patch archive are under `docs/`.
