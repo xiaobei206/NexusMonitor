@@ -97,12 +97,16 @@ jobs:
           $tag = "v$version"
           $PSNativeCommandUseErrorActionPreference = $false
           gh release view $tag --json tagName 1>$null 2>$null
-          if ($LASTEXITCODE -eq 0) {
+          $releaseLookupExit = $LASTEXITCODE
+          $global:LASTEXITCODE = 0
+          if ($releaseLookupExit -eq 0) {
             "needs_release=false" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
             Write-Host "Release $tag already exists; build and publish are skipped."
-          } else {
+          } elseif ($releaseLookupExit -eq 1) {
             "needs_release=true" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
             Write-Host "Release $tag does not exist; this verified build will create it."
+          } else {
+            throw "GitHub release lookup failed with exit code $releaseLookupExit."
           }
 
       - name: Build Windows NSIS installer
