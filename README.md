@@ -39,3 +39,8 @@ CI results are authoritative for the hosted Windows build, but physical Turing/E
 - Keep `VERSION`, package metadata, renderer display, HardwareService metadata and release scripts synchronized.
 - Do not commit `node_modules`, build outputs, local logs, generated PawnIO resources, local settings or credentials.
 - Preserve existing UI unless a change is specifically part of the requested work.
+
+
+## Repository bootstrap status
+
+The public repository, ignore rules and Windows Actions workflow are initialized. The **2.1.8 application source tree has not yet been pushed**; the workflow intentionally skips its build job until the root-level `package.json` is present. After the source import, every push/PR runs Windows validation, and a matching `v<version>` tag can publish the tested installer.
