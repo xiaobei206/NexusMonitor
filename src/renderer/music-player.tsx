@@ -841,7 +841,7 @@ export function MusicWasapiControls({ state, settings, updateSettings, status }:
   </section>;
 }
 
-function MusicMiniPlayer({ state, onCommand }: { state: MusicState | null; onCommand: (command: MusicCommand) => void }) {
+export function MusicMiniPlayer({ state, onCommand }: { state: MusicState | null; onCommand: (command: MusicCommand) => void }) {
   const [open, setOpen] = useState(false);
   const root = useRef<HTMLDivElement | null>(null);
   const track = activeTrack(state);
