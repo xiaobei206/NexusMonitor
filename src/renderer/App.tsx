@@ -744,7 +744,7 @@ function MainApp() {
       {['监控中心','设备输出','个性化','扩展管理','管理'].map(group => <div className="nav-group" key={group}><div className="nav-group-title">{group}</div>{navItems.filter(n=>n.group===group).map(item=>{
         const Icon=item.icon; return <button key={item.id} className={`nav-item ${page===item.id?'active':''}`} onClick={()=>setPage(item.id)}><Icon size={17}/><span>{item.label}</span>{page===item.id&&<i/>}</button>;
       })}</div>)}
-      <div className="sidebar-bottom"><div className={`service-chip ${serviceState==='online'?'online':'offline'}`}><span className="pulse-dot"/><div><b>{serviceStatus.phase==='degraded'?'服务响应超时':serviceState==='online'?'本机服务在线':'等待硬件服务'}</b><small>{serviceState==='online'?'LOCAL TELEMETRY':serviceStatus.phase==='restarting'?'RESTARTING':'LOCALHOST :18765'}</small></div></div><div className="sidebar-footer"><span>NEXUS MONITOR</span><span>2.2.0</span></div></div>
+      <div className="sidebar-bottom"><div className={`service-chip ${serviceState==='online'?'online':'offline'}`}><span className="pulse-dot"/><div><b>{serviceStatus.phase==='degraded'?'服务响应超时':serviceState==='online'?'本机服务在线':'等待硬件服务'}</b><small>{serviceState==='online'?'LOCAL TELEMETRY':serviceStatus.phase==='restarting'?'RESTARTING':'LOCALHOST :18765'}</small></div></div><div className="sidebar-footer"><span>NEXUS MONITOR</span><span>2.2.1</span></div></div>
     </aside>
 
     <main className="main-area">
@@ -1357,6 +1357,6 @@ function SettingsPage({settings,updateSettings,notify}:any){
       <p className="panel-note">每项独立开关。这里控制悬浮窗窄条及展开卡片中的模块；主界面总览的显示项目保持独立设置。单个底层传感器可在“硬件与网络”页面收藏。</p>
       <div className="widget-visibility-grid">{widgetOptions.map(([id,label])=><label className="widget-visibility-option" key={id}><input type="checkbox" checked={widgetVisible.includes(id)} onChange={()=>toggleWidgetMetric(id)}/><span>{label}</span></label>)}</div>
     </section>
-    <section className="panel about-panel"><div className="about-emblem">N</div><div><b>NexusMonitor 2.2.0</b><span>Electron + React UI · .NET 10 Hardware Service</span><small>本机优先，不需要账户；硬件数据通过 127.0.0.1 本地接口传递。</small></div><span className="count-pill">DEVELOPMENT BUILD</span></section>
+    <section className="panel about-panel"><div className="about-emblem">N</div><div><b>NexusMonitor 2.2.1</b><span>Electron + React UI · .NET 10 Hardware Service</span><small>本机优先，不需要账户；硬件数据通过 127.0.0.1 本地接口传递。</small></div><span className="count-pill">DEVELOPMENT BUILD</span></section>
   </>;
 }
