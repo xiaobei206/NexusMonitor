@@ -11,20 +11,20 @@
 
 ## 接手顺序
 
-1. 检查仓库 https://github.com/xiaobei206/NexusMonitor；若继续 2.2.0，先检查 PR #1 与分支 `feature/2.2.0-music-and-window-lifecycle` 的最新 HEAD / Actions；不要直接在 main 上开发。
-2. 依次阅读：本文件 → `NexusMonitor-2.2.0-HANDOFF-CN.md` → `NexusMonitor-DEVELOPMENT-LOG-CN.md` → `README.md` → `NexusMonitor-2.2.0-BUILD-REPORT.md`。
-3. 再读 `docs/VERSIONING_CN.md`、`VERSION`、`package.json`、`package-lock.json`、`scripts/validate-release-version.cjs`、当前版本的 `NexusMonitor-*-BUILD-RELEASE.cjs` 和 `.github/workflows/windows-ci.yml`。
-4. 按本轮任务阅读专题文档，再对照源码与 `tests/`。文档和源码冲突时，以当前源码、测试为准，并修正文档。
-5. 用户要求实际开发时，不要只给计划：修改、测试、提交推送，检查新提交的 CI，并如实区分自动化与实机验收。
+1. 检查 PR #2、分支 `feature/2.2.1-music-platform`、最新 HEAD 和 GitHub Actions；不要回到旧 PR #1 / 2.2.0 开发分支。
+2. 阅读：本文件 → `NexusMonitor-2.2.1-HANDOFF-CN.md` → `docs/MUSIC-PLATFORM-2.2.1-CN.md` → `NexusMonitor-DEVELOPMENT-LOG-CN.md` → README。
+3. 再检查 `VERSION`、`package.json` / `package-lock.json`、`scripts/validate-release-version.cjs`、`NexusMonitor-2.2.1-BUILD-RELEASE.cjs`、`.github/workflows/windows-ci.yml`。
+4. 文档和源码冲突时以当前源码 / 测试 / 最新 CI 为准，并修正文档。不能把历史 CI 或旧 HEAD 当成本次验证。
+5. 用户要求实际开发时，继续实施、测试、提交和检查 Actions；明确区分 Hosted CI 与用户 Windows 目标机验收。
 
-## 2.2.1 基线与当前目标（接手时重新核对）
+## 2.2.1 基线与当前交付状态（每次接手须重新核实）
 
-- 当前开发分支版本为 2.2.0，PR #1 为 Draft，尚未合并 `main` / 尚未正式发布。功能代码 Run #23（`e45c93bd4e8e2faf17270fdbcda382a8f66e9086`）与文档同步 Run #24（`d6a6f6ab9ac996f0d74d688d155d07b14a2ada6c`）均已成功；每次接手仍须读取最新 HEAD 与 Actions。最终以当前分支 `VERSION` 和 GitHub HEAD 为准。
-- 技术栈：Electron 45.2.1、React 19、TypeScript 7、Vite 8、.NET 10 HardwareService、LibreHardwareMonitorLib。
-- 应用源码 / v2.1.8 Release 验证提交：`6ff189829829b1b16802b276f5ad4784674b4d46`；[成功 CI 42239092025](https://github.com/xiaobei206/NexusMonitor/actions/runs/42239092025)。
-- 之前的文档同步提交 `09b6739cd1aa876e9e410b149651fcb385393439` 的 CI 也已成功：[42242756560](https://github.com/xiaobei206/NexusMonitor/actions/runs/42242756560)。
-- [v2.1.8 Release](https://github.com/xiaobei206/NexusMonitor/releases/tag/v2.1.8)。
-- **仍待真实 Windows 硬件验收：** COM3 Turing 屏刷新/拔插重连；ESP32-P4 五寸副屏在实际多屏、负坐标和 DPI 下的边界；冷启动、HUD 展开与长期运行；MP3 实际输出、托盘隐藏期间持续播放与播放边界。云端 CI 不能代替这些测试。
+- 稳定 `main` 基线为 2.2.0，合并提交 `bc0d29f19fbb98f7ea994fbe30dc68dfb35a38c9`；当前目标版本为 2.2.1，开发分支 `feature/2.2.1-music-platform`，PR #2。
+- 已实现：文档先行交接；版本升为 2.2.1；best-effort 本地标签与封面解析；MP3 / WAV / FLAC / OGG / OGA / Opus / M4A / M4B / AAC 导入；Nora 风格歌曲/专辑/艺术家/流派/文件夹/歌单导航；统一静态/GIF 音乐服务；第六种 `music-only` 桌面壁纸音乐模式；Windows 音频 endpoint 选择、setSinkId 路由、设备状态和测试音。
+- **最近已验证的应用 HEAD：** `fafbe3e24c9e5127de6608bb72c9cacd3a65aaea`；Windows CI Run #44 全绿：版本 14/14、Node 195/195、Renderer/Vite、PawnIO、.NET Release 0 Warning / 0 Error、Storage Tests。<https://github.com/xiaobei206/NexusMonitor/actions/runs/42344000038>
+- 上述 CI 是代码 HEAD 的测试结果；此后可能有仅文档提交，接手者必须检查当前 PR HEAD 和 Actions 再决定是否已有更新的 CI。
+- 未完成：每种宣称格式的真实解码矩阵；WASAPI Exclusive 原生后端 / bit-perfect 验证；EQ / ReplayGain / gapless / crossfade / 同步歌词 / spectrum；Windows 真实 endpoint 与五寸屏喇叭实机验收；六种显示模式与 USB 热插拔的目标机验收；安装包与正式 Release。
+- 任何格式的导入允许不代表格式播放已通过；`setSinkId` 不等于 WASAPI Exclusive；Hosted CI 不代替实际 Windows 硬件验收。
 
 ## 文件结构地图
 
