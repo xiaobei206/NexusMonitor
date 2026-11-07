@@ -15,6 +15,10 @@ export interface ParsedMusicMetadata {
   durationSeconds?: number;
   sampleRateHz?: number;
   bitDepth?: number;
+  replayGainTrackDb?: number;
+  replayGainAlbumDb?: number;
+  replayGainTrackPeak?: number;
+  replayGainAlbumPeak?: number;
   artwork?: ParsedMusicArtwork;
 }
 
@@ -74,6 +78,18 @@ function setComment(target: ParsedMusicMetadata, key: string, value: string) {
   } else if ((normalized === 'TRACKNUMBER' || normalized === 'TRACK') && !target.trackNumber) {
     const number = Number.parseInt(clean.split('/')[0], 10);
     if (Number.isFinite(number) && number > 0) target.trackNumber = number;
+  } else if (normalized === 'REPLAYGAIN_TRACK_GAIN' && target.replayGainTrackDb == null) {
+    const db = Number.parseFloat(clean.replace(/\\s*dB\\s*$/i, '').trim());
+    if (Number.isFinite(db) && db >= -60 && db <= 30) target.replayGainTrackDb = db;
+  } else if (normalized === 'REPLAYGAIN_ALBUM_GAIN' && target.replayGainAlbumDb == null) {
+    const db = Number.parseFloat(clean.replace(/\\s*dB\\s*$/i, '').trim());
+    if (Number.isFinite(db) && db >= -60 && db <= 30) target.replayGainAlbumDb = db;
+  } else if (normalized === 'REPLAYGAIN_TRACK_PEAK' && target.replayGainTrackPeak == null) {
+    const peak = Number.parseFloat(clean);
+    if (Number.isFinite(peak) && peak > 0 && peak <= 16) target.replayGainTrackPeak = peak;
+  } else if (normalized === 'REPLAYGAIN_ALBUM_PEAK' && target.replayGainAlbumPeak == null) {
+    const peak = Number.parseFloat(clean);
+    if (Number.isFinite(peak) && peak > 0 && peak <= 16) target.replayGainAlbumPeak = peak;
   }
 }
 function parseId3v2(fd: number, fileSize: number, target: ParsedMusicMetadata) {
@@ -108,6 +124,11 @@ function parseId3v2(fd: number, fileSize: number, target: ParsedMusicMetadata) {
     } else if (frameId === 'TLEN') {
       const milliseconds = Number.parseInt(decodeText(frame.subarray(1), frame[0]), 10);
       if (Number.isFinite(milliseconds) && milliseconds > 0) target.durationSeconds ||= milliseconds / 1000;
+    } else if (frameId === 'TXXX' && frame.length > 2) {
+      const encoding = frame[0];
+      const description = textBeforeNull(frame, 1, encoding);
+      const value = decodeText(frame.subarray(description.next), encoding);
+      setComment(target, description.value, value);
     } else if ((frameId === 'APIC' || frameId === 'PIC') && !target.artwork && frame.length > 8) {
       const encoding = frame[0];
       let cursor = 1;
