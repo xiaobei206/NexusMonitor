@@ -136,7 +136,7 @@ export function MusicPlaybackRuntime({ state, outputDeviceId = 'default', eqBand
         });
         pcmTap.port.onmessage = event => {
           const pcm = event.data?.type === 'pcm' ? event.data.pcm : null;
-          if (exclusiveActiveRef.current && pcm instanceof ArrayBuffer) {
+          if (exclusiveActiveRef.current && !audioRef.current?.paused && pcm instanceof ArrayBuffer) {
             window.nexus.writeMusicWasapiPcm(pcm);
           }
         };
