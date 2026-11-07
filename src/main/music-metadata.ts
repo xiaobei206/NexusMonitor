@@ -105,6 +105,9 @@ function parseId3v2(fd: number, fileSize: number, target: ParsedMusicMetadata) {
       const value = decodeText(frame.subarray(1), frame[0]);
       const number = Number.parseInt(value.split('/')[0], 10);
       if (Number.isFinite(number) && number > 0) target.trackNumber ||= number;
+    } else if (frameId === 'TLEN') {
+      const milliseconds = Number.parseInt(decodeText(frame.subarray(1), frame[0]), 10);
+      if (Number.isFinite(milliseconds) && milliseconds > 0) target.durationSeconds ||= milliseconds / 1000;
     } else if ((frameId === 'APIC' || frameId === 'PIC') && !target.artwork && frame.length > 8) {
       const encoding = frame[0];
       let cursor = 1;
@@ -136,13 +139,9 @@ function parseId3v1(buffer: Buffer, target: ParsedMusicMetadata) {
   const year = field(93, 4);
   if (!target.year && /^\d{4}$/.test(year)) target.year = Number(year);
 }
-function parseVorbisComments(buffer: Buffer, target: ParsedMusicMetadata) {
-  const opusAt = buffer.indexOf('OpusTags', 0, 'ascii');
-  const vorbisMarker = Buffer.from([0x03, 0x76, 0x6f, 0x72, 0x62, 0x69, 0x73]);
-  const vorbisAt = buffer.indexOf(vorbisMarker);
-  const at = opusAt >= 0 ? opusAt + 8 : vorbisAt >= 0 ? vorbisAt + vorbisMarker.length : -1;
-  if (at < 0 || at + 8 > buffer.length) return;
-  let pos = at;
+function parseVorbisCommentBlock(buffer: Buffer, target: ParsedMusicMetadata, offset = 0) {
+  if (offset < 0 || offset + 8 > buffer.length) return;
+  let pos = offset;
   const vendorLen = buffer.readUInt32LE(pos); pos += 4;
   if (vendorLen > buffer.length - pos) return;
   pos += vendorLen;
@@ -155,6 +154,13 @@ function parseVorbisComments(buffer: Buffer, target: ParsedMusicMetadata) {
     const equals = comment.indexOf('=');
     if (equals > 0) setComment(target, comment.slice(0, equals), comment.slice(equals + 1));
   }
+}
+function parseVorbisComments(buffer: Buffer, target: ParsedMusicMetadata) {
+  const opusAt = buffer.indexOf('OpusTags', 0, 'ascii');
+  const vorbisMarker = Buffer.from([0x03, 0x76, 0x6f, 0x72, 0x62, 0x69, 0x73]);
+  const vorbisAt = buffer.indexOf(vorbisMarker);
+  const at = opusAt >= 0 ? opusAt + 8 : vorbisAt >= 0 ? vorbisAt + vorbisMarker.length : -1;
+  if (at >= 0) parseVorbisCommentBlock(buffer, target, at);
 }
 function parseFlac(fd: number, fileSize: number, target: ParsedMusicMetadata) {
   const marker = readAt(fd, fileSize, 0, 4);
@@ -169,7 +175,17 @@ function parseFlac(fd: number, fileSize: number, target: ParsedMusicMetadata) {
     const length = head.readUIntBE(1, 3);
     if (length <= 0 || length > MAX_TAG_BYTES || pos + 4 + length > fileSize) break;
     const block = readAt(fd, fileSize, pos + 4, length);
-    if (type === 4) parseVorbisComments(block, target);
+    if (type === 0 && block.length >= 34) {
+      const packed = block.readBigUInt64BE(10);
+      const sampleRate = Number(packed >> 44n);
+      const bitDepth = Number((packed >> 36n) & 0x1fn) + 1;
+      const totalSamples = Number(packed & 0xfffffffffn);
+      if (sampleRate > 0) {
+        target.sampleRateHz ||= sampleRate;
+        target.bitDepth ||= bitDepth;
+        if (totalSamples > 0) target.durationSeconds ||= totalSamples / sampleRate;
+      }
+    } else if (type === 4) parseVorbisCommentBlock(block, target);
     else if (type === 6 && !target.artwork && block.length > 32) {
       let cursor = 4;
       const mimeLength = block.readUInt32BE(cursor); cursor += 4;
