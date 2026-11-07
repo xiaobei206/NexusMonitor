@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { PointerEvent as ReactPointerEvent, ReactNode } from 'react';
 import {
   Music2, Play, Pause, SkipBack, SkipForward, ListMusic, FolderOpen, Plus,
   Trash2, Shuffle, Repeat, Volume2, Search, X, ListPlus, Disc3,
@@ -30,7 +31,7 @@ const formatTime = (value: number) => {
 };
 const activeTrack = (state: MusicState | null) => state?.tracks.find(track => track.id === state.currentTrackId) ?? null;
 const repeatLabel = (repeat: MusicState['repeat']) => repeat === 'one' ? '单曲循环' : repeat === 'all' ? '列表循环' : '不循环';
-const stopWidgetDrag = (event: React.PointerEvent) => event.stopPropagation();
+const stopWidgetDrag = (event: ReactPointerEvent) => event.stopPropagation();
 
 export function MusicPlaybackRuntime({ state }: { state: MusicState | null }) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -145,7 +146,7 @@ export function MusicMiniPlayer({ state, onCommand }: { state: MusicState | null
     return () => document.removeEventListener('pointerdown', closeOutside);
   }, [open]);
 
-  const button = (label: string, icon: React.ReactNode, action: () => void, active = false) => (
+  const button = (label: string, icon: ReactNode, action: () => void, active = false) => (
     <button type="button" className={`nm-player-icon-button ${active ? 'active' : ''}`} title={label} aria-label={label}
       data-no-widget-drag="true" onPointerDown={stopWidgetDrag} onClick={event => { event.stopPropagation(); action(); }}>
       {icon}
@@ -198,8 +199,6 @@ export function MusicPlayerDock({ state, onCommand, onOpen }: {
   state: MusicState | null; onCommand: (command: MusicCommand) => void; onOpen: () => void;
 }) {
   const track = activeTrack(state);
-  const [volumeOpen, setVolumeOpen] = useState(false);
-  const progress = state && state.duration > 0 ? Math.min(100, (state.currentTime / state.duration) * 100) : 0;
   return <div className="nm-music-dock">
     <button type="button" className="nm-dock-track" onClick={onOpen}>
       <span className="nm-dock-art"><Disc3 size={20}/></span>
