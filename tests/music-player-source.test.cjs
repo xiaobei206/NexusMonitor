@@ -318,5 +318,5 @@ test('native WASAPI backend is built on Windows, packaged outside ASAR, and only
   assert.match(cpp, /std::atomic<uint64_t> readPosition_/);
   assert.match(cpp, /GetCurrentPadding/);
   assert.match(cpp, /napi_get_buffer_info/);
-  assert.match(buildScript, /node-gyp@11\.2\.0/);
+  assert.match(buildScript, /node-gyp@13\.1\.0/);
 });
