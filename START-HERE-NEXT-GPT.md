@@ -12,7 +12,7 @@
 
 ## 已有基线（接手时重新核对）
 
-- 当前开发分支版本为 2.2.0，PR #1 为 Draft，尚未合并 `main` / 尚未正式发布。Run #23 对应 HEAD `e45c93bd4e8e2faf17270fdbcda382a8f66e9086` 的 CI 已成功；每次接手仍须读取最新 HEAD 与 Actions。最终以当前分支 `VERSION` 和 GitHub HEAD 为准。
+- 当前开发分支版本为 2.2.0，PR #1 为 Draft，尚未合并 `main` / 尚未正式发布。功能代码 Run #23（`e45c93bd4e8e2faf17270fdbcda382a8f66e9086`）与文档同步 Run #24（`d6a6f6ab9ac996f0d74d688d155d07b14a2ada6c`）均已成功；每次接手仍须读取最新 HEAD 与 Actions。最终以当前分支 `VERSION` 和 GitHub HEAD 为准。
 - 技术栈：Electron 45.2.1、React 19、TypeScript 7、Vite 8、.NET 10 HardwareService、LibreHardwareMonitorLib。
 - 应用源码 / v2.1.8 Release 验证提交：`6ff189829829b1b16802b276f5ad4784674b4d46`；[成功 CI 42239092025](https://github.com/xiaobei206/NexusMonitor/actions/runs/42239092025)。
 - 之前的文档同步提交 `09b6739cd1aa876e9e410b149651fcb385393439` 的 CI 也已成功：[42242756560](https://github.com/xiaobei206/NexusMonitor/actions/runs/42242756560)。
