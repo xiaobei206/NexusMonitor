@@ -4,7 +4,8 @@
 **状态：** GitHub Draft PR #1；最新 Windows CI 已通过；尚未合并 `main`，尚未发布正式 Release。  
 **基线：** main / 2.1.8，起始提交 `5105bbaa88f68e1ff1a9b15210c8beca30ab6773`。  
 **分支：** `feature/2.2.0-music-and-window-lifecycle`。  
-**当前 PR HEAD：** `e45c93bd4e8e2faf17270fdbcda382a8f66e9086`。
+**功能代码修正验证提交（Run #23）：** `e45c93bd4e8e2faf17270fdbcda382a8f66e9086`。  
+**最新完整 PR 验证（Run #24）：** PR 文档同步 HEAD `d6a6f6ab9ac996f0d74d688d155d07b14a2ada6c`，全部 CI 步骤成功。
 
 ## 本轮实现内容
 
@@ -29,7 +30,7 @@
 
 | 检查 | 结果 |
 |---|---|
-| GitHub Windows CI Run #23（PR HEAD） | **通过** |
+| GitHub Windows CI Run #23（功能代码修正） | **通过** |
 | 14 项版本一致性门禁 | **通过** |
 | `npm.cmd run test:main` | **通过，188/188** |
 | `npm.cmd run build:renderer` | **通过** |
@@ -39,7 +40,8 @@
 | NSIS 安装包 / Release 发布 | PR 阶段跳过，未打包、未发布 |
 
 CI：<https://github.com/xiaobei206/NexusMonitor/actions/runs/42334294679>  
-Run #23 对应 HEAD：`e45c93bd4e8e2faf17270fdbcda382a8f66e9086`。
+Run #23 功能代码 HEAD：`e45c93bd4e8e2faf17270fdbcda382a8f66e9086`。  
+Run #24 文档同步 HEAD：`d6a6f6ab9ac996f0d74d688d155d07b14a2ada6c`；[查看运行记录](https://github.com/xiaobei206/NexusMonitor/actions/runs/42334605208)。
 
 ### 本轮交接修正
 
