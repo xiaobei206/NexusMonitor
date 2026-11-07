@@ -102,7 +102,7 @@ export function chooseExclusiveFormat(
   const format = ladder.find(candidate => available.has(candidate)) ?? atRate[0].format;
   const channelsUnknown = source.channels == null;
   const upmixed = !channelsUnknown && source.channels !== 2;
-  const resampled = sourceRate == null || targetRate !== sourceRate || source.dsd;
+  const resampled = sourceRate == null || targetRate !== sourceRate || source.dsd === true;
   const depthPreserved = formatPreservesDepth(format, sourceDepth);
   const bitPerfect = source.lossless && !source.dsd && !resampled && depthPreserved &&
     sourceDepth != null && !upmixed && !channelsUnknown && source.channels === 2;
