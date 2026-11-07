@@ -450,3 +450,10 @@ Property 'volume' does not exist on type 'AudioHTMLAttributes<HTMLAudioElement>'
 - PR #2 仍开放，未合并；PR CI 不发布 NSIS installer / GitHub Release。真实 Windows 音频 endpoint、五寸屏扬声器、每种编码播放、USB 设备行为仍需目标机测试。
 - 后续开发重点：NewAmp 双 Deck Gapless / Crossfade 设计与 WASAPI Exclusive 原生 backend 评估；不要直接把当前 Chromium setSinkId 说成独占输出或 bit-perfect。
 
+### 2.2.1 EQ 预设与 Run #114（2026-11-07）
+
+- 十段均衡器新增九组预设：平直、摇滚、流行、人声、古典、爵士、电子、低音增强、高音增强；默认平直，手动改频段后显示自定义曲线。
+- Windows CI Run #114 **成功**，应用 HEAD `f1019858e17e2c82192e08a2c94709793ce6d1e7`：版本门禁 14/14、Node **211/211**、Renderer TypeScript / Vite、PawnIO 资源校验、.NET Release 0 Warning / 0 Error、Storage Tests 全通过。<https://github.com/xiaobei206/NexusMonitor/actions/runs/42349435741>
+- PR #2 保持开放，未合并、未发布 installer。用户目标机的音频设备和副屏验收仍未执行。
+- 后续音频研发重点是评估 NewAmp 的 N-API/miniaudio WASAPI exclusive 与 FFmpeg→PCM ring buffer 管线；独占路径需绕过 WebAudio EQ / ReplayGain / Crossfade，只有真实协商格式和设备播放验证通过后才能称为 bit-perfect。Gapless / Crossfade 需要双 Deck / 连续 PCM transport，不应把普通 ended 自动切歌称为 gapless。
+
