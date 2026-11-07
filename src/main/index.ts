@@ -19,6 +19,7 @@ import { calculateWidgetDetailLayout } from './widget-detail-window';
 import { isFullscreenOnWidgetDisplay } from './fullscreen-detection';
 import { resolveUsbDisplayWindowBounds } from './usb-display-window';
 import { musicFormatLabel, readMusicMetadata } from './music-metadata';
+import { parseLrc } from './music-lyrics';
 
 // Music controls may arrive from a separate HUD/USB BrowserWindow after an explicit
 // user click there. The shared, hidden main-renderer audio element must be allowed to
@@ -296,6 +297,18 @@ function loadMusicLibrary() {
     musicLastPersistAt = Date.now();
   } catch {
     musicState = { tracks: [], playlists: [], activePlaylistId: null, currentTrackId: null, currentTime: 0, duration: 0, volume: 0.7, isPlaying: false, errorMessage: null, shuffle: false, repeat: 'off' };
+  }
+}
+function readMusicLyrics(trackId: string) {
+  const track = musicState.tracks.find(item => item.id === String(trackId));
+  if (!track || !existsSync(track.path)) return [];
+  const sidecar = join(dirname(track.path), `${basename(track.path, extname(track.path))}.lrc`);
+  try {
+    const info = statSync(sidecar);
+    if (!info.isFile() || info.size <= 0 || info.size > 1024 * 1024) return [];
+    return parseLrc(readFileSync(sidecar, 'utf8'));
+  } catch {
+    return [];
   }
 }
 function publicMusicState(): MusicState {
@@ -1556,6 +1569,7 @@ ipcMain.handle('music:artwork-url', (_event, trackId: string) => {
   const track = musicState.tracks.find(item => item.id === String(trackId));
   return track?.artworkPath && existsSync(track.artworkPath) ? pathToFileURL(track.artworkPath).href : null;
 });
+ipcMain.handle('music:get-lyrics', (_event, trackId: string) => readMusicLyrics(String(trackId ?? '')));
 ipcMain.handle('music:choose-files', async () => {
   const result = await dialog.showOpenDialog({
     properties: ['openFile', 'multiSelections'],
