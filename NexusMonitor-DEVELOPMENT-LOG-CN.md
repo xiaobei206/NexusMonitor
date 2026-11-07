@@ -457,3 +457,17 @@ Property 'volume' does not exist on type 'AudioHTMLAttributes<HTMLAudioElement>'
 - PR #2 保持开放，未合并、未发布 installer。用户目标机的音频设备和副屏验收仍未执行。
 - 后续音频研发重点是评估 NewAmp 的 N-API/miniaudio WASAPI exclusive 与 FFmpeg→PCM ring buffer 管线；独占路径需绕过 WebAudio EQ / ReplayGain / Crossfade，只有真实协商格式和设备播放验证通过后才能称为 bit-perfect。Gapless / Crossfade 需要双 Deck / 连续 PCM transport，不应把普通 ended 自动切歌称为 gapless。
 
+### WASAPI Exclusive native backend 接线与 Run #162（2026-11-07）
+
+- 新增主进程 MusicExclusiveOutput singleton 与受信任 IPC：availability / endpoint list / probe-open / start / pause / close / stats / PCM write；只接受主窗口 webContents 的命令；PCM 单块上限 64 KiB，按 stereo float32 8-byte frame 对齐。
+- 新增 music-pcm-tap.worklet.js AudioWorklet：普通模式透传到 AudioContext sink；独占模式将普通 sink 输出静音，并把 1024-frame stereo Float32 PCM chunks 送至 main process native ring buffer。
+- MusicPlaybackRuntime 接入 WASAPI 开关、端点、sample-rate negotiation；协商 rate 强制匹配 AudioContext.sampleRate，避免 native stream 与 renderer transport 时钟不一致。独占模式 follows play/pause/track switch；关闭 / 运行错误时关闭 native stream、解除 Worklet 静音并恢复普通 output sink。
+- Native C++ pause/resume 修正：暂停时执行 IAudioClient::Stop()，恢复时才 Start()；在暂停线程清空 ring 中旧 PCM；Renderer 不再在 audio paused 时继续转发静音块。Native status 每秒读取，UI 展示 format / rate / bufferedBytes / underruns；设备运行错误会 fallback 普通输出。
+- 格式标签继续增强：Ogg Vorbis identification / OpusHead / MP4 mp4a / ALAC sample entry 读取 channel / sample-rate；WASAPI 协商能分辨未知声道，不会把“声道未知”随意标为已直通。
+- 2.2.0 曲库首启迁移：若旧轨道 record 缺少 2.2.1 channels / ReplayGain / format / artworkPath 等字段，才读取一次本地原文件，补充 metadata / artwork，保留 playlist、currentTrack、volume、currentTime 后回写 music-library.json；后续启动不重复扫文件。该迁移在 Run #162 之后新增，需 Run #164 验证。
+- 2026-11-07 Run #162 成功：14/14 version gates；Node tests 224/224；Renderer TypeScript + Vite production build；PawnIO resource validation；.NET Release；Storage Tests 全部成功。
+- Run #162 原生编译日志确认为成功：Node 24.22.2、node-gyp 13.1.0、Python 3.15.2、Visual Studio 2026 18.11；gyp 结束 ok，成功生成 native/wasapi-output/build/Release/nexus_wasapi.node。<https://github.com/xiaobei206/NexusMonitor/actions/runs/42353103480>
+- Run #162 PR CI 按设计跳过 NSIS / Release。该 hosted build 不验证真实音频端点能否开独占、扬声器是否出声或真实文件 decoder 能力；目标 Windows PC 实机验收待做。
+- 当前最新 HEAD 在本记录更新前为 35e4d5e12829e116d8e2a36966436dbbddc90379，对应 Run #164；必须查看 Run #164 的最终状态，确认旧库一次性迁移和其后测试均通过。随后文档更新会触发另一次 CI。
+- bit-perfect 边界：目前传输路径依旧是 Chromium/WebAudio decode → Float32 PCM → WASAPI native; status/UI 固定 bitPerfect:false。设备支持源 sample-rate/depth 只能称为 format-match candidate；不宣传 bit-perfect。
+- 下阶段：先把最新 CI 绿灯跑完整；接着合并 PR #2 由 main workflow 产出 2.2.1 installer + SHA sidecar，再请用户在本机核实 5 寸屏端点与六模式。Gapless / Crossfade 双 Deck 后续开发，不把 ended 后自动切歌称为 gapless。
