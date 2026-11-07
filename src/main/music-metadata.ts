@@ -208,6 +208,7 @@ function parseFlac(fd: number, fileSize: number, target: ParsedMusicMetadata) {
 function parseWav(buffer: Buffer, target: ParsedMusicMetadata) {
   if (buffer.length < 12 || buffer.toString('ascii', 0, 4) !== 'RIFF' || buffer.toString('ascii', 8, 12) !== 'WAVE') return;
   let pos = 12;
+  let byteRate = 0;
   while (pos + 8 <= buffer.length) {
     const id = buffer.toString('ascii', pos, pos + 4);
     const size = buffer.readUInt32LE(pos + 4);
@@ -215,7 +216,10 @@ function parseWav(buffer: Buffer, target: ParsedMusicMetadata) {
     if (size > buffer.length - start) break;
     if (id === 'fmt ' && size >= 16) {
       target.sampleRateHz ||= buffer.readUInt32LE(start + 4);
+      byteRate = buffer.readUInt32LE(start + 8);
       target.bitDepth ||= buffer.readUInt16LE(start + 14);
+    } else if (id === 'data' && byteRate > 0) {
+      target.durationSeconds ||= size / byteRate;
     } else if (id === 'LIST' && size >= 4 && buffer.toString('ascii', start, start + 4) === 'INFO') {
       let item = start + 4;
       while (item + 8 <= start + size) {
@@ -247,8 +251,8 @@ function parseMp4Atoms(buffer: Buffer, target: ParsedMusicMetadata) {
     const end = Math.min(buffer.length, dataAt - 4 + atomSize);
     if (end <= start) continue;
     const valueBuffer = buffer.subarray(start, end);
-    if (key === 'TRACKNUMBER' && valueBuffer.length >= 8) {
-      const value = valueBuffer.readUInt16BE(valueBuffer.length >= 10 ? 10 : 0);
+    if (key === 'TRACKNUMBER' && valueBuffer.length >= 4) {
+      const value = valueBuffer.readUInt16BE(2);
       if (value > 0) target.trackNumber ||= value;
     } else if (key === 'YEAR') {
       setComment(target, key, valueBuffer.toString('utf8'));
