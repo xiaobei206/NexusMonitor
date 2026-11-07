@@ -104,7 +104,7 @@ test('music import recognises common codecs and records parsed tags and cover pa
   assert.match(main, /'music:artwork-url'/);
   const player = read('src/renderer/music-player.tsx');
   assert.match(player, /track\.format \?\? 'AUDIO'/);
-  assert.match(player, /未知艺术家/);
+  assert.match(main, /未知艺术家/);
   assert.doesNotMatch(player, /添加 MP3|本地 MP3|首 MP3/);
 });
 
