@@ -82,16 +82,17 @@ export function MusicPlaybackRuntime({ state }: { state: MusicState | null }) {
 
   useEffect(() => {
     const audio = audioRef.current;
-    const trackId = state?.currentTrackId ?? null;
-    if (!audio || !trackId) {
-      if (audio) {
-        audio.pause();
-        audio.removeAttribute('src');
-        delete audio.dataset.trackId;
-        audio.load();
-      }
+    if (!audio || !state) return;
+    const trackId = state.currentTrackId;
+    if (!trackId) {
+      audio.pause();
+      audio.removeAttribute('src');
+      delete audio.dataset.trackId;
+      audio.load();
       return;
     }
+    const restoreTime = state.currentTime;
+    const shouldPlay = state.isPlaying;
     let cancelled = false;
     audio.pause();
     delete audio.dataset.trackId;
@@ -106,10 +107,10 @@ export function MusicPlaybackRuntime({ state }: { state: MusicState | null }) {
       audio.load();
       const restorePosition = () => {
         if (cancelled || audio.dataset.trackId !== trackId) return;
-        if (Number.isFinite(state.currentTime) && state.currentTime > 0 && audio.duration > 0) {
-          audio.currentTime = Math.min(state.currentTime, Math.max(0, audio.duration - 0.1));
+        if (Number.isFinite(restoreTime) && restoreTime > 0 && audio.duration > 0) {
+          audio.currentTime = Math.min(restoreTime, Math.max(0, audio.duration - 0.1));
         }
-        if (state.isPlaying) void audio.play().catch(() => window.nexus.reportMusicRuntime({ error: true, playing: false }));
+        if (shouldPlay) void audio.play().catch(() => window.nexus.reportMusicRuntime({ error: true, playing: false }));
       };
       audio.addEventListener('loadedmetadata', restorePosition, { once: true });
       if (audio.readyState >= 1) restorePosition();
