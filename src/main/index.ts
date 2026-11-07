@@ -160,6 +160,7 @@ function openUsbDisplayWindow(displayId: string) {
 }
 function restoreConfiguredUsbDisplay() {
   if (!usbDisplayRestorePending) return false;
+  // Never guess which external monitor is the 5-inch panel; only restore the saved ID.
   const displayId = String(currentSettings.usbDisplayDisplayId ?? '').trim();
   if (!displayId) { usbDisplayRestorePending = false; return false; }
   const result = openUsbDisplayWindow(displayId);
