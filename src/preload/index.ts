@@ -12,6 +12,7 @@ const api = {
   chooseMusicFiles: () => ipcRenderer.invoke('music:choose-files'),
   chooseMusicFolder: () => ipcRenderer.invoke('music:choose-folder'),
   getMusicTrackUrl: (trackId: string) => ipcRenderer.invoke('music:track-url', trackId),
+  getMusicArtworkUrl: (trackId: string) => ipcRenderer.invoke('music:artwork-url', trackId),
   musicCommand: (command: MusicCommand) => ipcRenderer.invoke('music:command', command),
   reportMusicRuntime: (payload: { currentTime?: number; duration?: number; playing?: boolean; error?: boolean }) => ipcRenderer.send('music:runtime', payload),
   onMusicState: (callback: (state: import('../shared/types').MusicState) => void) => {
