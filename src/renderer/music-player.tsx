@@ -49,6 +49,17 @@ function TrackArtwork({ trackId, className, fallback }: { trackId: string | null
 const repeatLabel = (repeat: MusicState['repeat']) => repeat === 'one' ? '单曲循环' : repeat === 'all' ? '列表循环' : '不循环';
 const MUSIC_EQ_FREQUENCIES = [31, 62, 125, 250, 500, 1000, 2000, 4000, 8000, 16000] as const;
 const FLAT_MUSIC_EQ = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+const MUSIC_EQ_PRESETS: Record<string, { label: string; bands: number[] }> = {
+  flat: { label: '平直', bands: FLAT_MUSIC_EQ },
+  rock: { label: '摇滚', bands: [5, 3, 1, -2, -1, 2, 4, 5, 5, 5] },
+  pop: { label: '流行', bands: [-1, 1, 3, 4, 2, -1, -1, 0, 2, 3] },
+  vocal: { label: '人声', bands: [-2, -1, -1, 2, 4, 4, 2, 0, -1, -2] },
+  classical: { label: '古典', bands: [4, 3, 2, 1, -1, -1, 0, 2, 3, 4] },
+  jazz: { label: '爵士', bands: [3, 2, 0, 1, -1, -1, 0, 1, 2, 3] },
+  electronic: { label: '电子', bands: [5, 3, 1, 0, -1, 1, 0, 2, 4, 5] },
+  bass: { label: '低音增强', bands: [6, 5, 4, 2, 0, 0, 0, 0, 0, 0] },
+  treble: { label: '高音增强', bands: [0, 0, 0, 0, 0, 2, 3, 4, 5, 4] },
+};
 const stopWidgetDrag = (event: ReactPointerEvent) => event.stopPropagation();
 
 export function MusicPlaybackRuntime({ state, outputDeviceId = 'default', eqBands = FLAT_MUSIC_EQ, replayGainDb = null, replayGainPeak = null, sleepTimerEndsAt = null, onSleepTimerComplete, onOutputStatus }: {
@@ -489,12 +500,26 @@ function MusicEqualizer({ bands, onChange }: { bands: number[]; onChange: (bands
     return Number.isFinite(value) ? Math.max(-12, Math.min(12, value)) : 0;
   });
   const active = values.some(value => value !== 0);
+  const selectedPreset = Object.entries(MUSIC_EQ_PRESETS).find(([, preset]) =>
+    preset.bands.every((value, index) => value === values[index]),
+  )?.[0] ?? 'custom';
   const labelForFrequency = (frequency: number) => frequency >= 1000 ? `${frequency / 1000} kHz` : `${frequency} Hz`;
   return <details className="nm-eq-panel">
     <summary>
       <span><b>十段均衡器</b><small>31 Hz – 16 kHz · Web Audio 参数均衡</small></span>
-      <em className={active ? 'active' : ''}>{active ? '自定义曲线' : '平直 / 关闭增强'}</em>
+      <em className={active ? 'active' : ''}>{selectedPreset === 'custom' ? '自定义曲线' : MUSIC_EQ_PRESETS[selectedPreset].label}</em>
     </summary>
+    <div className="nm-eq-preset-row">
+      <label><span>预设曲线</span>
+        <select value={selectedPreset} onChange={event => {
+          const preset = MUSIC_EQ_PRESETS[event.target.value];
+          if (preset) onChange([...preset.bands]);
+        }}>
+          <option value="custom" disabled>自定义曲线</option>
+          {Object.entries(MUSIC_EQ_PRESETS).map(([id, preset]) => <option key={id} value={id}>{preset.label}</option>)}
+        </select>
+      </label>
+    </div>
     <div className="nm-eq-grid">
       {MUSIC_EQ_FREQUENCIES.map((frequency, index) => <label key={frequency} className="nm-eq-band">
         <span>{labelForFrequency(frequency)}</span>
