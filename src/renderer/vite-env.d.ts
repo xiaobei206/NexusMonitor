@@ -7,7 +7,7 @@ interface Window {
     showMusicLibrary(): Promise<boolean>;
     onOpenMusicLibrary(callback:()=>void):()=>void;
     chooseMusicFiles(): Promise<{added:number;skipped:number}>;
-    chooseMusicFolder(): Promise<{added:number;skipped:number}>;
+    chooseMusicFolder(): Promise<{added:number;skipped:number;truncated?:boolean}>;
     getMusicTrackUrl(trackId:string): Promise<string | null>;
     musicCommand(command:import('../shared/types').MusicCommand):Promise<import('../shared/types').MusicState>;
     reportMusicRuntime(payload:{currentTime?:number;duration?:number;playing?:boolean;error?:boolean}):void;
