@@ -414,9 +414,12 @@ export function MusicPlaybackRuntime({ state, outputDeviceId = 'default', eqBand
         if (!alive || !native) return;
         if (native.error) {
           exclusiveActiveRef.current = false;
+          pcmTapRef.current?.port.postMessage({ type: 'exclusive', enabled: false });
+          await window.nexus.closeMusicWasapi().catch(() => undefined);
+          await applyOutputSink();
           onWasapiStatus?.({
             state: 'error',
-            message: `WASAPI 输出中断：${native.error}`,
+            message: `WASAPI 输出中断：${native.error}；已恢复普通音频输出`,
             deviceName: native.deviceName,
             format: native.format,
             sampleRate: native.sampleRate,
@@ -449,7 +452,7 @@ export function MusicPlaybackRuntime({ state, outputDeviceId = 'default', eqBand
     void refreshStatus();
     const timer = window.setInterval(() => void refreshStatus(), 1000);
     return () => { alive = false; window.clearInterval(timer); };
-  }, [exclusiveEnabled, onWasapiStatus]);
+  }, [exclusiveEnabled, onWasapiStatus, applyOutputSink]);
 
   useEffect(() => {
     if (!sleepTimerEndsAt) return;
