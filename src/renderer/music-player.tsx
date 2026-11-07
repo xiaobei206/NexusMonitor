@@ -12,6 +12,15 @@ export type MusicOutputStatus = {
   actualDeviceId: string;
   message: string;
 };
+export type MusicWasapiStatus = {
+  state: 'off' | 'opening' | 'active' | 'error';
+  message: string;
+  deviceName?: string;
+  format?: string;
+  sampleRate?: number;
+  bitPerfect: false;
+  bitPerfectCandidate?: boolean;
+};
 type MusicHook = { state: MusicState | null; command: (command: MusicCommand) => void };
 
 export function useMusicState(): MusicHook {
@@ -62,21 +71,26 @@ const MUSIC_EQ_PRESETS: Record<string, { label: string; bands: number[] }> = {
 };
 const stopWidgetDrag = (event: ReactPointerEvent) => event.stopPropagation();
 
-export function MusicPlaybackRuntime({ state, outputDeviceId = 'default', eqBands = FLAT_MUSIC_EQ, replayGainDb = null, replayGainPeak = null, sleepTimerEndsAt = null, onSleepTimerComplete, onOutputStatus }: {
+export function MusicPlaybackRuntime({ state, outputDeviceId = 'default', eqBands = FLAT_MUSIC_EQ, replayGainDb = null, replayGainPeak = null, sleepTimerEndsAt = null, exclusiveEnabled = false, exclusiveDeviceId = '', onSleepTimerComplete, onOutputStatus, onWasapiStatus }: {
   state: MusicState | null;
   outputDeviceId?: string;
   eqBands?: number[];
   replayGainDb?: number | null;
   replayGainPeak?: number | null;
   sleepTimerEndsAt?: number | null;
+  exclusiveEnabled?: boolean;
+  exclusiveDeviceId?: string;
   onSleepTimerComplete?: () => void;
   onOutputStatus?: (status: MusicOutputStatus) => void;
+  onWasapiStatus?: (status: MusicWasapiStatus) => void;
 }) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const mediaSourceRef = useRef<MediaElementAudioSourceNode | null>(null);
   const eqFiltersRef = useRef<BiquadFilterNode[]>([]);
   const replayGainNodeRef = useRef<GainNode | null>(null);
+  const pcmTapRef = useRef<AudioWorkletNode | null>(null);
+  const exclusiveActiveRef = useRef(false);
   const lastReportAt = useRef(0);
   const bands = useMemo(
     () => MUSIC_EQ_FREQUENCIES.map((_, index) => {
@@ -104,6 +118,21 @@ export function MusicPlaybackRuntime({ state, outputDeviceId = 'default', eqBand
     if (!context) {
       context = new AudioContext({ latencyHint: 'playback' });
       try {
+        const workletUrl = new URL('./music-pcm-tap.worklet.js', import.meta.url);
+        await context.audioWorklet.addModule(workletUrl);
+        const pcmTap = new AudioWorkletNode(context, 'nexus-music-pcm-tap', {
+          numberOfInputs: 1,
+          numberOfOutputs: 1,
+          channelCount: 2,
+          channelCountMode: 'explicit',
+          outputChannelCount: [2],
+        });
+        pcmTap.port.onmessage = event => {
+          const pcm = event.data?.type === 'pcm' ? event.data.pcm : null;
+          if (exclusiveActiveRef.current && pcm instanceof ArrayBuffer) {
+            window.nexus.writeMusicWasapiPcm(pcm);
+          }
+        };
         const source = context.createMediaElementSource(audio);
         const filters = MUSIC_EQ_FREQUENCIES.map(frequency => {
           const filter = context!.createBiquadFilter();
@@ -118,11 +147,13 @@ export function MusicPlaybackRuntime({ state, outputDeviceId = 'default', eqBand
         source.connect(filters[0]);
         for (let index = 0; index < filters.length - 1; index++) filters[index].connect(filters[index + 1]);
         filters[filters.length - 1].connect(replayGain);
-        replayGain.connect(context.destination);
+        replayGain.connect(pcmTap);
+        pcmTap.connect(context.destination);
         audioContextRef.current = context;
         mediaSourceRef.current = source;
         eqFiltersRef.current = filters;
         replayGainNodeRef.current = replayGain;
+        pcmTapRef.current = pcmTap;
       } catch (error) {
         await context.close().catch(() => undefined);
         throw error;
@@ -136,6 +167,13 @@ export function MusicPlaybackRuntime({ state, outputDeviceId = 'default', eqBand
     const audio = audioRef.current as (HTMLAudioElement & { setSinkId?: (deviceId: string) => Promise<void>; sinkId?: string }) | null;
     if (!audio) return;
     const requestedDeviceId = outputDeviceId || 'default';
+    if (exclusiveActiveRef.current) {
+      onOutputStatus?.({
+        state: 'active', requestedDeviceId, actualDeviceId: 'WASAPI exclusive',
+        message: 'WASAPI 独占输出正在接管所选音频端点',
+      });
+      return;
+    }
     const context = audioContextRef.current as (AudioContext & { setSinkId?: (deviceId: string) => Promise<void>; sinkId?: string }) | null;
     try {
       if (context) {
@@ -249,14 +287,14 @@ export function MusicPlaybackRuntime({ state, outputDeviceId = 'default', eqBand
 
   useEffect(() => {
     const hasBoostOrCut = bands.some(value => value !== 0);
-    const needsProcessing = hasBoostOrCut || hasReplayGain;
-    // Do not create/resume an AudioContext merely because an effect setting was saved.
-    // Build the graph on active playback, or update it when playback is already using it.
-    if (!audioContextRef.current && !(state?.isPlaying && needsProcessing)) return;
+    const needsProcessing = hasBoostOrCut || hasReplayGain || exclusiveEnabled;
+    // Do not create/resume an AudioContext merely because EQ / ReplayGain was saved.
+    // Exclusive mode needs the PCM tap even when all effect gains are flat.
+    if (!audioContextRef.current && !(state?.isPlaying && needsProcessing) && !(exclusiveEnabled && state?.currentTrackId)) return;
     let alive = true;
     const applyProcessing = async () => {
       try {
-        if (!audioContextRef.current && state?.isPlaying && needsProcessing) await ensureAudioGraph();
+        if (!audioContextRef.current && ((state?.isPlaying && needsProcessing) || (exclusiveEnabled && state?.currentTrackId))) await ensureAudioGraph();
         if (!alive) return;
         const context = audioContextRef.current;
         if (!context) return;
@@ -275,7 +313,83 @@ export function MusicPlaybackRuntime({ state, outputDeviceId = 'default', eqBand
     };
     void applyProcessing();
     return () => { alive = false; };
-  }, [bandKey, bands, ensureAudioGraph, applyOutputSink, state?.isPlaying, hasReplayGain, replayGainAppliedDb]);
+  }, [bandKey, bands, ensureAudioGraph, applyOutputSink, state?.isPlaying, state?.currentTrackId, hasReplayGain, replayGainAppliedDb, exclusiveEnabled]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const trackId = state?.currentTrackId;
+    const tap = pcmTapRef.current;
+    const disable = async () => {
+      exclusiveActiveRef.current = false;
+      tap?.port.postMessage({ type: 'exclusive', enabled: false });
+      await window.nexus.closeMusicWasapi().catch(() => undefined);
+      if (!cancelled) {
+        onWasapiStatus?.({ state: 'off', message: 'WASAPI 独占输出已关闭', bitPerfect: false });
+        await applyOutputSink();
+      }
+    };
+    if (!exclusiveEnabled) {
+      void disable();
+      return () => { cancelled = true; };
+    }
+    if (!exclusiveDeviceId || !trackId) {
+      void disable();
+      onWasapiStatus?.({
+        state: 'error',
+        message: !exclusiveDeviceId ? '请先选择 WASAPI 输出设备' : '请先选择一首曲目',
+        bitPerfect: false,
+      });
+      return () => { cancelled = true; };
+    }
+    onWasapiStatus?.({ state: 'opening', message: '正在协商 WASAPI 独占 PCM 格式…', bitPerfect: false });
+    const open = async () => {
+      const context = await ensureAudioGraph();
+      const result = await window.nexus.openMusicWasapi(exclusiveDeviceId, trackId, context.sampleRate);
+      if (cancelled) {
+        await window.nexus.closeMusicWasapi().catch(() => undefined);
+        return;
+      }
+      exclusiveActiveRef.current = true;
+      pcmTapRef.current?.port.postMessage({ type: 'exclusive', enabled: true });
+      if (state?.isPlaying) await window.nexus.startMusicWasapi();
+      onWasapiStatus?.({
+        state: 'active',
+        deviceName: result.deviceName,
+        format: result.format,
+        sampleRate: result.sampleRate,
+        bitPerfect: false,
+        bitPerfectCandidate: result.bitPerfectCandidate,
+        message: `已打开 WASAPI 独占输出：${result.deviceName} · ${result.format.toUpperCase()} · ${result.sampleRate} Hz。当前 Renderer PCM 传输路径不具备 bit-perfect 条件。`,
+      });
+      await applyOutputSink();
+    };
+    void open().catch(async error => {
+      if (cancelled) return;
+      exclusiveActiveRef.current = false;
+      pcmTapRef.current?.port.postMessage({ type: 'exclusive', enabled: false });
+      await window.nexus.closeMusicWasapi().catch(() => undefined);
+      onWasapiStatus?.({
+        state: 'error',
+        message: `WASAPI 独占输出失败：${error instanceof Error ? error.message : String(error)}`,
+        bitPerfect: false,
+      });
+      await applyOutputSink();
+    });
+    return () => {
+      cancelled = true;
+      exclusiveActiveRef.current = false;
+      pcmTapRef.current?.port.postMessage({ type: 'exclusive', enabled: false });
+      void window.nexus.closeMusicWasapi().catch(() => undefined);
+    };
+  }, [exclusiveEnabled, exclusiveDeviceId, state?.currentTrackId, ensureAudioGraph, applyOutputSink]);
+
+  useEffect(() => {
+    if (!exclusiveEnabled || !exclusiveActiveRef.current) return;
+    const action = state?.isPlaying ? window.nexus.startMusicWasapi() : window.nexus.pauseMusicWasapi();
+    void action.catch(error => onWasapiStatus?.({
+      state: 'error', message: `WASAPI 播放状态切换失败：${error instanceof Error ? error.message : String(error)}`, bitPerfect: false,
+    }));
+  }, [exclusiveEnabled, state?.isPlaying, onWasapiStatus]);
 
   useEffect(() => {
     if (!sleepTimerEndsAt) return;
@@ -331,7 +445,7 @@ export function MusicPlaybackRuntime({ state, outputDeviceId = 'default', eqBand
         if (shouldPlay) {
           const startPlayback = async () => {
             try {
-              if ((bands.some(value => value !== 0) || hasReplayGain) && !audioContextRef.current) await ensureAudioGraph();
+              if ((bands.some(value => value !== 0) || hasReplayGain || exclusiveEnabled) && !audioContextRef.current) await ensureAudioGraph();
               if (audioContextRef.current?.state === 'suspended') await audioContextRef.current.resume();
               await audio.play();
             } catch (error) {
@@ -355,7 +469,7 @@ export function MusicPlaybackRuntime({ state, outputDeviceId = 'default', eqBand
     if (state.isPlaying) {
       const startPlayback = async () => {
         try {
-          if ((bands.some(value => value !== 0) || hasReplayGain) && !audioContextRef.current) await ensureAudioGraph();
+          if ((bands.some(value => value !== 0) || hasReplayGain || exclusiveEnabled) && !audioContextRef.current) await ensureAudioGraph();
           if (audioContextRef.current?.state === 'suspended') await audioContextRef.current.resume();
           await audio.play();
         } catch (error) {
@@ -366,7 +480,7 @@ export function MusicPlaybackRuntime({ state, outputDeviceId = 'default', eqBand
     } else {
       audio.pause();
     }
-  }, [state?.isPlaying, state?.currentTrackId, bandKey, ensureAudioGraph, hasReplayGain, replayGainAppliedDb]);
+  }, [state?.isPlaying, state?.currentTrackId, bandKey, ensureAudioGraph, hasReplayGain, replayGainAppliedDb, exclusiveEnabled]);
 
   useEffect(() => () => {
     const context = audioContextRef.current;
