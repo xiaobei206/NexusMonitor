@@ -242,6 +242,7 @@ export function MusicPlaybackRuntime({ state, outputDeviceId = 'default', eqBand
   }, [outputDeviceId, onOutputStatus]);
 
   const restoreSharedAudioOutput = useCallback(async () => {
+    const shouldResumePlayback = exclusiveActiveRef.current || exclusiveOpenedAtRef.current > 0;
     exclusiveActiveRef.current = false;
     exclusiveMutedRef.current = false;
     exclusiveOpenedAtRef.current = 0;
@@ -251,7 +252,7 @@ export function MusicPlaybackRuntime({ state, outputDeviceId = 'default', eqBand
     if (context?.state === 'suspended') await context.resume().catch(() => undefined);
     await applyOutputSink();
     const audio = audioRef.current;
-    if (latestPlayingRef.current && audio?.paused) {
+    if (shouldResumePlayback && latestPlayingRef.current && audio?.paused) {
       try { await audio.play(); }
       catch (error) { window.nexus.reportMusicRuntime({ error: true, playing: false, errorMessage: `普通音频输出恢复失败：${error instanceof Error ? error.message : String(error)}` }); }
     }
@@ -379,6 +380,7 @@ export function MusicPlaybackRuntime({ state, outputDeviceId = 'default', eqBand
       return () => { cancelled = true; };
     }
     onWasapiStatus?.({ state: 'opening', message: '正在协商 WASAPI 独占 PCM 格式…', bitPerfect: false });
+    exclusiveOpenedAtRef.current = Date.now();
     const open = async () => {
       const context = await ensureAudioGraph();
       const result = await window.nexus.openMusicWasapi(exclusiveDeviceId, trackId, context.sampleRate);

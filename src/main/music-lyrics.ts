@@ -59,13 +59,23 @@ function resultFromRemote(record: RemoteLyricsRecord): MusicLyricsResult {
   if (plainLines.length) return { lines: plainLines.map((text, index) => ({ timeSeconds: index, text })), synced: false, source: 'online' };
   return EMPTY_LYRICS;
 }
+let lyricsRequestQueue: Promise<void> = Promise.resolve();
+let nextLyricsRequestAt = 0;
 async function requestLyricsJson(url: URL, fetcher: LyricsFetch): Promise<{ data: unknown; rateLimited: boolean }> {
+  const previous = lyricsRequestQueue;
+  let release!: () => void;
+  lyricsRequestQueue = new Promise<void>(resolve => { release = resolve; });
+  await previous;
   try {
+    const waitMs = Math.max(0, nextLyricsRequestAt - Date.now());
+    if (waitMs > 0) await new Promise(resolve => setTimeout(resolve, waitMs));
     const response = await fetcher(url, { headers: { 'User-Agent': LRCLIB_USER_AGENT, Accept: 'application/json' }, signal: AbortSignal.timeout(8000) });
+    nextLyricsRequestAt = Date.now() + 250;
     if (response.status === 429) return { data: null, rateLimited: true };
     if (!response.ok) return { data: null, rateLimited: false };
     return { data: await response.json(), rateLimited: false };
-  } catch { return { data: null, rateLimited: false }; }
+  } catch { nextLyricsRequestAt = Date.now() + 250; return { data: null, rateLimited: false }; }
+  finally { release(); }
 }
 
 /** Looks up lyrics by metadata only; audio files and local paths are never sent. */
