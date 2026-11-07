@@ -35,7 +35,7 @@ test('floating HUD labels use readable metadata text instead of micro text', () 
 });
 
 
-test('vertical HUD defaults to 960px and restores the user's remembered height per display', () => {
+test('vertical HUD defaults to 960px and restores the manually adjusted height per display', () => {
   assert.ok(main.includes('width: 340, height: savedHeight, minWidth: 340, minHeight: 700'));
   assert.ok(main.includes('savedPositionRecord.height'));
   assert.ok(main.includes(': 960;'));
