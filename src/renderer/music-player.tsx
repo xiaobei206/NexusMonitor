@@ -51,12 +51,14 @@ const MUSIC_EQ_FREQUENCIES = [31, 62, 125, 250, 500, 1000, 2000, 4000, 8000, 160
 const FLAT_MUSIC_EQ = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
 const stopWidgetDrag = (event: ReactPointerEvent) => event.stopPropagation();
 
-export function MusicPlaybackRuntime({ state, outputDeviceId = 'default', eqBands = FLAT_MUSIC_EQ, replayGainDb = null, replayGainPeak = null, onOutputStatus }: {
+export function MusicPlaybackRuntime({ state, outputDeviceId = 'default', eqBands = FLAT_MUSIC_EQ, replayGainDb = null, replayGainPeak = null, sleepTimerEndsAt = null, onSleepTimerComplete, onOutputStatus }: {
   state: MusicState | null;
   outputDeviceId?: string;
   eqBands?: number[];
   replayGainDb?: number | null;
   replayGainPeak?: number | null;
+  sleepTimerEndsAt?: number | null;
+  onSleepTimerComplete?: () => void;
   onOutputStatus?: (status: MusicOutputStatus) => void;
 }) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -263,6 +265,27 @@ export function MusicPlaybackRuntime({ state, outputDeviceId = 'default', eqBand
     void applyProcessing();
     return () => { alive = false; };
   }, [bandKey, bands, ensureAudioGraph, applyOutputSink, state?.isPlaying, hasReplayGain, replayGainAppliedDb]);
+
+  useEffect(() => {
+    if (!sleepTimerEndsAt) return;
+    let completed = false;
+    const timer = window.setTimeout(() => {
+      const audio = audioRef.current;
+      if (audio) {
+        audio.pause();
+        window.nexus.reportMusicRuntime({
+          currentTime: Number.isFinite(audio.currentTime) ? audio.currentTime : 0,
+          duration: Number.isFinite(audio.duration) ? audio.duration : 0,
+          playing: false,
+        });
+      }
+      completed = true;
+      onSleepTimerComplete?.();
+    }, Math.max(0, sleepTimerEndsAt - Date.now()));
+    return () => {
+      if (!completed) window.clearTimeout(timer);
+    };
+  }, [sleepTimerEndsAt, onSleepTimerComplete]);
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -698,13 +721,32 @@ function getMusicLibraryGroup(track: MusicTrack, view: MusicLibraryView): Omit<M
   return { id: `folder:${folder.toLocaleLowerCase()}`, title: parts[parts.length - 1] || folder, subtitle: folder };
 }
 
-export function MusicLibraryPage({ state, onCommand, notify, settings, updateSettings, outputStatus }: {
+function MusicSleepTimer({ endsAt, onSet }: { endsAt: number | null; onSet: (minutes: number | null) => void }) {
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    if (!endsAt) return;
+    const interval = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(interval);
+  }, [endsAt]);
+  const remaining = endsAt ? Math.max(0, Math.ceil((endsAt - now) / 60_000)) : null;
+  return <section className="nm-sleep-timer">
+    <div><b>睡眠定时</b><small>{remaining != null ? `将在约 ${remaining} 分钟后暂停播放` : '播放到设定时间后自动暂停；不会关闭 NexusMonitor 或副屏'}</small></div>
+    <div className="nm-sleep-timer-actions">
+      {[15, 30, 45, 60, 90].map(minutes => <button type="button" key={minutes} className={remaining === minutes ? 'selected' : ''} onClick={() => onSet(minutes)}>{minutes} 分钟</button>)}
+      {endsAt && <button type="button" className="clear" onClick={() => onSet(null)}>取消</button>}
+    </div>
+  </section>;
+}
+
+export function MusicLibraryPage({ state, onCommand, notify, settings, updateSettings, outputStatus, sleepTimerEndsAt, onSetSleepTimer }: {
   state: MusicState | null;
   onCommand: (command: MusicCommand) => void;
   notify: (message: string) => void;
   settings: AppSettings;
   updateSettings: (patch: Partial<AppSettings>) => void;
   outputStatus: MusicOutputStatus | null;
+  sleepTimerEndsAt: number | null;
+  onSetSleepTimer: (minutes: number | null) => void;
 }) {
   const [query, setQuery] = useState('');
   const [targetPlaylist, setTargetPlaylist] = useState('');
@@ -792,6 +834,7 @@ export function MusicLibraryPage({ state, onCommand, notify, settings, updateSet
     <MusicEqualizer bands={settings.musicEqBands ?? FLAT_MUSIC_EQ} onChange={bands => updateSettings({ musicEqBands: bands })}/>
     <MusicReplayGainControls state={state} settings={settings} updateSettings={updateSettings}/>
     <MusicLyricsPanel state={state}/>
+    <MusicSleepTimer endsAt={sleepTimerEndsAt} onSet={onSetSleepTimer}/>
     {state?.errorMessage && <div className="nm-playback-error" role="status"><b>播放失败</b><span>{state.errorMessage}</span></div>}
     <div className="nm-library-layout">
       <aside className="nm-playlist-sidebar">
