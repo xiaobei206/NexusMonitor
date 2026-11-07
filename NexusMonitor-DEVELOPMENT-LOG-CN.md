@@ -471,3 +471,14 @@ Property 'volume' does not exist on type 'AudioHTMLAttributes<HTMLAudioElement>'
 - 当前最新 HEAD 在本记录更新前为 35e4d5e12829e116d8e2a36966436dbbddc90379，对应 Run #164；必须查看 Run #164 的最终状态，确认旧库一次性迁移和其后测试均通过。随后文档更新会触发另一次 CI。
 - bit-perfect 边界：目前传输路径依旧是 Chromium/WebAudio decode → Float32 PCM → WASAPI native; status/UI 固定 bitPerfect:false。设备支持源 sample-rate/depth 只能称为 format-match candidate；不宣传 bit-perfect。
 - 下阶段：先把最新 CI 绿灯跑完整；接着合并 PR #2 由 main workflow 产出 2.2.1 installer + SHA sidecar，再请用户在本机核实 5 寸屏端点与六模式。Gapless / Crossfade 双 Deck 后续开发，不把 ended 后自动切歌称为 gapless。
+
+
+## 2.2.1 正式发布收口（2026-11-07）
+
+- 用户偏好明确为个人项目直接在 `main` 开发；不再为常规功能迭代创建功能分支或 PR。PR #2 已合并；历史分支 `feature/2.2.1-music-platform` 在合并时的文件树 SHA 与 main 一致，但仍作为历史 ref 留存，不作为新工作入口。
+- 正式应用代码提交：`9de1e9db2f700fa69326792b990cef4a57a56d1d`；`VERSION=2.2.1`。
+- Windows CI Run #175 成功：[workflow run](https://github.com/xiaobei206/NexusMonitor/actions/runs/42354102069)。版本门禁 14/14；Node 主进程测试 225/225（0 failed）；Renderer TypeScript / Vite、WASAPI N-API addon、PawnIO 官方资源校验、.NET Release、Storage Tests、NSIS 安装包、SHA-256、GitHub Release 与 workflow artifact 均成功。
+- 正式 Release：[v2.2.1](https://github.com/xiaobei206/NexusMonitor/releases/tag/v2.2.1)。安装包 `NexusMonitor-2.2.1-Setup.exe`，160,009,308 bytes；SHA-256 `1fafefc129308aaa72664699d2796c2818c5237bae6092b7c3b56a7b06351596`。未配置代码签名证书，因此安装包未签名。
+- MSVC 日志中存在非致命的 `NOMINMAX` 重定义、C++20 参数被覆盖为 C++17；Node 也报告 `DEP0190` shell 参数弃用提示。它们没有导致 CI 失败，可在下一正式版本中单独清理。
+- 2.2.1 不宣称完成 Gapless / Crossfade 双 Deck、native decoder-to-device bit-perfect、全部 codec profile 实际播放矩阵。WASAPI 当前为 Chromium/WebAudio Float32 PCM → native WASAPI，`bitPerfect:false`。
+- 真实 Windows 目标机仍需验证五寸屏扬声器、应用/系统 endpoint 分流、热插拔、WASAPI 独占下其他程序音频、长时间 underrun、支持格式真实文件播放、六种 USB 模式、桌面壁纸不被遮挡、睡眠 / 唤醒与 COM3 Turing 长期稳定性。Hosted CI 不替代这些实机验收。

@@ -1,9 +1,10 @@
-# NexusMonitor 2.2.1 音乐平台重构设计（持续更新）
+# NexusMonitor 2.2.1 音乐平台架构与验收记录
 
-**文档状态：** 开发基准 / 以本分支最新源码和 Actions 为准。本文是设计约束，不代表尚未落地的功能已经完成。  
-**基线：** `main` 的 NexusMonitor 2.2.0，提交 `bc0d29f19fbb98f7ea994fbe30dc68dfb35a38c9`。  
-**开发分支：** `feature/2.2.1-music-platform`。  
-**目标：** 将 2.2.0 的 MP3 专用播放器升级为可靠的本地音乐平台，同时统一音频生命周期、五寸副屏显示模式和输出设备管理。
+**文档状态：** 2.2.1 正式发布后的架构 / 能力边界记录；不是开发分支状态文档。  
+**当前正式基线：** `main` / 2.2.1，应用代码提交 `9de1e9db2f700fa69326792b990cef4a57a56d1d`。  
+**PR #2：** 已合并；**GitHub Release：** [v2.2.1](https://github.com/xiaobei206/NexusMonitor/releases/tag/v2.2.1)。  
+**验证：** Windows CI [Run #175](https://github.com/xiaobei206/NexusMonitor/actions/runs/42354102069) 全部成功。  
+**后续工作方式：** 以 `main` 为唯一工作基线，个人项目默认不建立功能分支 / PR。本文的架构决策仍然有效；能力状态以正式源码、测试与目标机实测为准。
 
 ## 1. 架构决策（不得偏离）
 
@@ -67,23 +68,22 @@ Main process: library / playlist / persistence / IPC / device inventory
 - 独占模式不等于 bit-perfect。只有当实际信号链、重采样、效果处理、共享混音路径和设备格式均得到验证时才可以显示相应能力声明。
 - Auto DJ、智能播放列表、Audio DNA / 相似歌曲推荐是后续可选项，不能阻塞基础播放器。
 
-## 5. 已落地实现与验证边界（以最新源码为准）
+## 5. 2.2.1 已交付实现与验证边界
 
 - `src/main/music-metadata.ts` best-effort 读取 ID3v1/v2、FLAC Vorbis comments / STREAMINFO / picture、WAV INFO / fmt / data、Ogg Vorbis / Opus identification + comments、M4A audio sample entry / atoms、ReplayGain Track/Album Gain 与 Peak。损坏或不完整标签不会阻止导入。内嵌封面保存在 `%APPDATA%\\NexusMonitor\\music-artwork`。
-- 曲库导入白名单 MP3 / WAV / FLAC / OGG / OGA / Opus / M4A / M4B / AAC。导入白名单不等于所有具体编码实际解码已通过；WMA / AIFF / APE / WavPack / TTA / Musepack / DSF / DFF 暂不作支持承诺。
-- 2.2.0 旧曲库在 2.2.1 首次加载时，若记录缺少 channels / ReplayGain / format / artworkPath 等新增字段，会读取源文件元数据并写回 JSON；保留 playlist/currentTrack/volume/currentTime。升级后字段完整，不会在后续启动重复读取。该补齐逻辑和新测试晚于 Run #162，需看 Run #164。
+- 曲库导入白名单 MP3 / WAV / FLAC / OGG / OGA / Opus / M4A / M4B / AAC。**导入白名单不等于所有具体编码实际解码已通过。** WMA / AIFF / APE / WavPack / TTA / Musepack / DSF / DFF 不作支持承诺。
+- 2.2.0 旧曲库首次加载时，若记录缺少 channels / ReplayGain / format / artworkPath 等新增字段，会读取源文件元数据并写回 JSON；保存后不会在后续启动重复扫描。保留 playlist/currentTrack/volume/currentTime。
 - Nora 风格曲库：全部歌曲、专辑、艺术家、流派、文件夹、自定义歌单；根据标签 / 路径分组，分类卡片使用封面；搜索标题 / 艺术家 / 专辑 / 流派。
 - M3U / M3U8 本地歌单导入与 M3U8 导出：支持本地相对路径与 Windows 绝对路径，忽略 URI / 网络流并限制大小和条目数。
 - 普通 Windows 输出 endpoint：Chromium selector（可用时）、枚举 / devicechange、设置持久化、HTMLMediaElement.setSinkId / AudioContext.setSinkId、440 Hz 测试音、unsupported / unavailable 状态。
-- **WASAPI Exclusive 原生后端现已实现接线：** N-API addon `native/wasapi-output/binding.cpp` / `nexus_wasapi.node`；主进程持有唯一 `MusicExclusiveOutput`，Preload 受控 API，主 Renderer 的 AudioWorklet 把解码后的 stereo Float32 PCM 分块送到 native ring buffer；主 Renderer 与 Music Service 仍是唯一音源。端点探测支持格式协商，明确锁定 AudioContext transport sample rate；独占播放会静音普通 sink，关闭 / 异常会恢复普通输出。暂停时 Stop WASAPI client 并清除积压 PCM。
-- WASAPI 状态每秒读取原生 stats，展示实际 format / sampleRate / buffer / underruns；设备运行中断时关闭 native、解除 Worklet 静音并切回普通 sink。PCM IPC 限制单块 ≤64 KiB 并要求 stereo float32 帧对齐。
-- **WASAPI 与 bit-perfect 需严格区分：** 当前路径为 Chromium decode / WebAudio → Float32 PCM → native WASAPI Exclusive，真实状态始终 `bitPerfect:false`；即使源格式 / 设备能力匹配也只能称为 bit-perfect candidate。真正 bit-perfect 需直接由 native decoder→exclusive endpoint，不经 Chromium/WebAudio。
+- **WASAPI Exclusive 原生后端已接线：** N-API addon `native/wasapi-output/binding.cpp` / `nexus_wasapi.node`；主进程持有唯一 `MusicExclusiveOutput`，Preload 提供受控 API，主 Renderer 的 AudioWorklet 把解码后的 stereo Float32 PCM 分块送到 native ring buffer；主 Renderer 与 Music Service 仍是唯一音源。暂停时 Stop native client 并清除积压 PCM；故障时关闭 native、解除 Worklet 静音并恢复普通输出。PCM IPC 单块限制 64 KiB 且须按 stereo float32 帧对齐。
+- **WASAPI 与 bit-perfect 需严格区分：** 当前路径为 Chromium decode / WebAudio -> Float32 PCM -> native WASAPI Exclusive，状态固定 `bitPerfect:false`。格式匹配只代表候选；真正 bit-perfect 需 native decoder 直接输出至 exclusive endpoint，不经 Chromium/WebAudio。
 - 六种副屏：硬件监控、静态、GIF、天气时钟、视频、`music-only` 桌面壁纸 + 后台音乐；第六模式隐藏 USB BrowserWindow，不覆盖 Windows 桌面，Music Service 继续运行；视频不显示音乐迷你播放器。
-- 十段 EQ：31 Hz / 62 Hz / 125 Hz / 250 Hz / 500 Hz / 1 kHz / 2 kHz / 4 kHz / 8 kHz / 16 kHz，±12 dB；默认 0 dB；九组预设。ReplayGain Track/Album + Peak 限制，缺 Peak 不做正向 boost。LRC 同名本地侧载、睡眠定时、解码错误提示均已接入。
-- **Windows CI Run #162 成功：** 14/14 版本门禁、Node 224/224、Renderer TypeScript / Vite production build、WASAPI N-API addon build、PawnIO 官方资源校验、.NET Release 与 Storage Tests 全通过。<https://github.com/xiaobei206/NexusMonitor/actions/runs/42353103480>。构建日志确认 Node 24.22.2 / node-gyp 13.1.0 / Python 3.15.2 / Visual Studio 2026 18.11，生成 `native/wasapi-output/build/Release/nexus_wasapi.node`。
-- Run #162 覆盖的代码 HEAD 早于一次性旧库迁移提交；当前最新 PR HEAD `35e4d5e12829e116d8e2a36966436dbbddc90379` 对应 Run #164，需查看其最终结论后再把旧库补齐标记为 CI 已验证。
-- PR #2 仍开放、未合并。PR workflow 跳过 NSIS / Release，所以尚无 2.2.1 安装包。
-- 仍需目标 Windows PC 实测：五寸屏喇叭实际出声、其他系统音频分流、独占切换 / 热拔插 / underruns / 长时间稳定性、所有承诺格式的真实文件播放、六种 USB 显示模式。另未完成 Gapless / Crossfade 双 Deck 和真正 bit-perfect decoder-to-device 路径。
+- 十段 EQ（31 Hz 至 16 kHz、±12 dB、九组预设）、ReplayGain Track/Album + Peak 限制、本地同名 LRC、睡眠定时与错误状态均已接入。
+- **最终 Windows CI Run #175 成功：** 14/14 版本门禁、Node 225/225、Renderer TypeScript / Vite production build、WASAPI N-API addon、PawnIO 官方资源校验、.NET Release、Storage Tests、NSIS、SHA-256 与 GitHub Release 均成功。<https://github.com/xiaobei206/NexusMonitor/actions/runs/42354102069>。
+- **正式 Release：** <https://github.com/xiaobei206/NexusMonitor/releases/tag/v2.2.1>；安装包 `NexusMonitor-2.2.1-Setup.exe`，160,009,308 bytes；SHA-256 `1fafefc129308aaa72664699d2796c2818c5237bae6092b7c3b56a7b06351596`。
+- **仍待目标 Windows PC 验收：** 五寸屏扬声器实际出声、其他系统音频分流、endpoint 拔插 / 默认设备变化、独占期间系统音频行为、长时间 underrun、格式真实文件播放、六模式切换、桌面壁纸不被遮挡、睡眠恢复、COM3 Turing 长期运行。
+- **未包含在 2.2.1：** Gapless / Crossfade 双 Deck、native decoder-to-device bit-perfect 路径。不能将 ended 后普通切歌称为 gapless，也不能将 WASAPI Exclusive 宣称为 bit-perfect。
 
 ## 6. 工程规则
 
