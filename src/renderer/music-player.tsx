@@ -191,7 +191,7 @@ export function MusicMiniPlayer({ state, onCommand }: { state: MusicState | null
       </div>
       <label className="nm-player-volume"><Volume2 size={15}/><input aria-label="播放器音量" type="range" min="0" max="100" value={Math.round((state?.volume ?? 0.7) * 100)}
         onChange={event => onCommand({ type: 'set-volume', volume: Number(event.target.value) / 100 })}/><span>{Math.round((state?.volume ?? 0.7) * 100)}%</span></label>
-      <footer><span>{state?.tracks.length ?? 0} 首歌曲</span><button type="button" onClick={() => { setOpen(false); void window.nexus.showMain(); }}>打开音乐库 <ListMusic size={13}/></button></footer>
+      <footer><span>{state?.tracks.length ?? 0} 首歌曲</span><button type="button" onClick={() => { setOpen(false); void window.nexus.showMusicLibrary(); }}>打开音乐库 <ListMusic size={13}/></button></footer>
     </section>}
   </div>;
 }
