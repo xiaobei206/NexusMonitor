@@ -31,7 +31,7 @@ test('all non-video USB output modes get shared controls while the existing wall
 test('the main renderer owns the only audio engine and the library is separate from video mode', () => {
   const app = read('src/renderer/App.tsx');
   const player = read('src/renderer/music-player.tsx');
-  assert.equal((app.match(/<MusicPlaybackRuntime state=\{music\.state\}\/>/g) ?? []).length, 1);
+  assert.equal(app.split('<MusicPlaybackRuntime state={music.state}/>').length - 1, 1);
   assert.match(player, /<audio ref=\{audioRef\} preload="metadata"/);
   assert.match(player, /chooseMusicFiles/);
   assert.match(player, /chooseMusicFolder/);
