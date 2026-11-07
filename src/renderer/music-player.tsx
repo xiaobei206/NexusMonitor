@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { PointerEvent as ReactPointerEvent, ReactNode } from 'react';
 import {
   Music2, Play, Pause, SkipBack, SkipForward, ListMusic, FolderOpen, Plus,
-  Trash2, Shuffle, Repeat, Volume2, Search, X, ListPlus, Disc3,
+  Trash2, Shuffle, Repeat, Volume2, Search, X, ListPlus, Disc3, ArrowUp, ArrowDown,
 } from 'lucide-react';
 import type { MusicCommand, MusicState, MusicTrack } from '../shared/types';
 
@@ -55,6 +55,7 @@ export function MusicPlaybackRuntime({ state }: { state: MusicState | null }) {
     const offEngine = window.nexus.onMusicEngineCommand(command => {
       if (command.type === 'seek' && Number.isFinite(command.seconds) && audio.duration > 0) {
         audio.currentTime = Math.max(0, Math.min(audio.duration, command.seconds));
+        if (command.resume) void audio.play().catch(() => window.nexus.reportMusicRuntime({ error: true, playing: false }));
         report();
       }
     });
@@ -301,7 +302,14 @@ export function MusicLibraryPage({ state, onCommand, notify }: {
               <span className="nm-track-row-actions">
                 <button type="button" title="播放歌曲" disabled={track.missing} onClick={() => onCommand({ type: 'play-track', trackId: track.id })}><Play size={14}/></button>
                 {targetPlaylist && !currentPlaylist && <button type="button" title="加入所选歌单" onClick={() => onCommand({ type: 'add-to-playlist', trackId: track.id, playlistId: targetPlaylist })}><ListPlus size={15}/></button>}
-                <button type="button" title="从音乐库移除" onClick={() => { if (window.confirm(`从音乐库移除“${track.title}”？不会删除原始文件。`)) onCommand({ type: 'remove-track', trackId: track.id }); }}><Trash2 size={14}/></button>
+                {currentPlaylist && <>
+                  <button type="button" title="歌单中上移" disabled={currentPlaylist.trackIds.indexOf(track.id) <= 0} onClick={() => onCommand({ type: 'move-track', playlistId: currentPlaylist.id, trackId: track.id, direction: 'up' })}><ArrowUp size={14}/></button>
+                  <button type="button" title="歌单中下移" disabled={currentPlaylist.trackIds.indexOf(track.id) >= currentPlaylist.trackIds.length - 1} onClick={() => onCommand({ type: 'move-track', playlistId: currentPlaylist.id, trackId: track.id, direction: 'down' })}><ArrowDown size={14}/></button>
+                </>}
+                <button type="button" title={currentPlaylist ? "从当前歌单移除" : "从音乐库移除"} onClick={() => {
+                  const prompt = currentPlaylist ? `从歌单“${currentPlaylist.name}”移除“${track.title}”？音乐库中的原文件和歌曲记录会保留。` : `从音乐库移除“${track.title}”？不会删除原始文件。`;
+                  if (window.confirm(prompt)) onCommand(currentPlaylist ? { type: 'remove-from-playlist', playlistId: currentPlaylist.id, trackId: track.id } : { type: 'remove-track', trackId: track.id });
+                }}><Trash2 size={14}/></button>
               </span>
             </div>)
           }
