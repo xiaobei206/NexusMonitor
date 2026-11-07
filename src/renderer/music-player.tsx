@@ -492,7 +492,45 @@ function MusicEqualizer({ bands, onChange }: { bands: number[]; onChange: (bands
   </details>;
 }
 
-export function MusicMiniPlayer({ state, onCommand }: { state: MusicState | null; onCommand: (command: MusicCommand) => void }) {
+export function MusicReplayGainControls({ state, settings, updateSettings }: {
+  state: MusicState | null;
+  settings: AppSettings;
+  updateSettings: (patch: Partial<AppSettings>) => void;
+}) {
+  const track = activeTrack(state);
+  const mode = settings.musicReplayGainMode === 'album' ? 'album' : 'track';
+  const gain = mode === 'album'
+    ? track?.replayGainAlbumDb ?? track?.replayGainTrackDb ?? null
+    : track?.replayGainTrackDb ?? track?.replayGainAlbumDb ?? null;
+  const peak = mode === 'album'
+    ? track?.replayGainAlbumPeak ?? track?.replayGainTrackPeak ?? null
+    : track?.replayGainTrackPeak ?? track?.replayGainAlbumPeak ?? null;
+  return <section className="nm-replaygain-panel">
+    <div className="nm-replaygain-main">
+      <label><input type="checkbox" checked={settings.musicReplayGainEnabled === true}
+        onChange={event => updateSettings({ musicReplayGainEnabled: event.target.checked })}/>
+        <span><b>ReplayGain 音量标准化</b><small>读取文件内的 Track / Album Gain 与 Peak 标签；不会改写原音频文件。</small></span>
+      </label>
+      <select aria-label="ReplayGain 模式" value={mode}
+        onChange={event => updateSettings({ musicReplayGainMode: event.target.value === 'album' ? 'album' : 'track' })}
+        disabled={settings.musicReplayGainEnabled !== true}>
+        <option value="track">按单曲增益</option>
+        <option value="album">按专辑增益</option>
+      </select>
+    </div>
+    <div className={`nm-replaygain-info ${settings.musicReplayGainEnabled ? '' : 'muted'}`}>
+      {!settings.musicReplayGainEnabled
+        ? 'ReplayGain 已关闭，音频保持原始标签音量。'
+        : !track
+          ? '选择一首歌曲后显示其 ReplayGain 标签。'
+          : gain == null
+            ? '当前歌曲没有可用的 ReplayGain 增益标签；将按原始音量播放。'
+            : `当前曲目标签：${mode === 'album' && track.replayGainAlbumDb != null ? 'Album' : 'Track'} ${gain > 0 ? '+' : ''}${gain.toFixed(2)} dB${peak != null ? ` · Peak ${peak.toFixed(4)}` : ' · 无 Peak 标签（正增益将被限制）'}`}
+    </div>
+  </section>;
+}
+
+function MusicMiniPlayer({ state, onCommand }: { state: MusicState | null; onCommand: (command: MusicCommand) => void }) {
   const [open, setOpen] = useState(false);
   const root = useRef<HTMLDivElement | null>(null);
   const track = activeTrack(state);
@@ -697,6 +735,7 @@ export function MusicLibraryPage({ state, onCommand, notify, settings, updateSet
     </div>
     <MusicOutputDevicePicker settings={settings} updateSettings={updateSettings} status={outputStatus}/>
     <MusicEqualizer bands={settings.musicEqBands ?? FLAT_MUSIC_EQ} onChange={bands => updateSettings({ musicEqBands: bands })}/>
+    <MusicReplayGainControls state={state} settings={settings} updateSettings={updateSettings}/>
     {state?.errorMessage && <div className="nm-playback-error" role="status"><b>播放失败</b><span>{state.errorMessage}</span></div>}
     <div className="nm-library-layout">
       <aside className="nm-playlist-sidebar">
