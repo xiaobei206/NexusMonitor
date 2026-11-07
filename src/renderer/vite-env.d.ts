@@ -13,6 +13,15 @@ interface Window {
     getMusicTrackUrl(trackId:string): Promise<string | null>;
     getMusicArtworkUrl(trackId:string): Promise<string | null>;
     getMusicLyrics(trackId:string): Promise<import('../shared/types').MusicLyricLine[]>;
+    getMusicWasapiAvailability():Promise<{available:boolean;message:string}>;
+    getMusicWasapiDevices():Promise<Array<{id:string;name:string;isDefault:boolean}>>;
+    openMusicWasapi(deviceId:string,trackId:string,transportSampleRate:number):Promise<import('../main/music-exclusive-output').WasapiOpenResult>;
+    startMusicWasapi():Promise<boolean>;
+    pauseMusicWasapi():Promise<boolean>;
+    clearMusicWasapi():Promise<boolean>;
+    closeMusicWasapi():Promise<boolean>;
+    getMusicWasapiStatus():Promise<import('../main/music-exclusive-output').WasapiNativeStatus|null>;
+    writeMusicWasapiPcm(pcm:ArrayBuffer):void;
     musicCommand(command:import('../shared/types').MusicCommand):Promise<import('../shared/types').MusicState>;
     reportMusicRuntime(payload:{currentTime?:number;duration?:number;playing?:boolean;error?:boolean;errorMessage?:string}):void;
     onMusicState(callback:(state:import('../shared/types').MusicState)=>void):()=>void;
