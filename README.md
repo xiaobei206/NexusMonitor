@@ -31,7 +31,7 @@ The Electron 45 stable channel was current at the project date, and its release 
 - USB 5-inch Windows extended-display page: display selection, independent output window, hardware monitoring, static/GIF wallpaper, weather clock, local video and desktop-wallpaper + background-music modes; true USB-panel backlight control is intentionally deferred pending firmware command confirmation
 - Wujiang/Suzhou weather and US AQI from Open-Meteo, with six upcoming hourly records and six future daily records for the Turing weather-clock screen
 - Local shortcut list and manifest-based plugin inventory
-- Unified local Music Service: one persistent main-Renderer playback host; Nora-style songs / albums / artists / genres / folders / playlists; ID3/FLAC/WAV/Ogg/M4A tag and artwork import; M3U/M3U8 import/export; selectable Windows output endpoint; ten-band EQ with nine presets; Track/Album ReplayGain; local synchronized LRC; sleep timer; shared controls across main UI / HUD / non-video USB modes; sixth desktop-wallpaper + background-music mode. Actual codec playback and physical output routing still need target-PC validation.
+- Unified local Music Service: one persistent main-Renderer playback host; Nora-style songs / albums / artists / genres / folders / playlists; tags / artwork / ReplayGain; M3U/M3U8; ten-band EQ with nine presets; local synchronized LRC; sleep timer; six USB output modes; Chromium endpoint routing plus a native WASAPI Exclusive PCM path with AudioWorklet transfer, live underrun stats and normal-output fallback. Current WASAPI route is Renderer Float32 PCM and explicitly not bit-perfect.
 - Vertical HUD mini-player inserted above the existing weather block without reordering the weather, clock or hardware metrics
 - Main window closes to the system tray; the hidden main renderer stays alive for playback and Turing display refresh
 - Saved USB 5-inch display target reopens on startup before HardwareService startup; delayed display enumeration is retried without guessing a different monitor
@@ -75,10 +75,9 @@ NexusMonitor source in this package is provided for the user's development/testi
 
 ## Current source handoff
 
-The stable `main` baseline remains version 2.2.0. The 2.2.1 music platform refactor is in `feature/2.2.1-music-platform`, PR #2 (open, not merged). Start with `START-HERE-NEXT-GPT.md`, then read `NexusMonitor-2.2.1-HANDOFF-CN.md`, `docs/MUSIC-PLATFORM-2.2.1-CN.md`, and `NexusMonitor-DEVELOPMENT-LOG-CN.md`. Always re-check the branch HEAD and Actions.
+The stable main baseline remains version 2.2.0. The 2.2.1 music platform refactor is in `feature/2.2.1-music-platform`, PR #2 (open, not merged). Start with `START-HERE-NEXT-GPT.md`, then read `NexusMonitor-2.2.1-HANDOFF-CN.md`, `docs/MUSIC-PLATFORM-2.2.1-CN.md`, and `NexusMonitor-DEVELOPMENT-LOG-CN.md`. Always re-check the branch HEAD and Actions.
 
-The latest full successful CI is [Run #109](https://github.com/xiaobei206/NexusMonitor/actions/runs/42349148127) on current PR tip `3152aa5a16b4ff52d0bf026fcd5e1d962cf19f4c): 14/14 version gates, 210/210 Node tests, Renderer TypeScript / Vite production build, PawnIO validation, .NET Release (0 warnings / 0 errors), and Storage Tests. PR CI does not publish the 2.2.1 installer. Physical output routing / codec / USB display / speaker acceptance remains pending on the target Windows PC.
-
+Windows CI Run #162 succeeded on the native WASAPI integration base: 14/14 version gates, 224/224 Node tests, Renderer TypeScript / Vite production build, native N-API WASAPI addon build, PawnIO verification, .NET Release, and Storage Tests. Its log confirms node-gyp 13.1.0 built `nexus_wasapi.node` with Visual Studio 2026 18.11. [Run #162](https://github.com/xiaobei206/NexusMonitor/actions/runs/42353103480). Subsequent commits add one-time enrichment of legacy 2.2.0 music-library entries; check their newer CI before relying on them. PR CI intentionally does not publish the 2.2.1 installer. Physical endpoint / five-inch speaker / codec playback / USB display acceptance remains pending on the target Windows PC.
 
 ## Intel Alder Lake Iris Xe GT temperature experiment
 
