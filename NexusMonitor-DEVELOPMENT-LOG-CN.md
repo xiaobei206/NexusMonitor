@@ -403,3 +403,14 @@ Property 'volume' does not exist on type 'AudioHTMLAttributes<HTMLAudioElement>'
 复核发现部分辅助文档仍标注 2.0.x，且交接文档把用户机器工作目录写得像通用路径。本轮新增根目录 `START-HERE-NEXT-GPT.md` 和 `AGENTS.md`；README 增加入口；重写安装说明，准确限定插件系统目前是 manifest 清单管理；修订 Turing、HUD、Alder Lake GT 专题的版本/历史表述；同时更新 HANDOFF、构建报告、ZIP 文件尺寸列表和 SHA-256 清单。
 
 该提交只整理文档和交接体系，不修改应用行为、依赖或正式版本号。此前应用完整 Windows 构建与 v2.1.8 发布见 [应用 CI 42239092025](https://github.com/xiaobei206/NexusMonitor/actions/runs/42239092025)；此前文档同步基线 CI [42242756560](https://github.com/xiaobei206/NexusMonitor/actions/runs/42242756560) 已成功。本轮新提交的 workflow 结果必须另行检查，不能用旧运行结果代替。
+
+
+## 2.2.1（音乐平台重构，2026-11-07 起）
+
+### 初始目标与文档先行
+
+- 以 `main` 的 2.2.0 合并提交 `bc0d29f19fbb98f7ea994fbe30dc68dfb35a38c9` 为稳定基线。
+- 新建开发分支 `feature/2.2.1-music-platform`。本阶段优先提交跨对话交接与架构决策文档，避免中断后依赖聊天记录恢复上下文。
+- 新增 `NexusMonitor-2.2.1-HANDOFF-CN.md` 与 `docs/MUSIC-PLATFORM-2.2.1-CN.md`，明确音乐服务唯一播放宿主、Nora / NewAmp 分工、六种 USB 输出模式、音频 endpoint 独立路由、格式实际验收与自动化 / 实机验收边界。
+- 文档提交后仍未表示任何 2.2.1 应用功能已完成；版本号、源码、测试与 CI 结果必须在相应代码阶段实际变更及验证后更新。不得将 2.2.0 历史 CI 结果用作 2.2.1 通过的证据。
+- 代码阶段开始前须复查现有播放器、壁纸音频、显示窗口生命周期、preload / shared types 与源码测试，然后依音乐平台设计文档按小批次实施。当前分支 HEAD 与 Actions 链接须由接手者实时核实。
