@@ -11,7 +11,7 @@ interface Window {
     getMusicTrackUrl(trackId:string): Promise<string | null>;
     getMusicArtworkUrl(trackId:string): Promise<string | null>;
     musicCommand(command:import('../shared/types').MusicCommand):Promise<import('../shared/types').MusicState>;
-    reportMusicRuntime(payload:{currentTime?:number;duration?:number;playing?:boolean;error?:boolean}):void;
+    reportMusicRuntime(payload:{currentTime?:number;duration?:number;playing?:boolean;error?:boolean;errorMessage?:string}):void;
     onMusicState(callback:(state:import('../shared/types').MusicState)=>void):()=>void;
     onMusicEngineCommand(callback:(command:{type:'seek';seconds:number;resume?:boolean})=>void):()=>void; saveSettings(settings: Record<string, unknown>): Promise<any>; onSettingsUpdated(callback: (settings: Record<string, unknown>) => void): () => void; getWeatherKeyStatus(source:string):Promise<{configured:boolean}>; saveWeatherApiKey(source:string,key:string):Promise<{ok:boolean;configured?:boolean;message?:string}>; setStartup(value:boolean): Promise<boolean>;
     getSnapshot(): Promise<any>; getSnapshotResult(): Promise<import('../shared/types').SnapshotResult>; getDevices(): Promise<any>; getWeather(): Promise<any>;
