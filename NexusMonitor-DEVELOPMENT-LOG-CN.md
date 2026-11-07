@@ -1,6 +1,6 @@
 # NexusMonitor 统一开发日志（跨版本唯一主记录）
 
-**当前工作版本：2.2.4（输出设备路由修复；CI 与 P4 实机验收进行中）**  
+**当前正式版本：2.2.4（已合入 main 并发布；下一轮从 2.2.5 开始）**  
 **记录规则：** 每个正式版本都追加到本文件；下一版不得新建第二份版本日志。按版本号和日期顺序记录功能、根因、修复、失败尝试、验证范围及未完成事项。历史测试结果不能冒充当前版本测试结果。
 
 ## 版本总览与跨版本教训
@@ -548,3 +548,11 @@ Property 'volume' does not exist on type 'AudioHTMLAttributes<HTMLAudioElement>'
 - 修复：创建 AudioContext 时同时传入目标 `sinkId`，并在 `createMediaElementSource(audio)` 连接前显式调用 `context.setSinkId(requestedDeviceId)`、校验实际 `context.sinkId`。若非默认设备无法绑定，关闭尚未连接媒体源的 Context 并失败退出，避免静默切换到 Windows 默认声卡。
 - 回归测试检查 sink 绑定发生在 `createMediaElementSource(audio)` 之前，以及非默认 sink 不支持时拒绝切换音频图。
 - 版本号递增到 2.2.4，已同步版本字段和发布入口。最终 CI 尚待检查；P4 实体设备上的开启/关闭/恢复仍需用户复测。
+
+### 2.2.4 最终 Windows CI 与正式发布收口（2026-11-07）
+
+- 应用代码提交：`c7894ee83f8dfee529ecab330561b10d25db5664`。
+- 最终 Windows CI [Run #192](https://github.com/xiaobei206/NexusMonitor/actions/runs/42361308963) 全部成功：版本一致性 14/14；Node tests 238/238（0 failed）；Renderer TypeScript/Vite；Windows N-API WASAPI native addon；PawnIO 官方资源 SHA；.NET Release；Hardware/Storage Tests；NSIS x64；SHA-256；GitHub Release 与 workflow artifact 上传。
+- 正式 Release：[v2.2.4](https://github.com/xiaobei206/NexusMonitor/releases/tag/v2.2.4)。安装包 160,014,176 bytes；SHA-256 `1a82ea9cd511455c2d3c87fb0cbcf2b22eccaf7e19892f3906cb11bef0c835a7`。
+- 本轮根因：AudioContext 在后续 effect 之前先以默认 sink 创建并连接音源，独占状态可能使 `applyOutputSink()` 提前返回。修复将目标 sink 设置和验证前置到 `createMediaElementSource(audio)` 之前；无法绑定非默认 sink 时拒绝接管音源而不是静默切到 Windows 默认声卡。
+- P4 Mono UAC Direct v62 的真实扬声器输出尚未由用户确认；输出设备保持、WASAPI 开启/关闭、暂停/继续、切歌和热插拔仍须在目标 PC 上验收。CI 不等于物理音频验收。

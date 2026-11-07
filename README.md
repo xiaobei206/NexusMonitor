@@ -1,4 +1,4 @@
-# NexusMonitor 2.2.4 — Electron Edition (output routing fix)
+# NexusMonitor 2.2.4 — Electron Edition (released)
 
 > **新对话 / 新开发者接手：先读 [START-HERE-NEXT-GPT.md](START-HERE-NEXT-GPT.md) 和根目录 [AGENTS.md](AGENTS.md)。** 入口文档列出阅读顺序、源码目录地图、验证命令与硬件验收边界。
 
@@ -73,19 +73,23 @@ See [Chinese setup guide](docs/SETUP_CN.md), [USB display notes](docs/USB_DISPLA
 NexusMonitor source in this package is provided for the user's development/testing. Third-party components keep their own licenses: Electron (MIT), React (MIT), Lucide (ISC), LibreHardwareMonitorLib (MPL-2.0). Review the included package licenses before redistribution.
 
 
-## Current source handoff
+## Current## Current source handoff
 
-The current working baseline is **main / 2.2.4 (CI in progress)**. The personal repository is developed directly on `main`; do not create branches or PRs unless explicitly requested.
+The current released baseline is **main / 2.2.4**. This personal repository is developed directly on `main`; no feature branches or PRs unless explicitly requested.
 
-2.2.4 fixes a target-PC audio routing regression: when a selected non-default output was replaced by a new Web Audio graph, the graph could briefly/default permanently route to Windows' default device before the exclusive-mode code skipped the later `applyOutputSink()` call. The graph now binds and checks the selected AudioContext sink before creating the MediaElementAudioSourceNode. If a non-default sink cannot be bound, the graph is not connected, so ordinary HTMLAudioElement playback remains on the selected output rather than silently falling back to the default device.
+2.2.4 fixes a target-PC routing regression: the selected non-default output could be lost when creating the Web Audio graph, because the graph used the default AudioContext sink before the later output-selection effect and the exclusive-mode flag could cause that effect to return early. The graph now binds and verifies the selected AudioContext sink before connecting the single `MediaElementAudioSourceNode`. If the non-default sink cannot be bound, initialization fails before the source is attached, avoiding a silent switch to the Windows default device.
 
-Automatic lyrics remain enabled: same-name local LRC first, then LRCLIB metadata-only lookup. Synchronized lyrics follow the playhead; plain lyrics are shown as text. Audio files and local paths are never uploaded.
+Automatic lyrics remain available: same-name local LRC first, then LRCLIB metadata-only lookup. Synced lyrics follow the playhead; plain lyrics are shown as text. Audio files and local paths are never uploaded.
 
-- Last stable release: [NexusMonitor 2.2.3](https://github.com/xiaobei206/NexusMonitor/releases/tag/v2.2.3).
-- Current changes: output sink is assigned and verified before attaching the single audio element to Web Audio; a source regression test checks that ordering.
-- New build report and handoff: `NexusMonitor-2.2.4-BUILD-REPORT.md` and `NexusMonitor-2.2.4-HANDOFF-CN.md`.
-- Hosted CI and the physical P4 output must be verified separately. This change must not be described as hardware-accepted until the user confirms the selected P4 remains the output device after enabling and disabling WASAPI.
-## Intel Alder Lake Iris Xe GT temperature experiment
+- Release: [NexusMonitor 2.2.4](https://github.com/xiaobei206/NexusMonitor/releases/tag/v2.2.4).
+- Final Windows CI: [Run #192](https://github.com/xiaobei206/NexusMonitor/actions/runs/42361308963) — success; version gates 14/14, Node tests 238/238, Renderer/Vite, native WASAPI, PawnIO, .NET/Storage, NSIS and Release upload all passed.
+- Installer: [NexusMonitor-2.2.4-Setup.exe](https://github.com/xiaobei206/NexusMonitor/releases/download/v2.2.4/NexusMonitor-2.2.4-Setup.exe) (160,014,176 bytes).
+- SHA-256: `1a82ea9cd511455c2d3c87fb0cbcf2b22eccaf7e19892f3906cb11bef0c835a7`.
+- App code commit: `c7894ee83f8dfee529ecab330561b10d25db5664`.
+
+Hosted CI does not prove the P4 physical speaker is audible. Real P4 output, exclusive-mode on/off recovery and device hot-plug remain target-PC acceptance items.
+
+lder Lake Iris Xe GT temperature experiment
 
 For an Intel Alder Lake system where IGCL exposes GPU clocks/power but not temperature, see `docs/ALDERLAKE_GT_TEMPERATURE_CN.md`. The probe uses the official PawnIO `IntelMCHBAR` read module and only reads `THERM_STATUS_GT` at MCHBAR offset `0x59C0`; it never writes PCI configuration or hardware control registers. Run `powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\fetch-mchbar-module.ps1` once before building the hardware service. The project now fails the .NET build if the resource is missing, instead of silently omitting it. If the module or register validation is unavailable, the GPU temperature remains `—`.
 
@@ -93,6 +97,6 @@ For an Intel Alder Lake system where IGCL exposes GPU clocks/power but not tempe
 ## Repository history and operating records
 
 - The canonical cross-version development record is `NexusMonitor-DEVELOPMENT-LOG-CN.md`.
-- Current-version handoff and final build / CI boundaries are in `NexusMonitor-2.2.4-HANDOFF-CN.md` and `NexusMonitor-2.2.4-BUILD-REPORT.md`. Version 2.2.4 is the current output-routing fix; target-PC acceptance remains documented separately.
+- Current-version handoff and final build / CI boundaries are in `NexusMonitor-2.2.4-HANDOFF-CN.md` and `NexusMonitor-2.2.4-BUILD-REPORT.md`. Version 2.2.4 is merged and released; target-PC acceptance remains documented separately.
 - Each GitHub Actions run retains its complete build/test log; see the linked 2.1.8 run above. Per-user application runtime logs and settings remain local under `%APPDATA%\\NexusMonitor` and are intentionally not committed.
 - Versioned engineering references and the historical patch archive are under `docs/`.

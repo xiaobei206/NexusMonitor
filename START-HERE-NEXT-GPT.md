@@ -1,28 +1,40 @@
 # NexusMonitor — 新接手 GPT 请先看这里
 
-**当前开发基线：main / 2.2.4；上一正式版本：2.2.3。**
+**当前正式版本：2.2.4；唯一工作基线：GitHub `main`。下一轮正式行为改动从 2.2.5 开始。**
 
-用户反馈 2.2.3 的明确故障：先把音乐输出选到 `P4 Mono UAC Direct v62`，普通播放正常；开启 WASAPI 独占后声音秒切换到 Windows 默认声卡。关闭独占、暂停/重新播放都无法回到 P4，必须完全退出再启动应用。
+- 正式 Release：[NexusMonitor 2.2.4](https://github.com/xiaobei206/NexusMonitor/releases/tag/v2.2.4)
+- 最终 Windows CI：[Run #192](https://github.com/xiaobei206/NexusMonitor/actions/runs/42361308963) — success
+- 应用代码提交：`c7894ee83f8dfee529ecab330561b10d25db5664`
+- 测试：版本一致性 14/14；Node 主进程测试 238/238，0 failed；Renderer TypeScript/Vite、Windows N-API WASAPI、PawnIO SHA、.NET Release、Hardware/Storage Tests、NSIS、installer SHA-256 与 Release 上传全部通过。
+- 安装包：[NexusMonitor-2.2.4-Setup.exe](https://github.com/xiaobei206/NexusMonitor/releases/download/v2.2.4/NexusMonitor-2.2.4-Setup.exe)，160,014,176 bytes。
+- SHA-256：`1a82ea9cd511455c2d3c87fb0cbcf2b22eccaf7e19892f3906cb11bef0c835a7`
 
-## 2.2.4 修复
+## 用户报告的故障与修复
 
-- 根因路径：`ensureAudioGraph()` 原来创建默认 `AudioContext`，随后才由另一个 effect 调用 `applyOutputSink()`。在独占开启时 `exclusiveActiveRef` 可能已变成 true，`applyOutputSink()` 会提前返回，导致 Web Audio graph 保持 Windows 默认输出。`MediaElementAudioSourceNode` 一旦接管音频元素，不能再只靠原 `HTMLAudioElement.setSinkId()` 恢复路由。
-- 现在使用当前 `musicOutputDeviceId` 创建 AudioContext，并在创建/连接 `MediaElementAudioSourceNode` 之前调用 `context.setSinkId()` 与校验 `context.sinkId`。非默认目标无法绑定时，直接抛错并关闭尚未连接音源的 Context，不把音乐默默送到系统默认声卡。
-- 已增加源码回归测试，明确要求 sink 绑定必须先于 `createMediaElementSource(audio)`。
-- 版本已递增为 2.2.4，同步 package/lock、VERSION、Renderer 和 .NET service version fields，并新增 `NexusMonitor-2.2.4-BUILD-RELEASE.cjs`。
+用户反馈 2.2.3：先选 `P4 Mono UAC Direct v62`，普通播放正常；开启 WASAPI 独占后声音秒切 Windows 默认声卡。关闭独占、暂停/重新播放都无法回到 P4，只有退出并重启应用才恢复。
+
+`ensureAudioGraph()` 原来先创建默认 `AudioContext`，后续 effect 才应用 `musicOutputDeviceId`。独占开启时 `exclusiveActiveRef` 可能先变成 true，导致 `applyOutputSink()` 提前返回；Web Audio graph 因此保留默认 sink。音源接入 `MediaElementAudioSourceNode` 后，仅设置原 audio element 的 sink 不足以修复 graph 的输出。
+
+2.2.4 在创建 AudioContext 时指定目标 `sinkId`，在 `createMediaElementSource(audio)` 之前再次绑定并校验实际 `context.sinkId`。如果非默认 sink 无法绑定，关闭尚未接管音源的 Context 并报错退出，避免音乐静默回退到系统默认声卡。源码回归测试检查绑定顺序。
 
 ## 相关文件
 
-- `src/renderer/music-player.tsx`：单一音频图、输出路由、WASAPI 切换和恢复。
-- `tests/music-player-source.test.cjs`：输出 sink 排序合同和独占恢复回归检查。
-- `NexusMonitor-2.2.4-HANDOFF-CN.md`：本轮故障、根因和实机验收清单。
-- `NexusMonitor-2.2.4-BUILD-REPORT.md`：CI、安装包与校验和记录。
+- `src/renderer/music-player.tsx`：AudioContext 输出路由、WASAPI 切换/恢复。
+- `tests/music-player-source.test.cjs`：输出 sink 顺序与独占恢复回归。
+- `NexusMonitor-2.2.4-HANDOFF-CN.md`：本轮交接与实机验收。
+- `NexusMonitor-2.2.4-BUILD-REPORT.md`：CI、安装包与 hash。
 - `NexusMonitor-DEVELOPMENT-LOG-CN.md`：唯一跨版本开发日志。
 
-## 验收边界
+## 目标 PC 验收仍待用户确认
 
-先确认最终 Windows CI 通过，再安装 2.2.4 做真实 P4 验收。需要验证开启独占前后输出设备都仍是 P4，关闭后不回落到 Windows 默认设备；模拟 sink 绑定失败时应拒绝接管音源而非切换声卡。CI 通过不能替代物理输出验证。
+1. 重启后选 P4，普通播放正常。
+2. 开启 WASAPI 独占，音乐仍从 P4 出声，不切到 Windows 默认声卡。
+3. 关闭独占后仍保持 P4；暂停/继续、切歌也保持 P4。
+4. 如果目标 sink 不支持/拒绝绑定，独占应明确失败且普通播放不应切声卡。
+5. 测试设备拔插、默认设备改变和长时间播放。
+
+Hosted CI 证明自动化和 Windows 编译通过，不等于已经证明 P4 实体扬声器输出正常。
 
 ## 工程规则
 
-用户偏好直接在 `main` 开发，无功能分支/PR。正式迭代递增语义版本号；2.2.4 尚未证明目标 P4 实机行为完全通过，不能在文档中冒称硬件验收成功。
+用户偏好直接在 `main` 开发，无功能分支/PR。下一轮正式行为改动递增至 2.2.5，必须同步版本门禁、交接和构建报告。
