@@ -321,7 +321,7 @@ export function MusicPlaybackRuntime({ state, outputDeviceId = 'default', eqBand
     if (state.isPlaying) {
       const startPlayback = async () => {
         try {
-          if (bands.some(value => value !== 0) && !audioContextRef.current) await ensureAudioGraph();
+          if ((bands.some(value => value !== 0) || hasReplayGain) && !audioContextRef.current) await ensureAudioGraph();
           if (audioContextRef.current?.state === 'suspended') await audioContextRef.current.resume();
           await audio.play();
         } catch (error) {
