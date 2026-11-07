@@ -11,11 +11,11 @@ const root = process.cwd();
 const addonDir = join(root, 'native', 'wasapi-output');
 const builtAddon = join(addonDir, 'build', 'Release', 'nexus_wasapi.node');
 const command = 'npx.cmd';
-const args = ['--yes', 'node-gyp@11.2.0', 'rebuild', '--directory', addonDir];
+const args = ['--yes', 'node-gyp@11.2.0', 'rebuild'];
 
 console.log('[wasapi] building Windows N-API 8 addon with node-gyp 11.2.0');
 const result = spawnSync(command, args, {
-  cwd: root,
+  cwd: addonDir,
   stdio: 'inherit',
   shell: true,
   windowsHide: true,
