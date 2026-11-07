@@ -1,4 +1,4 @@
-# NexusMonitor 2.2.2 — Electron Edition (released)
+# NexusMonitor 2.2.3 — Electron Edition (released)
 
 > **新对话 / 新开发者接手：先读 [START-HERE-NEXT-GPT.md](START-HERE-NEXT-GPT.md) 和根目录 [AGENTS.md](AGENTS.md)。** 入口文档列出阅读顺序、源码目录地图、验证命令与硬件验收边界。
 
@@ -75,16 +75,13 @@ NexusMonitor source in this package is provided for the user's development/testi
 
 ## Current source handoff
 
-The current released baseline is **main / 2.2.2**. The personal repository is developed directly on `main`; do not create feature branches or pull requests unless explicitly requested.
+The current working baseline is **main / 2.2.3 (in development)**. Work directly on `main`; do not create feature branches or pull requests unless explicitly requested.
 
-Version 2.2.2 broadens WASAPI Exclusive compatibility by probing mono and stereo PCM through both classic `WAVEFORMATEX` and `WAVEFORMATEXTENSIBLE`, preferring stereo and downmixing Renderer stereo Float32 to mono only for mono-only endpoints. The music-only USB output action is shortened to `应用模式`.
+2.2.3 addresses two issues found in target-PC testing of 2.2.2: WASAPI Exclusive could silence the shared renderer output before native PCM output was confirmed, and disabling/failing exclusive output did not explicitly resume the shared audio path. The new flow keeps ordinary output audible until native PCM frames are confirmed, automatically restores the shared route if no PCM is accepted/rendered within the startup watchdog window, and restores playback/output routing when exclusive mode is disabled or fails.
 
-Windows CI Run #179 succeeded on app commit `99e76745ae978ae3e0dd8dc9eaefa6785dadb022`: 14/14 version gates, 234/234 Node tests, Renderer TypeScript / Vite production build, native WASAPI addon, PawnIO verification, .NET Release, Storage tests, NSIS packaging, SHA-256 and GitHub Release publication. [Run #179](https://github.com/xiaobei206/NexusMonitor/actions/runs/42357228488).
+Lyrics now prefer a same-name local LRC file and otherwise query LRCLIB by track title, artist, album and duration. Only metadata is sent; audio files and local file paths are never uploaded. Synced lyrics follow playback time; plain lyrics are displayed as an unsynchronized text panel; missing results are non-fatal and cached in memory.
 
-Official release: [NexusMonitor 2.2.2](https://github.com/xiaobei206/NexusMonitor/releases/tag/v2.2.2). Installer: [NexusMonitor-2.2.2-Setup.exe](https://github.com/xiaobei206/NexusMonitor/releases/download/v2.2.2/NexusMonitor-2.2.2-Setup.exe) (160,011,997 bytes). SHA-256: `4622fae70bc5a0b9770ab90c40c8de964b6f5f0f0f442b33fc829e54d4b2bc03`. The release includes the checksum sidecar. The installer is not code-signed because no signing certificate is configured.
-
-Target-PC acceptance remains open for the P4 speaker's actual output, isolation from other Windows apps, hot-plug/default-device behavior, exclusive-mode system sounds, long-run underruns, real codec playback fixtures, six USB display modes, music-only desktop visibility, sleep/wake, mixed DPI and Turing COM3 stability. WASAPI remains explicitly non-bit-perfect; Gapless / Crossfade dual-deck is not included.
-
+The 2.2.2 stable release remains available at [GitHub Releases](https://github.com/xiaobei206/NexusMonitor/releases/tag/v2.2.2). The 2.2.3 build and target-PC playback verification are pending CI / release validation.
 ## Intel Alder Lake Iris Xe GT temperature experiment
 
 For an Intel Alder Lake system where IGCL exposes GPU clocks/power but not temperature, see `docs/ALDERLAKE_GT_TEMPERATURE_CN.md`. The probe uses the official PawnIO `IntelMCHBAR` read module and only reads `THERM_STATUS_GT` at MCHBAR offset `0x59C0`; it never writes PCI configuration or hardware control registers. Run `powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\fetch-mchbar-module.ps1` once before building the hardware service. The project now fails the .NET build if the resource is missing, instead of silently omitting it. If the module or register validation is unavailable, the GPU temperature remains `—`.

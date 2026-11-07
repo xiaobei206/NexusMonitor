@@ -519,3 +519,14 @@ Property 'volume' does not exist on type 'AudioHTMLAttributes<HTMLAudioElement>'
 - 非 bit-perfect 约束不变：Renderer stereo Float32 -> native mono downmix 时明确发生 channel conversion；当前整个 WASAPI 路径继续标记 bitPerfect=false。
 - P4 Mono UAC Direct v62 的实际扬声器出声、系统其它应用音频隔离、端点拔插、默认设备变化、独占期间系统声音与长时间 underrun 仍需用户 Windows 目标机实测。真实文件 codec / seek 矩阵与六模式 / 桌面壁纸 / 睡眠唤醒 / COM3 长时间运行也不能由 Hosted CI 推断。
 
+
+
+### 2.2.3 — P4 实机反馈与自动歌词（2026-11-07，CI 待验证）
+
+- 用户实测 2.2.2：P4 Mono UAC Direct v62 能打开 WASAPI endpoint（mono/S16/48 kHz），但开启后无声；关闭独占后未及时恢复，后来声音回到 Windows 默认设备。此反馈证明 2.2.2 仅完成 endpoint open 不能算实际播放验收。
+- PCM tap 新增独立 `muteOutput` 状态。开始独占时仍把 PCM 送给 native，但共享音频继续可听；只有 native `acceptedBytes > 0` 且 `framesRendered > 0` 后才静音共享输出。
+- 如果正在播放且打开后 2.5 秒仍无已接受 PCM / 已渲染帧，则关闭 WASAPI、取消 tap 独占状态并恢复普通 AudioContext/output sink/HTMLAudioElement 播放。
+- 独占关闭、open 失败、native runtime error 都走统一恢复逻辑；状态文字区分 endpoint opened 与 PCM stream confirmed。
+- 自动歌词：优先读取同名本地 LRC；否则通过 LRCLIB 查询 metadata-only signature/search。优先同步 LRC，纯文本歌词以可滚动静态文本显示；未命中/离线/超时/429 不影响播放。内存缓存命中 24h、未命中 10min、最多 300 首。只发送曲名/艺术家/专辑/时长，不发送路径或音频。
+- 新增 provider mocked-fetch tests 与 PCM tap fallback/source tests。
+- 本轮正式版本递增为 2.2.3；最终 CI / Release 结果需在运行后追加。实机出声仍必须由用户验收。

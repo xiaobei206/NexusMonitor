@@ -1,77 +1,32 @@
 # NexusMonitor — 新接手 GPT 请先看这里
 
-**当前正式版本：2.2.2。唯一工作基线：GitHub `main`。**
+**当前开发基线：main / 2.2.3；上一个正式版本：2.2.2。**
 
-截至 2026-11-07，NexusMonitor 2.2.2 已经合入 `main` 并正式发布。个人项目后续默认直接在 `main` 开发，不建立功能分支或 PR，除非用户明确要求。
+用户在 Windows 目标机实测 2.2.2 后报告：选择 P4 Mono UAC Direct v62 时 WASAPI 显示已打开（mono/S16/48 kHz），但音乐立即无声；取消独占后也未立即恢复，之后才从 Windows 默认设备出声。用户另要求歌词联网自动搜索，找不到可忽略，不接受手动准备 LRC 文件。
 
-## 当前正式交付
+## 本轮改动目标（2.2.3）
 
-- 正式版本：`2.2.2`
-- 应用代码提交：`99e76745ae978ae3e0dd8dc9eaefa6785dadb022`
-- GitHub Release：[NexusMonitor 2.2.2](https://github.com/xiaobei206/NexusMonitor/releases/tag/v2.2.2)
-- Windows CI：[Run #179](https://github.com/xiaobei206/NexusMonitor/actions/runs/42357228488)，结论 success。
-- 版本一致性：14/14。
-- Node 主进程与回归测试：234/234，0 failed。
-- Renderer TypeScript / Vite production build：通过。
-- Windows N-API WASAPI native addon：编译成功。
-- PawnIO 官方资源 SHA 验证：通过。
-- HardwareService .NET Release 与 Storage Tests：通过。
-- NSIS x64 安装包、SHA-256、GitHub Release 与 workflow artifact：成功。
-- 安装包：`NexusMonitor-2.2.2-Setup.exe`（160,011,997 bytes）。
-- SHA-256：`4622fae70bc5a0b9770ab90c40c8de964b6f5f0f0f442b33fc829e54d4b2bc03`
-- 安装包未代码签名，因为仓库没有配置代码签名证书。
+1. **WASAPI 安全切换：** PCM tap 进入独占采集状态后，先保留普通音频可听输出；只有原生状态显示已接受 PCM 且渲染了帧，才将共享输出静音。若播放中 2.5 秒仍无已接受 PCM / 已渲染帧，自动关闭原生端点并恢复普通音频。关闭、打开失败和运行时错误都显式恢复 AudioContext、输出路由与此前正在播放的 HTMLAudioElement。
+2. **状态准确性：** 不再在仅完成 endpoint open 时宣称音频已正常输出；先显示等待 PCM，原生接受并渲染 PCM 后才报告 PCM 输出流已确认。不能声称物理扬声器已经有声音。
+3. **自动歌词：** 同名本地 LRC 优先；无可用本地歌词则请求 LRCLIB，优先取同步 LRC，无同步歌词时显示纯文本；查不到、离线、超时、429 均不影响播放。只发送曲名/艺术家/专辑/时长，不上传音频文件或本地路径。仅使用内存缓存，成功缓存 24h，未命中缓存 10min，缓存上限 300 首。
+4. 版本递增到 2.2.3，更新所有 14 项门禁和 release 入口。
 
-## 新会话阅读顺序
+## 当前源码地图
 
-1. 本文件 → `AGENTS.md`
-2. `NexusMonitor-2.2.2-HANDOFF-CN.md`
-3. `NexusMonitor-2.2.2-BUILD-REPORT.md`
-4. `NexusMonitor-DEVELOPMENT-LOG-CN.md`
-5. `README.md` 与需要修改的源码 / 测试
+- `src/main/music-exclusive-output.ts`：WASAPI 原生端点生命周期、格式协商。
+- `native/wasapi-output/binding.cpp`：Windows WASAPI worker、ring buffer、native PCM 输出。
+- `src/renderer/music-pcm-tap.worklet.js`：从单一 HTMLAudioElement 捕获 PCM，并在确认 native 输出前保留共享可听输出。
+- `src/renderer/music-player.tsx`：音频图、输出恢复、WASAPI 状态监控、歌词面板。
+- `src/main/music-lyrics.ts`：LRC 解析与 LRCLIB provider。
+- `src/main/index.ts`：本地歌词优先、在线歌词内存缓存与 IPC。
+- `tests/music-lyrics.test.cjs`、`tests/music-player-source.test.cjs`、`tests/music-wasapi-mono-source.test.cjs`：相关回归。
+- `NexusMonitor-2.2.3-BUILD-RELEASE.cjs`：2.2.3 版本校验/构建入口。
+- `NexusMonitor-2.2.3-HANDOFF-CN.md`：本轮接手文档。
 
-每轮接手都重新读取 GitHub `main` HEAD、`VERSION`、最新 Actions 和 Release；不能依赖聊天摘要或旧文档状态。
+## 验收边界
 
-## 2.2.2 已交付
+Hosted CI 只能证明自动化和 Windows 编译，不证明 P4 实体扬声器有声。目标 PC 必须验证：开启独占后持续有声；关闭独占立即恢复原输出；模拟打开失败/无 PCM 时普通声音不被切断；确认切换不会重复播放或留下静音音频图；歌词在本地无 LRC 时可联网加载，纯文本/未命中/离线都优雅处理。
 
-- WASAPI 独占格式探测覆盖 mono/stereo PCM。
-- 每个格式候选同时探测 classic `WAVEFORMATEX` 与 `WAVEFORMATEXTENSIBLE`。
-- 探测 Windows shared mix format，必要时将其采样率纳入候选。
-- 实际独占 Initialize 支持 classic WAVEFORMATEX fallback。
-- Stereo 仍优先；只有没有兼容 stereo 候选才用 mono。
-- Renderer 继续输出 stereo Float32；mono-only endpoint 在 native 边界执行 `(L+R)/2`。
-- negotiated channels 驱动 channel mask、block alignment、bytes-per-frame、ring buffer 和 UI 状态。
-- 无兼容候选时提供已探测候选数、两种结构命中数、shared mix format 和 HRESULT。
-- USB `music-only` 动作按钮已简化为 **「应用模式」**，其它副屏模式仍为「启动副屏」。
+## 工程规则
 
-## 尚未由 2.2.2 宣称完成的事情
-
-- WASAPI 当前路径是 Chromium/WebAudio decode -> Float32 PCM -> native WASAPI，仍不是 bit-perfect。
-- Gapless / Crossfade 双 Deck 尚未实现。
-- 五寸 P4 扬声器真实出声、Windows 其他应用的 endpoint 分流、拔插 / 默认设备变化、独占期间系统声音行为、长时间 underrun 仍需用户目标 PC 验收。
-- 实际 MP3/WAV/FLAC/OGG/Opus/AAC/M4A 解码与 seek 矩阵仍需真实文件验收；导入扩展名白名单不代表所有 codec/profile 都已通过。
-- 六种 USB 模式、桌面壁纸不遮挡、睡眠/唤醒、混合 DPI、Turing COM3 长期运行仍需实机复验。
-- Hosted CI 成功不等于用户电脑实测。
-
-## 后续开发规则
-
-- 下一轮应用行为修改从正式版本 2.2.3 开始，更新 VERSION、package / lockfile、HardwareService、Renderer、发布脚本与 14 项版本门禁。
-- 文档先行、小步修改、补回归测试；只维护一个 `NexusMonitor-DEVELOPMENT-LOG-CN.md`。
-- 默认直接提交 `main`，不拆分功能分支、不为个人项目制造 PR 流程。
-- Windows PowerShell 使用 `npm.cmd` / `npx.cmd`。
-- 不提交用户曲库、绝对路径、settings、运行日志或私人数据。
-
-## 源码地图
-
-| 路径 | 内容 |
-|---|---|
-| `src/main/index.ts` | 主进程、窗口生命周期、音乐 IPC、曲库持久化、设备管理 |
-| `src/main/music-*.ts` | 元数据、播放列表、歌词、WASAPI 输出与协商 |
-| `src/shared/types.ts` | Main / Preload / Renderer 共享类型 |
-| `src/preload/index.ts` | 受控 IPC API |
-| `src/renderer/music-player.tsx/css` | 曲库、主播放器、Dock、HUD 控制面 |
-| `src/renderer/App.tsx` | 主 UI 与六种 USB 显示模式 |
-| `native/wasapi-output/` | Windows N-API / WASAPI 原生模块 |
-| `HardwareService/` | .NET 10 硬件监控与 Turing 服务 |
-| `tests/` | Node 源码回归与 .NET Storage / Hardware 测试 |
-| `.github/workflows/windows-ci.yml` | main 的 Windows CI 与正式 Release |
-
+用户明确偏好个人项目直接在 `main` 开发，默认不建分支、不建 PR。正式行为改动必须递增版本号、同步版本门禁、先更新文档并增加回归测试。2.2.2 正式发布仍是稳定回滚点。
