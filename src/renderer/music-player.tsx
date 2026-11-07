@@ -759,7 +759,89 @@ export function MusicLyricsPanel({ state }: { state: MusicState | null }) {
   </section>;
 }
 
-export function MusicMiniPlayer({ state, onCommand }: { state: MusicState | null; onCommand: (command: MusicCommand) => void }) {
+export function MusicWasapiControls({ state, settings, updateSettings, status }: {
+  state: MusicState | null;
+  settings: AppSettings;
+  updateSettings: (patch: Partial<AppSettings>) => void;
+  status: MusicWasapiStatus | null;
+}) {
+  const [available, setAvailable] = useState(false);
+  const [devices, setDevices] = useState<Array<{ id: string; name: string; isDefault: boolean }>>([]);
+  const [message, setMessage] = useState('');
+  const [busy, setBusy] = useState(false);
+  const selectedId = settings.musicWasapiDeviceId ?? '';
+  const enabled = settings.musicWasapiEnabled === true;
+  const track = activeTrack(state);
+
+  const refresh = useCallback(async () => {
+    setBusy(true);
+    try {
+      const capability = await window.nexus.getMusicWasapiAvailability();
+      setAvailable(capability.available);
+      if (!capability.available) {
+        setDevices([]);
+        setMessage(capability.message || '当前环境未提供 WASAPI 原生输出模块');
+        return;
+      }
+      const found = await window.nexus.getMusicWasapiDevices();
+      setDevices(found);
+      setMessage(found.length ? '' : '没有检测到可用的 Windows 音频输出端点');
+    } catch (error) {
+      setAvailable(false);
+      setDevices([]);
+      setMessage(error instanceof Error ? error.message : String(error));
+    } finally {
+      setBusy(false);
+    }
+  }, []);
+
+  useEffect(() => { void refresh(); }, [refresh]);
+
+  const selectedLabel = devices.find(device => device.id === selectedId)?.name
+    ?? settings.musicWasapiDeviceLabel
+    ?? '未选择 WASAPI 输出设备';
+
+  return <section className="nm-wasapi-panel">
+    <div className="nm-wasapi-heading">
+      <div><b>WASAPI 独占输出</b><small>原生 Windows 音频端点 · 与系统其他输出设备分离</small></div>
+      <span className={`nm-wasapi-state ${status?.state === 'active' ? 'active' : status?.state === 'error' ? 'error' : ''}`}>
+        {status?.state === 'active' ? '独占已打开' : status?.state === 'opening' ? '正在打开' : status?.state === 'error' ? '打开失败' : available ? '可用' : '不可用'}
+      </span>
+    </div>
+    <div className="nm-wasapi-controls">
+      <label><span>Windows 输出端点</span>
+        <select value={selectedId} disabled={!available || busy} onChange={event => {
+          const device = devices.find(item => item.id === event.target.value);
+          updateSettings({
+            musicWasapiDeviceId: event.target.value,
+            musicWasapiDeviceLabel: device?.name ?? '',
+          });
+        }}>
+          <option value="">选择带喇叭的显示器或其他端点</option>
+          {devices.map(device => <option key={device.id} value={device.id}>{device.name}{device.isDefault ? '（系统默认）' : ''}</option>)}
+          {selectedId && !devices.some(device => device.id === selectedId) && <option value={selectedId}>{selectedLabel}（未枚举）</option>}
+        </select>
+      </label>
+      <button type="button" className="btn-secondary" disabled={busy} onClick={() => void refresh()}>刷新端点</button>
+      <label className="nm-wasapi-toggle">
+        <input type="checkbox" checked={enabled} disabled={!available || !selectedId || !track}
+          onChange={event => updateSettings({ musicWasapiEnabled: event.target.checked })}/>
+        <span>启用独占模式</span>
+      </label>
+    </div>
+    <p className={status?.state === 'error' ? 'error' : ''}>
+      {status?.message ?? message ?? (enabled ? '等待播放器打开独占端点…' : '独占模式关闭，音乐继续使用上方选择的普通输出设备。')}
+    </p>
+    {status?.state === 'active' && <p className="nm-wasapi-format">
+      实际协商：{status.deviceName} · {status.format?.toUpperCase()} · {status.sampleRate?.toLocaleString()} Hz
+      {status.bitPerfectCandidate ? ' · 源格式与设备能力匹配' : ' · 需要格式转换'}
+      <br/>当前路径为 Renderer Float32 PCM → WASAPI；bit-perfect：否。
+    </p>}
+    <small className="nm-wasapi-warning">独占模式会占用所选端点，其他应用可能暂时无法通过这个端点播放声音；电脑耳机或其他音频端点不受影响。当前实现不宣称 bit-perfect。</small>
+  </section>;
+}
+
+function MusicMiniPlayer({ state, onCommand }: { state: MusicState | null; onCommand: (command: MusicCommand) => void }) {
   const [open, setOpen] = useState(false);
   const root = useRef<HTMLDivElement | null>(null);
   const track = activeTrack(state);
@@ -889,13 +971,14 @@ function MusicSleepTimer({ endsAt, onSet }: { endsAt: number | null; onSet: (min
   </section>;
 }
 
-export function MusicLibraryPage({ state, onCommand, notify, settings, updateSettings, outputStatus, sleepTimerEndsAt, onSetSleepTimer }: {
+export function MusicLibraryPage({ state, onCommand, notify, settings, updateSettings, outputStatus, wasapiStatus, sleepTimerEndsAt, onSetSleepTimer }: {
   state: MusicState | null;
   onCommand: (command: MusicCommand) => void;
   notify: (message: string) => void;
   settings: AppSettings;
   updateSettings: (patch: Partial<AppSettings>) => void;
   outputStatus: MusicOutputStatus | null;
+  wasapiStatus: MusicWasapiStatus | null;
   sleepTimerEndsAt: number | null;
   onSetSleepTimer: (minutes: number | null) => void;
 }) {
@@ -994,6 +1077,7 @@ export function MusicLibraryPage({ state, onCommand, notify, settings, updateSet
       </div>
     </div>
     <MusicOutputDevicePicker settings={settings} updateSettings={updateSettings} status={outputStatus}/>
+    <MusicWasapiControls state={state} settings={settings} updateSettings={updateSettings} status={wasapiStatus}/>
     <MusicEqualizer bands={settings.musicEqBands ?? FLAT_MUSIC_EQ} onChange={bands => updateSettings({ musicEqBands: bands })}/>
     <MusicReplayGainControls state={state} settings={settings} updateSettings={updateSettings}/>
     <MusicLyricsPanel state={state}/>
