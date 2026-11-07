@@ -87,7 +87,6 @@ const TURING_WALLPAPER_EXTENSIONS = new Set(['.jpg', '.jpeg', '.png', '.webp', '
 const TURING_WALLPAPER_MAX_BYTES = 40 * 1024 * 1024;
 const USB_DISPLAY_IMAGE_EXTENSIONS = new Set(['.jpg', '.jpeg', '.png', '.webp', '.bmp', '.gif']);
 const USB_DISPLAY_VIDEO_EXTENSIONS = new Set(['.mp4', '.m4v', '.webm', '.mov']);
-const USB_DISPLAY_AUDIO_EXTENSIONS = new Set(['.mp3', '.wav', '.m4a', '.aac', '.ogg', '.flac']);
 const USB_DISPLAY_IMAGE_MAX_BYTES = 80 * 1024 * 1024;
 function listDesktopDisplays() {
   const primaryId = screen.getPrimaryDisplay().id;
@@ -180,16 +179,14 @@ function restoreConfiguredUsbDisplay() {
   log(`Saved USB display ${displayId} is not ready yet: ${result.message ?? 'unknown error'}`);
   return false;
 }
-function chooseUsbDisplayMedia(kind: 'image' | 'video' | 'audio') {
+function chooseUsbDisplayMedia(kind: 'image' | 'video') {
   const filters = kind === 'video'
     ? [{ name: 'Video', extensions: ['mp4', 'm4v', 'webm', 'mov'] }]
-    : kind === 'audio'
-      ? [{ name: 'Audio', extensions: ['mp3', 'wav', 'm4a', 'aac', 'ogg', 'flac'] }]
-      : [{ name: 'Images and GIF', extensions: ['jpg', 'jpeg', 'png', 'webp', 'bmp', 'gif'] }];
+    : [{ name: 'Images and GIF', extensions: ['jpg', 'jpeg', 'png', 'webp', 'bmp', 'gif'] }];
   return dialog.showOpenDialog({ properties: ['openFile'], filters }).then(result => {
     if (result.canceled || !result.filePaths[0]) return null;
     const target = resolve(result.filePaths[0]); const extension = extname(target).toLowerCase();
-    const allowed = kind === 'video' ? USB_DISPLAY_VIDEO_EXTENSIONS : kind === 'audio' ? USB_DISPLAY_AUDIO_EXTENSIONS : USB_DISPLAY_IMAGE_EXTENSIONS;
+    const allowed = kind === 'video' ? USB_DISPLAY_VIDEO_EXTENSIONS : USB_DISPLAY_IMAGE_EXTENSIONS;
     if (!allowed.has(extension)) return null;
     return { path: target, name: basename(target) };
   });
@@ -205,12 +202,6 @@ function getUsbDisplayVideoUrl(path: string) {
   const target = resolve(String(path ?? '')); const extension = extname(target).toLowerCase();
   if (!USB_DISPLAY_VIDEO_EXTENSIONS.has(extension)) throw new Error('不支持的视频格式');
   const info = statSync(target); if (!info.isFile() || info.size <= 0) throw new Error('视频文件为空或不存在');
-  return { ok: true, name: basename(target), url: pathToFileURL(target).href };
-}
-function getUsbDisplayAudioUrl(path: string) {
-  const target = resolve(String(path ?? '')); const extension = extname(target).toLowerCase();
-  if (!USB_DISPLAY_AUDIO_EXTENSIONS.has(extension)) throw new Error('不支持的音频格式');
-  const info = statSync(target); if (!info.isFile() || info.size <= 0) throw new Error('音频文件为空或不存在');
   return { ok: true, name: basename(target), url: pathToFileURL(target).href };
 }
 function wallpaperMime(path: string): string {
@@ -1591,10 +1582,9 @@ ipcMain.handle('desktop-displays:list', () => listDesktopDisplays());
 ipcMain.handle('desktop-displays:usb-status', () => getUsbDisplayStatus());
 ipcMain.handle('desktop-displays:usb-open', (_event, displayId: string) => openUsbDisplayWindow(String(displayId ?? '')));
 ipcMain.handle('desktop-displays:usb-close', () => { usbDisplayRestorePending = false; closeUsbDisplayWindow(); return getUsbDisplayStatus(); });
-ipcMain.handle('desktop-displays:usb-choose-media', (_event, kind: 'image' | 'video' | 'audio') => chooseUsbDisplayMedia(kind === 'video' ? 'video' : kind === 'audio' ? 'audio' : 'image'));
+ipcMain.handle('desktop-displays:usb-choose-media', (_event, kind: 'image' | 'video') => chooseUsbDisplayMedia(kind === 'video' ? 'video' : 'image'));
 ipcMain.handle('desktop-displays:usb-read-image', (_event, path: string) => { try { return readUsbDisplayImage(path); } catch (error) { return { ok: false, message: error instanceof Error ? error.message : String(error) }; } });
 ipcMain.handle('desktop-displays:usb-video-url', (_event, path: string) => { try { return getUsbDisplayVideoUrl(path); } catch (error) { return { ok: false, message: error instanceof Error ? error.message : String(error) }; } });
-ipcMain.handle('desktop-displays:usb-audio-url', (_event, path: string) => { try { return getUsbDisplayAudioUrl(path); } catch (error) { return { ok: false, message: error instanceof Error ? error.message : String(error) }; } });
 ipcMain.handle('app:weather-key-status', (_event, source: string) => ({ configured: source === 'open-meteo' || Boolean(readWeatherApiKey(source)) }));
 ipcMain.handle('app:save-weather-api-key', (_event, payload: { source: string; key: string }) => saveWeatherApiKey(String(payload?.source ?? ''), String(payload?.key ?? '')));
 ipcMain.handle('app:save-settings', (_event, settings: Record<string, unknown>) => saveSettings(settings));
