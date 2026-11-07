@@ -18,6 +18,7 @@ import type { DockEdge } from './widget-docking';
 import { calculateWidgetDetailLayout } from './widget-detail-window';
 import { isFullscreenOnWidgetDisplay } from './fullscreen-detection';
 import { resolveUsbDisplayWindowBounds } from './usb-display-window';
+import { musicFormatLabel, readMusicMetadata } from './music-metadata';
 
 // Music controls may arrive from a separate HUD/USB BrowserWindow after an explicit
 // user click there. The shared, hidden main-renderer audio element must be allowed to
@@ -67,7 +68,8 @@ let musicState: MusicState = {
   currentTime: 0, duration: 0, volume: 0.7, isPlaying: false, shuffle: false, repeat: 'off',
 };
 let musicLastPersistAt = 0;
-const MUSIC_AUDIO_EXTENSIONS = new Set(['.mp3']);
+const MUSIC_AUDIO_EXTENSIONS = new Set(['.mp3', '.wav', '.flac', '.ogg', '.oga', '.opus', '.m4a', '.m4b', '.aac']);
+const MUSIC_AUDIO_FILTER_EXTENSIONS = [...MUSIC_AUDIO_EXTENSIONS].map(extension => extension.slice(1));
 const MUSIC_FOLDER_SCAN_LIMIT = 5000;
 let quitting = false;
 let appLogger: RotatingLogger | null = null;
@@ -253,12 +255,21 @@ function loadMusicLibrary() {
     const tracks = Array.isArray(raw.tracks) ? raw.tracks.flatMap((item: any) => {
       if (!item || typeof item.path !== 'string' || !MUSIC_AUDIO_EXTENSIONS.has(extname(item.path).toLowerCase())) return [];
       const target = resolve(item.path);
+      const metadata = readMusicMetadata(target);
       return [{
         id: typeof item.id === 'string' ? item.id : randomUUID(),
         path: target,
-        title: typeof item.title === 'string' ? item.title : basename(target, extname(target)),
-        artist: typeof item.artist === 'string' ? item.artist : '本地音乐',
-        album: typeof item.album === 'string' ? item.album : null,
+        title: typeof item.title === 'string' ? item.title : metadata.title ?? basename(target, extname(target)),
+        artist: typeof item.artist === 'string' ? item.artist : metadata.artist ?? '未知艺术家',
+        album: typeof item.album === 'string' ? item.album : metadata.album ?? null,
+        genre: typeof item.genre === 'string' ? item.genre : metadata.genre ?? null,
+        year: Number.isFinite(Number(item.year)) ? Number(item.year) : metadata.year ?? null,
+        trackNumber: Number.isFinite(Number(item.trackNumber)) ? Number(item.trackNumber) : metadata.trackNumber ?? null,
+        durationSeconds: Number.isFinite(Number(item.durationSeconds)) ? Number(item.durationSeconds) : metadata.durationSeconds ?? null,
+        sampleRateHz: Number.isFinite(Number(item.sampleRateHz)) ? Number(item.sampleRateHz) : metadata.sampleRateHz ?? null,
+        bitDepth: Number.isFinite(Number(item.bitDepth)) ? Number(item.bitDepth) : metadata.bitDepth ?? null,
+        format: typeof item.format === 'string' ? item.format : musicFormatLabel(target),
+        artworkPath: typeof item.artworkPath === 'string' && existsSync(item.artworkPath) ? item.artworkPath : null,
         addedAt: typeof item.addedAt === 'string' ? item.addedAt : new Date().toISOString(),
       } satisfies MusicTrack];
     }) : [];
@@ -310,9 +321,25 @@ function importMusicPaths(paths: string[]) {
       if (!MUSIC_AUDIO_EXTENSIONS.has(extname(target).toLowerCase()) || !existsSync(target) || existing.has(target.toLowerCase())) { skipped++; continue; }
       const fileInfo = statSync(target);
       if (!fileInfo.isFile() || fileInfo.size <= 0) { skipped++; continue; }
+      const metadata = readMusicMetadata(target);
+      const id = randomUUID();
+      let artworkPath: string | null = null;
+      if (metadata.artwork) {
+        try {
+          const extension = metadata.artwork.mimeType.toLowerCase() === 'image/png' ? 'png' : metadata.artwork.mimeType.toLowerCase() === 'image/webp' ? 'webp' : metadata.artwork.mimeType.toLowerCase() === 'image/gif' ? 'gif' : 'jpg';
+          const directory = join(app.getPath('userData'), 'music-artwork');
+          mkdirSync(directory, { recursive: true });
+          artworkPath = join(directory, `${id}.${extension}`);
+          writeFileSync(artworkPath, metadata.artwork.data);
+        } catch { artworkPath = null; }
+      }
       const track: MusicTrack = {
-        id: randomUUID(), path: target, title: basename(target, extname(target)),
-        artist: '本地音乐', album: null, addedAt: new Date().toISOString(),
+        id, path: target, title: metadata.title ?? basename(target, extname(target)),
+        artist: metadata.artist ?? '未知艺术家', album: metadata.album ?? null,
+        genre: metadata.genre ?? null, year: metadata.year ?? null, trackNumber: metadata.trackNumber ?? null,
+        durationSeconds: metadata.durationSeconds ?? null, sampleRateHz: metadata.sampleRateHz ?? null,
+        bitDepth: metadata.bitDepth ?? null, format: musicFormatLabel(target), artworkPath,
+        addedAt: new Date().toISOString(),
       };
       musicState.tracks.push(track);
       if (musicState.activePlaylistId) {
@@ -1514,10 +1541,14 @@ ipcMain.handle('music:track-url', (_event, trackId: string) => {
   const track = musicState.tracks.find(item => item.id === String(trackId));
   return track && existsSync(track.path) ? pathToFileURL(track.path).href : null;
 });
+ipcMain.handle('music:artwork-url', (_event, trackId: string) => {
+  const track = musicState.tracks.find(item => item.id === String(trackId));
+  return track?.artworkPath && existsSync(track.artworkPath) ? pathToFileURL(track.artworkPath).href : null;
+});
 ipcMain.handle('music:choose-files', async () => {
   const result = await dialog.showOpenDialog({
     properties: ['openFile', 'multiSelections'],
-    filters: [{ name: 'MP3 音频', extensions: ['mp3'] }],
+    filters: [{ name: '常见音频文件', extensions: MUSIC_AUDIO_FILTER_EXTENSIONS }],
   });
   return result.canceled ? { added: 0, skipped: 0 } : importMusicPaths(result.filePaths);
 });
