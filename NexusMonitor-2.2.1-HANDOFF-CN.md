@@ -12,7 +12,17 @@
 - 当前 2.2.0 问题事实：`src/main/index.ts` 的音乐扩展集合只含 `.mp3`；主播放器 UI / 导入提示也硬编码 MP3；旧静态 / GIF 壁纸另有音频元素与音乐路径；USB 输出模式当前只有五个；曲库没有完整标签 / 封面 / 音频设备数据模型。
 - 2.2.0 main 的测试基线曾报告主测试 188/188，Renderer/Vite 构建、PawnIO、.NET、Storage Tests 全通过；这是历史基线，不是本分支新代码的测试结果。
 
-## 当前实现进度（2026-11-07；每次接手重新核实）\n\n- 已完成：2.2.1 架构 / 接手文档；版本升至 2.2.1 并同步 14 项版本门禁涉及文件与新构建入口。\n- 已完成：新增 `src/main/music-metadata.ts`；目前实现 ID3v2 / ID3v1 基础标签、FLAC Vorbis comment / picture / STREAMINFO、WAV INFO / fmt / data、Ogg Vorbis / Opus comments、M4A atom 的尽力解析。元数据读取是 best-effort，异常标签不应阻止音频导入。\n- 已完成：导入白名单从 MP3 扩至 MP3 / WAV / FLAC / OGG / OGA / Opus / M4A / M4B / AAC；新导入歌曲写入标签字段，专辑封面存至 `%APPDATA%\\NexusMonitor\\music-artwork`，通过 track ID 的 IPC 返回封面 URL。此白名单只代表允许导入，不等于已验证每个编码可播放。\n- 已完成：播放器 UI 删除主要 MP3-only 提示，使用歌曲格式字段和元数据搜索；旧静态 / GIF 壁纸独立音频元素与 UI 已移除，统一 Music Service 控制这些模式。\n- 已完成：新增 `music-only` 第六模式：选择后主进程关闭 USB 输出 BrowserWindow，启动恢复时也不创建窗口；Windows 桌面壁纸不被 NexusMonitor 覆盖。\n- 已增加：`tests/music-metadata.test.cjs`（MP3 / FLAC / WAV 合成标签文件）和 music source regressions。**测试尚未执行；需待 PR Windows CI。**\n- 未完成：输出 endpoint 选择 / 持久化 / 设备切换状态 / 测试音、WASAPI Exclusive 评估落地、曲库导航完善（歌曲/专辑/艺术家/文件夹）、音频 decoder 对每个格式的实际支持验收、歌词 / EQ / ReplayGain / gapless / crossfade、CI、安装包和实机验收。\n\n## 本轮目标
+## 当前实现进度（2026-11-07；每次接手重新核实）
+
+- 已完成：2.2.1 架构 / 接手文档；版本升至 2.2.1 并同步 14 项版本门禁涉及文件与新构建入口。
+- 已完成：新增 `src/main/music-metadata.ts`；目前实现 ID3v2 / ID3v1 基础标签、FLAC Vorbis comment / picture / STREAMINFO、WAV INFO / fmt / data、Ogg Vorbis / Opus comments、M4A atom 的尽力解析。元数据读取是 best-effort，异常标签不应阻止音频导入。
+- 已完成：导入白名单从 MP3 扩至 MP3 / WAV / FLAC / OGG / OGA / Opus / M4A / M4B / AAC；新导入歌曲写入标签字段，专辑封面存至 `%APPDATA%\NexusMonitor\\music-artwork`，通过 track ID 的 IPC 返回封面 URL。此白名单只代表允许导入，不等于已验证每个编码可播放。
+- 已完成：播放器 UI 删除主要 MP3-only 提示，使用歌曲格式字段和元数据搜索；旧静态 / GIF 壁纸独立音频元素与 UI 已移除，统一 Music Service 控制这些模式。
+- 已完成：新增 `music-only` 第六模式：选择后主进程关闭 USB 输出 BrowserWindow，启动恢复时也不创建窗口；Windows 桌面壁纸不被 NexusMonitor 覆盖。
+- 已增加：`tests/music-metadata.test.cjs`（MP3 / FLAC / WAV 合成标签文件）和 music source regressions。**测试尚未执行；需待 PR Windows CI。**
+- 未完成：输出 endpoint 选择 / 持久化 / 设备切换状态 / 测试音、WASAPI Exclusive 评估落地、曲库导航完善（歌曲/专辑/艺术家/文件夹）、音频 decoder 对每个格式的实际支持验收、歌词 / EQ / ReplayGain / gapless / crossfade、CI、安装包和实机验收。
+
+## 本轮目标
 
 把当前播放器从“只适合验证链路的 MP3 最小实现”升级成可持续扩展的本地音乐平台，不是只重绘封面或增加按钮。完整决策、六种副屏行为、格式验收清单、输出设备及独占模式边界以 [音乐平台设计文档](docs/MUSIC-PLATFORM-2.2.1-CN.md) 为准。
 
