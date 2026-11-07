@@ -14,13 +14,18 @@
 
 ## 当前实现进度（2026-11-07；每次接手重新核实）
 
-- 已完成：2.2.1 架构 / 接手文档；版本升至 2.2.1 并同步 14 项版本门禁涉及文件与新构建入口。
-- 已完成：新增 `src/main/music-metadata.ts`；目前实现 ID3v2 / ID3v1 基础标签、FLAC Vorbis comment / picture / STREAMINFO、WAV INFO / fmt / data、Ogg Vorbis / Opus comments、M4A atom 的尽力解析。元数据读取是 best-effort，异常标签不应阻止音频导入。
-- 已完成：导入白名单从 MP3 扩至 MP3 / WAV / FLAC / OGG / OGA / Opus / M4A / M4B / AAC；新导入歌曲写入标签字段，专辑封面存至 `%APPDATA%\NexusMonitor\\music-artwork`，通过 track ID 的 IPC 返回封面 URL。此白名单只代表允许导入，不等于已验证每个编码可播放。
-- 已完成：播放器 UI 删除主要 MP3-only 提示，使用歌曲格式字段和元数据搜索；旧静态 / GIF 壁纸独立音频元素与 UI 已移除，统一 Music Service 控制这些模式。
-- 已完成：新增 `music-only` 第六模式：选择后主进程关闭 USB 输出 BrowserWindow，启动恢复时也不创建窗口；Windows 桌面壁纸不被 NexusMonitor 覆盖。
-- 已增加：`tests/music-metadata.test.cjs`（MP3 / FLAC / WAV 合成标签文件）和 music source regressions。**测试尚未执行；需待 PR Windows CI。**
-- 未完成：输出 endpoint 选择 / 持久化 / 设备切换状态 / 测试音、WASAPI Exclusive 评估落地、曲库导航完善（歌曲/专辑/艺术家/文件夹）、音频 decoder 对每个格式的实际支持验收、歌词 / EQ / ReplayGain / gapless / crossfade、CI、安装包和实机验收。
+- 稳定基线：`main` 2.2.0，提交 `bc0d29f19fbb98f7ea994fbe30dc68dfb35a38c9`。当前开发分支：`feature/2.2.1-music-platform`，目标版本 `2.2.1`。
+- 文档基座已建立：当前入口、交接、设计、统一开发日志都在仓库；新会话首先读 `START-HERE-NEXT-GPT.md`、本文和音乐平台设计文档。
+- 元数据模块：`src/main/music-metadata.ts` 可 best-effort 读取 ID3v1/v2、FLAC Vorbis comments / STREAMINFO / artwork、WAV INFO / fmt、Ogg Vorbis / Opus comments 和 M4A atoms。当前有合成 MP3 / FLAC / WAV fixtures；内嵌封面存入应用 data 目录。
+- 曲库导入：白名单扩展至 MP3 / WAV / FLAC / OGG / OGA / Opus / M4A / M4B / AAC。**这是导入过滤范围，不等于已实测每种编码的 Chromium 解码能力。** WMA / ALAC / AIFF / APE / WavPack / TTA / Musepack / DSF / DFF 仍未纳入支持承诺。
+- 曲库界面：歌曲、专辑、艺术家、流派、文件夹、自定义歌单入口已实现；按标签 / 文件路径分组；封面卡片读取嵌入封面。支持在当前视图搜索。
+- 播放器 UI：去除 MP3-only 提示和硬编码格式列；所有音乐仍由长期存活的主 Renderer 唯一播放宿主播放。Dock、HUD、USB 输出只发送命令 / 显示状态。
+- 静态 / GIF：旧背景音乐控件、旧音频 URL IPC 和第二个 HTMLAudioElement 已移除；全部改用统一 Music Service，避免双响。
+- 第六模式 `music-only`：选择后关闭 USB 输出 BrowserWindow；程序启动恢复时也保持窗口隐藏，Windows 原生桌面壁纸可见，主 Renderer 的 Music Service 仍继续运行。视频模式仍独立。
+- 输出设备：音乐库已加入 Windows 输出设备选择、设备枚举 / 变化刷新、保存 device ID/label、`HTMLMediaElement.setSinkId` 路由状态、设备选择弹窗与 440 Hz 测试音。当前不支持时提示 unsupported，设备消失时保留用户选择并提示 unavailable。**尚未在用户真实电脑确认五寸屏扬声器实际出声。**
+- 当前 Windows CI：Run #44 **成功**，HEAD `fafbe3e24c9e5127de6608bb72c9cacd3a65aaea`。14/14 版本门禁、195/195 Node 测试、Renderer TypeScript + Vite 生产构建、PawnIO 官方资源校验、.NET Release（0 Warning / 0 Error）、Storage Tests 全部通过。<https://github.com/xiaobei206/NexusMonitor/actions/runs/42344000038>
+- 当前 PR #2：<https://github.com/xiaobei206/NexusMonitor/pull/2>。本次记录后还会有新提交；每次接手必须重新读取 PR HEAD 与最新 Actions，不能把上述 HEAD 当作永远的最新版本。
+- 未完成：WASAPI Exclusive 原生后端 / 实际采样率与位深协商、bit-perfect 验证、EQ / ReplayGain / gapless / crossfade / 同步歌词 / 波形与频谱、每种宣称支持的格式真实文件播放矩阵、安装包发布与目标 PC 实机验收。未通过实机测试前不能声称这些能力已完成。
 
 ## 本轮目标
 
