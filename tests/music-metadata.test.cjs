@@ -78,8 +78,12 @@ test('reads native FLAC Vorbis-comment blocks without an Ogg packet marker', () 
     'REPLAYGAIN_ALBUM_PEAK=0.9567',
   ].map(value => flacComment(...value.split(/=(.*)/s).slice(0, 2)));
   const payload = Buffer.concat([u32le(vendor.length), vendor, u32le(comments.length), ...comments]);
-  const blockHead = Buffer.from([0x84, (payload.length >> 16) & 0xff, (payload.length >> 8) & 0xff, payload.length & 0xff]);
-  const file = writeFixture('tagged.flac', Buffer.concat([Buffer.from('fLaC'), blockHead, payload, Buffer.from('frames')]));
+  const streamInfo = Buffer.alloc(34);
+  const packed = (BigInt(96000) << 44n) | (1n << 41n) | (23n << 36n) | BigInt(96000 * 180);
+  streamInfo.writeBigUInt64BE(packed, 10);
+  const streamInfoHead = Buffer.from([0x00, 0x00, 0x00, streamInfo.length]);
+  const commentHead = Buffer.from([0x84, (payload.length >> 16) & 0xff, (payload.length >> 8) & 0xff, payload.length & 0xff]);
+  const file = writeFixture('tagged.flac', Buffer.concat([Buffer.from('fLaC'), streamInfoHead, streamInfo, commentHead, payload, Buffer.from('frames')]));
   const metadata = readMusicMetadata(file);
   assert.equal(metadata.title, 'Lossless Song');
   assert.equal(metadata.artist, 'FLAC Artist');
@@ -87,6 +91,9 @@ test('reads native FLAC Vorbis-comment blocks without an Ogg packet marker', () 
   assert.equal(metadata.genre, 'Ambient');
   assert.equal(metadata.year, 2022);
   assert.equal(metadata.trackNumber, 3);
+  assert.equal(metadata.sampleRateHz, 96000);
+  assert.equal(metadata.bitDepth, 24);
+  assert.equal(metadata.channels, 2);
   assert.equal(metadata.replayGainTrackDb, -4.5);
   assert.equal(metadata.replayGainAlbumDb, -7);
   assert.equal(metadata.replayGainTrackPeak, 0.9876);
@@ -113,6 +120,7 @@ test('reads WAV format information and INFO tags', () => {
   assert.equal(metadata.artist, 'WAV Artist');
   assert.equal(metadata.sampleRateHz, 48000);
   assert.equal(metadata.bitDepth, 16);
+  assert.equal(metadata.channels, 2);
 });
   
 test.after(() => {
