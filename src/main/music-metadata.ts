@@ -15,6 +15,7 @@ export interface ParsedMusicMetadata {
   durationSeconds?: number;
   sampleRateHz?: number;
   bitDepth?: number;
+  channels?: number;
   replayGainTrackDb?: number;
   replayGainAlbumDb?: number;
   replayGainTrackPeak?: number;
@@ -199,11 +200,13 @@ function parseFlac(fd: number, fileSize: number, target: ParsedMusicMetadata) {
     if (type === 0 && block.length >= 34) {
       const packed = block.readBigUInt64BE(10);
       const sampleRate = Number(packed >> 44n);
+      const channels = Number((packed >> 41n) & 0x7n) + 1;
       const bitDepth = Number((packed >> 36n) & 0x1fn) + 1;
       const totalSamples = Number(packed & 0xfffffffffn);
       if (sampleRate > 0) {
         target.sampleRateHz ||= sampleRate;
         target.bitDepth ||= bitDepth;
+        target.channels ||= channels;
         if (totalSamples > 0) target.durationSeconds ||= totalSamples / sampleRate;
       }
     } else if (type === 4) parseVorbisCommentBlock(block, target);
@@ -236,6 +239,8 @@ function parseWav(buffer: Buffer, target: ParsedMusicMetadata) {
     const start = pos + 8;
     if (size > buffer.length - start) break;
     if (id === 'fmt ' && size >= 16) {
+      const channels = buffer.readUInt16LE(start + 2);
+      if (channels > 0 && channels <= 32) target.channels ||= channels;
       target.sampleRateHz ||= buffer.readUInt32LE(start + 4);
       byteRate = buffer.readUInt32LE(start + 8);
       target.bitDepth ||= buffer.readUInt16LE(start + 14);
