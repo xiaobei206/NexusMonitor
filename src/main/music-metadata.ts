@@ -161,6 +161,23 @@ function parseId3v1(buffer: Buffer, target: ParsedMusicMetadata) {
   const year = field(93, 4);
   if (!target.year && /^\d{4}$/.test(year)) target.year = Number(year);
 }
+function parseOggIdentification(buffer: Buffer, target: ParsedMusicMetadata) {
+  const opusAt = buffer.indexOf('OpusHead', 0, 'ascii');
+  if (opusAt >= 0 && opusAt + 10 <= buffer.length) {
+    const channels = buffer[opusAt + 9];
+    if (channels > 0 && channels <= 32) target.channels ||= channels;
+    return;
+  }
+  const vorbisHeader = Buffer.concat([Buffer.from([0x01]), Buffer.from('vorbis', 'ascii')]);
+  const vorbisAt = buffer.indexOf(vorbisHeader);
+  if (vorbisAt >= 0 && vorbisAt + 16 <= buffer.length) {
+    const channels = buffer[vorbisAt + 11];
+    const sampleRate = buffer.readUInt32LE(vorbisAt + 12);
+    if (channels > 0 && channels <= 32) target.channels ||= channels;
+    if (sampleRate >= 8000 && sampleRate <= 384000) target.sampleRateHz ||= sampleRate;
+  }
+}
+
 function parseVorbisCommentBlock(buffer: Buffer, target: ParsedMusicMetadata, offset = 0) {
   if (offset < 0 || offset + 8 > buffer.length) return;
   let pos = offset;
@@ -262,6 +279,17 @@ function parseWav(buffer: Buffer, target: ParsedMusicMetadata) {
   }
 }
 function parseMp4Atoms(buffer: Buffer, target: ParsedMusicMetadata) {
+  // AudioSampleEntry layout: atom type is at +4, channel count at type +20,
+  // and the 16.16 sample-rate field at type +28.
+  for (const atom of ['mp4a', 'alac']) {
+    const index = buffer.indexOf(atom, 0, 'ascii');
+    if (index < 0 || index + 32 > buffer.length) continue;
+    const channels = buffer.readUInt16BE(index + 20);
+    const sampleRate = buffer.readUInt32BE(index + 28) >>> 16;
+    if (channels > 0 && channels <= 32) target.channels ||= channels;
+    if (sampleRate >= 8000 && sampleRate <= 384000) target.sampleRateHz ||= sampleRate;
+    break;
+  }
   const map: Record<string, string> = {
     '\u00a9nam': 'TITLE', '\u00a9ART': 'ARTIST', 'aART': 'ARTIST', '\u00a9alb': 'ALBUM',
     '\u00a9gen': 'GENRE', '\u00a9day': 'YEAR', 'trkn': 'TRACKNUMBER',
@@ -316,7 +344,10 @@ export function readMusicMetadata(filePath: string): ParsedMusicMetadata {
     } else {
       const head = readAt(fd, fileStat.size, 0, Math.min(MAX_TAG_BYTES, fileStat.size));
       if (extension === '.wav') parseWav(head, target);
-      if (extension === '.ogg' || extension === '.oga' || extension === '.opus') parseVorbisComments(head, target);
+      if (extension === '.ogg' || extension === '.oga' || extension === '.opus') {
+        parseOggIdentification(head, target);
+        parseVorbisComments(head, target);
+      }
       if (extension === '.m4a' || extension === '.m4b' || extension === '.aac') parseMp4Atoms(head, target);
     }
   } catch {
