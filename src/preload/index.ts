@@ -11,6 +11,8 @@ const api = {
   },
   chooseMusicFiles: () => ipcRenderer.invoke('music:choose-files'),
   chooseMusicFolder: () => ipcRenderer.invoke('music:choose-folder'),
+  importMusicPlaylist: () => ipcRenderer.invoke('music:import-playlist'),
+  exportMusicPlaylist: (playlistId: string) => ipcRenderer.invoke('music:export-playlist', playlistId),
   getMusicTrackUrl: (trackId: string) => ipcRenderer.invoke('music:track-url', trackId),
   getMusicArtworkUrl: (trackId: string) => ipcRenderer.invoke('music:artwork-url', trackId),
   getMusicLyrics: (trackId: string) => ipcRenderer.invoke('music:get-lyrics', trackId),
