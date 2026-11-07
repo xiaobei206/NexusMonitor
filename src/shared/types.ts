@@ -115,4 +115,6 @@ export type MusicCommand =
   | { type: 'rename-playlist'; playlistId: string; name: string }
   | { type: 'delete-playlist'; playlistId: string }
   | { type: 'add-to-playlist'; trackId: string; playlistId: string }
-  | { type: 'remove-track'; trackId: string };
+  | { type: 'remove-track'; trackId: string }
+  | { type: 'remove-from-playlist'; trackId: string; playlistId: string }
+  | { type: 'move-track'; trackId: string; playlistId: string; direction: 'up' | 'down' };
