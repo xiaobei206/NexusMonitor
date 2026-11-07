@@ -25,12 +25,18 @@
 ### 功能实现
 
 - 主窗口关闭改为隐藏到系统托盘：任务栏主窗口图标消失，托盘双击/菜单恢复，托盘“退出 NexusMonitor”才结束进程。主 Renderer 不卸载，以保持唯一音频引擎和既有常驻渲染功能。
-- USB 5 寸输出按已保存 `usbDisplayDisplayId` 在应用启动阶段恢复，早于 HardwareService 启动；显示器尚未枚举时保留待恢复状态，拓扑变化再尝试；不猜测其他显示器。
+- USB 5 寸输出按已保存 `usbDisplayDisplayId` 在应用启动阶段恢复，早于 HardwareService 启动；显示器尚未枚举时保留待恢复状态，拓扑变化再尝试；不猜测其他显示器。首次使用须由用户手动确认五寸屏目标。
 - 新增统一本地 MP3 播放服务与歌单数据文件：文件/文件夹导入（每次最多 5000 首）、歌曲路径/歌单持久化、启动恢复歌曲/进度/音量/播放模式但强制暂停；删除库记录不删除用户文件。
-- 新增主界面音乐库页/底部控制条、竖向 HUD 天气块上方迷你播放器，以及 USB 五寸输出非视频模式的迷你控制层。Widget/USB 窗口只发送控制命令并订阅状态，不创建第二个音频引擎。
+- 新增主界面音乐库页与全页面共享底部 Dock、竖向 HUD 天气块上方迷你播放器，以及 USB 五寸输出非视频模式的迷你控制层。Widget/USB 窗口只发送控制命令并订阅状态，不创建第二个音频引擎。
 - 支持歌单创建、改名、删除、添加/移除歌曲、歌单内上下排序；支持播放/暂停、上一首/下一首、进度、应用独立音量、随机、列表循环和单曲循环。
 - 壁纸静态/GIF 模式原有背景音在选择音乐库歌曲后让位，避免并行播放；视频输出保持独立。
-- 新增 `tests/music-player-source.test.cjs` 覆盖垂直 HUD 插入位置、USB 非视频模式、单一音频宿主、Tray 生命周期、副屏恢复顺序和启动不自动播放。
+- 竖向 HUD 仅在天气块上方插入播放器，时间仍留在底部；天气和其它监控块不重排。
+
+### 2.2.0 后续核对修正
+
+- 移除 USB 显示器设置页对“第一个非主显示器”的自动回退和自动保存。目标 ID 未枚举时要求用户明确选择，不覆盖原保存 ID，防止将其他外接屏误认为五寸屏。
+- 主界面播放器 Dock 在所有主应用页面持续显示；仅独立 USB 视频输出不显示音乐控制。更新对应源码回归测试。
+- 原有测试中一条针对旧 Dock 隐藏行为的断言已修正为检查独立 USB 视频输出边界；没有删除测试覆盖。
 
 ### 版本同步
 
@@ -38,10 +44,11 @@
 
 ### 验证状态
 
-- 已在 GitHub 开发分支进行源码提交；所有变更仅在 GitHub 仓库分支，不在本地另开源码副本。
-- GitHub Actions Windows CI：待 PR 触发并读取具体 run 结果后填写。
-- 实际 Windows PC / ESP32-P4 五寸屏 / COM3 Turing / 多屏负坐标与 DPI / MP3 实际播放：待实机验收；不得由 Hosted CI 代替。
-- 开发中；未合并 main、未创建正式 Release。
+- 所有开发修改直接提交到 GitHub 分支 `feature/2.2.0-music-and-window-lifecycle`；未在本地另开源码副本。
+- GitHub Actions Windows CI Run #23：**成功**，HEAD `e45c93bd4e8e2faf17270fdbcda382a8f66e9086`；[查看运行记录](https://github.com/xiaobei206/NexusMonitor/actions/runs/42334294679)。
+- 14 项版本一致性门禁通过；`npm.cmd run test:main` 188/188；Renderer TypeScript / Vite 构建通过；PawnIO 官方资源校验通过；.NET 10 Release 构建 0 warning / 0 error；`npm.cmd run test:storage` 通过。
+- NSIS 安装包与正式 Release 未执行；PR 仍为 Draft、未合并 main、未发布正式版本。
+- 实际 Windows PC / ESP32-P4 五寸屏 / COM3 Turing / 多屏负坐标与 DPI / MP3 实际播放：仍待实机验收；不得由 Hosted CI 代替。
 
 ## 必须记住的反复踩坑与工程规则
 
