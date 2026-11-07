@@ -67,16 +67,23 @@ Main process: library / playlist / persistence / IPC / device inventory
 - 独占模式不等于 bit-perfect。只有当实际信号链、重采样、效果处理、共享混音路径和设备格式均得到验证时才可以显示相应能力声明。
 - Auto DJ、智能播放列表、Audio DNA / 相似歌曲推荐是后续可选项，不能阻塞基础播放器。
 
-## 5. 首批已落地实现（以当前分支源码为准）
+## 5. 已落地实现与验证边界（以最新源码为准）
 
-- `src/main/music-metadata.ts` 提供无外部运行时依赖的 best-effort 标签读取：ID3v1/v2、FLAC comments / STREAMINFO / picture、WAV INFO / fmt / data、Ogg Vorbis / Opus comments、M4A atoms。标签损坏不能阻止音频文件导入。封面写入应用数据 `music-artwork`，Renderer 通过 track ID IPC 获取 URL。
-- 曲库可导入 MP3、WAV、FLAC、OGG、OGA、Opus、M4A、M4B、AAC；新导入文件会读取标题 / 艺术家 / 专辑 / 流派 / 年份 / 曲目号 / 部分格式参数。**扩展名白名单只表示允许导入，不等于所有具体编码已实测可播放。** WMA / AIFF / APE / WavPack / TTA / Musepack / DSF / DFF 尚未列入支持范围。
-- 曲库界面已经有歌曲、专辑、艺术家、流派、文件夹和歌单导航，分组使用真实标签与路径；搜索可按标题、艺术家、专辑、流派过滤。分组卡片可以展示曲目内嵌封面。
-- 独立 Windows 音频 endpoint 控件已接入：设备枚举 / 变化刷新、设备选择弹窗（Chromium 提供时）、保存 device ID / label、`HTMLMediaElement.setSinkId`、实际路由状态及 440 Hz 测试音。该实现走 Chromium 音频路由，不是 WASAPI Exclusive 原生后端；设备不可用不会悄悄改为系统默认设备。
-- 静态 / GIF 壁纸独立音频控件、旧音频 URL IPC 和第二个 HTMLAudioElement 已移除；统一使用 Music Service。
-- 第六模式 `music-only` 已加入设置类型 / 选择 UI / 窗口生命周期 / startup restore：不创建或显示 USB 输出 BrowserWindow，保留 Windows 原生桌面壁纸，Music Service 仍由主 Renderer 持有。视频模式不挂音乐迷你播放器。
-- 自动化验证：GitHub Actions Windows CI Run #44 **成功**，版本门禁 14/14、Node 测试 195/195、Renderer TypeScript / Vite production build、PawnIO 官方资源校验、.NET Release build（0 Warning / 0 Error）和 Storage Tests 全通过。<https://github.com/xiaobei206/NexusMonitor/actions/runs/42344000038>
-- 当前阶段仍未实现：WASAPI Exclusive、bit-perfect 验证、EQ / ReplayGain / gapless / crossfade / 同步歌词 / waveform / spectrum；每种编码的真实音频文件播放矩阵、输出设备热拔插、五寸屏扬声器和六模式目标机实测仍需继续。
+- `src/main/music-metadata.ts` best-effort 读取 ID3v1/v2、FLAC Vorbis comments / STREAMINFO / picture、WAV INFO / fmt / data、Ogg Vorbis / Opus comments、M4A atoms、ReplayGain Track/Album Gain 与 Peak。损坏或不完整标签不会阻止导入。内嵌封面放入 `%APPDATA%\\NexusMonitor\\music-artwork`，Renderer 只通过 track ID 请求封面 URL。
+- 曲库导入白名单 MP3 / WAV / FLAC / OGG / OGA / Opus / M4A / M4B / AAC。此白名单是导入过滤范围，不等于具体编码已经逐一确认能由 Electron Chromium 播放。WMA / AIFF / APE / WavPack / TTA / Musepack / DSF / DFF 暂无支持承诺。
+- Nora 风格曲库视图：全部歌曲、专辑、艺术家、流派、文件夹、自定义歌单；按元数据与本地路径分组，卡片展示内嵌封面，搜索标题 / 艺术家 / 专辑 / 流派。
+- M3U / M3U8 本地歌单导入与 M3U8 导出：解析本地相对路径和 Windows 绝对路径，忽略 URI / 网络流，限制文件大小与条目数；不把路径传给远端服务。
+- 独立 Windows 输出 endpoint：系统设备选择器（Chromium 提供时）、枚举与 devicechange、保存设备 ID / label、HTMLMediaElement.setSinkId、440 Hz 测试音与真实状态提示。启用 Web Audio 处理后尝试 AudioContext.setSinkId；不支持或设备消失时明确反馈，不静默改用其他设备。该方案不是 WASAPI Exclusive native engine。
+- Music Service 仍只有主 Renderer 的唯一媒体宿主。静态 / GIF 独立背景音链路已移除；所有模式共用服务。非视频模式可显示迷你控制，视频模式维持原生视频循环。
+- 六种副屏模式：硬件监控、静态壁纸、GIF 壁纸、天气时钟、视频播放，以及 `music-only` 桌面壁纸 + 后台音乐；最后一种关闭 USB 输出窗口，不覆盖 Windows 原生桌面。
+- 十段 EQ：31 Hz / 62 Hz / 125 Hz / 250 Hz / 500 Hz / 1 kHz / 2 kHz / 4 kHz / 8 kHz / 16 kHz，±12 dB；默认全部 0 dB，播放时按需创建 Web Audio filter chain。
+- ReplayGain：启用/禁用，Track / Album 模式；解析标签并经 GainNode 应用，按 Peak 限制增益；没有 Peak 时只允许衰减，不做正向 boost。
+- 同名 LRC：仅从歌曲所在目录加载同名 .lrc，最大 1 MiB，支持多时间戳 / offset / BOM；不联网、不上传。播放时间通过二分查找当前行。
+- 睡眠定时：15 / 30 / 45 / 60 / 90 分钟，到时只暂停播放，不退出程序或关闭副屏；定时器存活于主 Renderer 全局状态。
+- 解码 / 文件缺失 / 读取失败等播放错误进入 MusicState，并显示在 Library / MiniPlayer / Dock。
+- **Windows CI Run #104 成功：** 14/14 版本门禁、Node 210/210、Renderer TypeScript + Vite production build、PawnIO resource validation、.NET Release build 0 Warning / 0 Error、Storage Tests。<https://github.com/xiaobei206/NexusMonitor/actions/runs/42348842265>。验证 HEAD 为 `c8d24d28d353834cc04059eb2637a46ef8d94e78`；随后 CSS 收尾提交 `b3f95d984118f74974f46dc62acde93d69a21908` 仍须跑最终 CI。
+- 未完成：WASAPI Exclusive / bit-perfect、Gapless / Crossfade、播放内嵌歌词和在线歌词、waveform / spectrum / Auto DJ、逐格式真实音频解码验收、实际输出设备 / 五寸屏喇叭 / USB 显示器目标机测试、正式 2.2.1 Release。
+
 
 ## 6. 工程规则
 
