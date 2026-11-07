@@ -58,7 +58,7 @@ test('5-inch hardware brightness remains explicitly deferred and wallpapers rely
 });
 
 test('music-only display action button uses the short 应用模式 label', () => {
-  assert.match(app, /mode==='music-only'\?'应用模式':'启动副屏'/);
+  assert.match(app, /mode\s*===\s*['"]music-only['"]\s*\?\s*['"]应用模式['"]\s*:\s*['"]启动副屏['"]/);
   assert.doesNotMatch(app, /应用桌面壁纸音乐模式/);
 });
 

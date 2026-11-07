@@ -183,11 +183,11 @@ bool IsFormatSupported(IAudioClient* client, uint32_t sampleRate, SampleFormat f
                        uint16_t channels, bool* extensibleSupported,
                        bool* classicSupported, HRESULT* lastResult) {
   WAVEFORMATEXTENSIBLE extensible = MakeWaveFormat(sampleRate, format, channels);
-  const HRESULT extensibleResult = client->IsFormatSupported(
-      AUDCLNT_SHAREMODE_EXCLUSIVE, reinterpret_cast<WAVEFORMATEX*>(&extensible), nullptr);
+  const HRESULT extensibleResult = client->IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE,
+      reinterpret_cast<WAVEFORMATEX*>(&extensible), nullptr);
   WAVEFORMATEX classic = MakeClassicWaveFormat(sampleRate, format, channels);
-  const HRESULT classicResult = client->IsFormatSupported(
-      AUDCLNT_SHAREMODE_EXCLUSIVE, &classic, nullptr);
+  const HRESULT classicResult = client->IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE,
+      &classic, nullptr);
   if (extensibleSupported) *extensibleSupported = extensibleResult == S_OK;
   if (classicSupported) *classicSupported = classicResult == S_OK;
   if (lastResult) *lastResult = classicResult;
