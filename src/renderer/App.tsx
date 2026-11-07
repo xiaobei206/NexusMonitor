@@ -608,6 +608,10 @@ function MainApp() {
   const isWidgetDetail = widgetQuery.get('widget-detail') === '1';
   const music = useMusicState();
   const [musicOutputStatus, setMusicOutputStatus] = useState<MusicOutputStatus | null>(null);
+  const [musicSleepTimerEndsAt, setMusicSleepTimerEndsAt] = useState<number | null>(null);
+  const setMusicSleepTimer = useCallback((minutes: number | null) => {
+    setMusicSleepTimerEndsAt(minutes && Number.isFinite(minutes) && minutes > 0 ? Date.now() + Math.min(24 * 60, minutes) * 60_000 : null);
+  }, []);
   const persistTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const settingsRef = useRef(settings);
   const settingsPromise = useRef<Promise<AppSettings | null> | null>(null);
@@ -757,7 +761,7 @@ function MainApp() {
     : currentMusicTrack?.replayGainTrackPeak ?? currentMusicTrack?.replayGainAlbumPeak ?? null;
 
   return <div className={`app-shell theme-${themeClass}`} style={{'--accent':settings.accent,'--opacity':settings.opacity/100,...(settings.theme==='portrait'&&settings.backgroundDataUrl?{backgroundImage:`linear-gradient(90deg,rgba(8,13,20,.94),rgba(8,13,20,.79)),url(${settings.backgroundDataUrl})`,backgroundSize:'cover',backgroundPosition:'center'}:{})} as any}>
-    <MusicPlaybackRuntime state={music.state} outputDeviceId={settings.musicOutputDeviceId ?? 'default'} eqBands={settings.musicEqBands ?? [0,0,0,0,0,0,0,0,0,0]} replayGainDb={replayGainDb} replayGainPeak={replayGainPeak} onOutputStatus={setMusicOutputStatus}/>
+    <MusicPlaybackRuntime state={music.state} outputDeviceId={settings.musicOutputDeviceId ?? 'default'} eqBands={settings.musicEqBands ?? [0,0,0,0,0,0,0,0,0,0]} replayGainDb={replayGainDb} replayGainPeak={replayGainPeak} sleepTimerEndsAt={musicSleepTimerEndsAt} onSleepTimerComplete={() => setMusicSleepTimerEndsAt(null)} onOutputStatus={setMusicOutputStatus}/>
     <aside className="sidebar">
       <div className="app-brand"><div className="brand-emblem"><span>N</span><i/></div><div><strong>NEXUS<span>MONITOR</span></strong><small>HARDWARE INTELLIGENCE</small></div></div>
       <div className="sidebar-divider"/>
@@ -786,7 +790,7 @@ function MainApp() {
 
         {page==='devices'&&<DevicesPage snapshot={snapshot} settings={settings} updateSettings={updateSettings} notify={notify} refreshSnapshot={refreshSnapshot}/>}
         {page==='usb-display'&&<UsbDisplayPage settings={settings} updateSettings={updateSettings} notify={notify}/>}
-        {page==='music'&&<MusicLibraryPage state={music.state} onCommand={music.command} notify={notify} settings={settings} updateSettings={updateSettings} outputStatus={musicOutputStatus}/> }
+        {page==='music'&&<MusicLibraryPage state={music.state} onCommand={music.command} notify={notify} settings={settings} updateSettings={updateSettings} outputStatus={musicOutputStatus} sleepTimerEndsAt={musicSleepTimerEndsAt} onSetSleepTimer={setMusicSleepTimer}/> }
         <div className={`turing-background-host ${page === 'turing' ? 'active' : 'inactive'}`} aria-hidden={page !== 'turing'}><TuringPage settings={settings} updateSettings={updateSettings} snapshot={snapshot} weather={weather} notify={notify} active={page === 'turing'} settingsLoaded={settingsLoaded} serviceReady={serviceStatus.phase === 'online' || serviceStatus.phase === 'degraded'}/></div>
         {page==='themes'&&<ThemePage settings={settings} updateSettings={updateSettings} notify={notify}/>}
         {page==='shortcuts'&&<ShortcutsPage settings={settings} updateSettings={updateSettings} notify={notify}/>}
