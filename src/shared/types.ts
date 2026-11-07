@@ -112,6 +112,7 @@ export interface MusicState {
   duration: number;
   volume: number;
   isPlaying: boolean;
+  errorMessage?: string | null;
   shuffle: boolean;
   repeat: MusicRepeatMode;
 }
