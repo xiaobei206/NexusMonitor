@@ -19,11 +19,14 @@
 
 ## 2.2.1 基线与当前交付状态（每次接手须重新核实）
 
-- 稳定 `main` 基线为 2.2.0；当前分支 `feature/2.2.1-music-platform`，PR #2 开放、尚未合并。
-- 已实现：本地多格式导入与 best-effort tags / artwork / ReplayGain；歌曲 / 专辑 / 艺术家 / 流派 / 文件夹 / 歌单曲库；M3U/M3U8 导入导出；统一 Music Service；六种副屏模式（含桌面壁纸 + 后台音乐）；Windows output endpoint setSinkId / 测试音；十段 EQ（含九种预设）；Track / Album ReplayGain；本地 LRC；睡眠定时；播放错误可视化。
-- **最近成功 CI Run #114：** <https://github.com/xiaobei206/NexusMonitor/actions/runs/42349435741>，应用 HEAD `f1019858e17e2c82192e08a2c94709793ce6d1e7`；14/14 版本门禁、Node 211/211、Renderer/Vite、PawnIO、.NET Release 0 Warning / 0 Error、Storage Tests 全通过。
-- 未完成：WASAPI Exclusive native backend / bit-perfect；Gapless / Crossfade 双 Deck；完整格式实际文件播放矩阵；目标 PC 输出设备与五寸屏扬声器实测；六模式 / USB 热插拔实机验收；正式安装包与 Release。
-- 注意：导入白名单不等于解码通过；Chromium setSinkId 不等于 WASAPI Exclusive；Hosted CI 不能代替用户 Windows 硬件验收。
+- 稳定 main 基线为 2.2.0；当前开发分支 feature/2.2.1-music-platform，PR #2 开放、尚未合并。
+- 已实现：本地多格式标签 / 封面 / ReplayGain；旧曲库一次性元数据补齐；歌曲 / 专辑 / 艺术家 / 流派 / 文件夹 / 歌单曲库；M3U/M3U8；统一 Music Service；六种副屏模式；Windows Chromium endpoint setSinkId；十段 EQ 与九组预设；ReplayGain；本地 LRC；睡眠定时；播放错误状态。
+- WASAPI Exclusive native backend 已接线：主进程 N-API addon、endpoint probe/open、AudioWorklet Float32 PCM transfer、native ring buffer、pause/resume/clear、runtime stats 与异常 fallback。当前路径仍是 Chromium/WebAudio→Float32 PCM→WASAPI，bit-perfect 永远标记为 false；格式匹配只表示候选，不是 bit-perfect 验收。
+- Run #162 **完整成功**：<https://github.com/xiaobei206/NexusMonitor/actions/runs/42353103480>。14/14 version gates、Node 224/224、Renderer/Vite production build、WASAPI native addon、PawnIO、.NET Release、Storage Tests 全通过。Run #162 的 node-gyp log 确认 Node 24.22.2 + node-gyp 13.1.0 + Python 3.15.2 + VS 2026 18.11，产物 native/wasapi-output/build/Release/nexus_wasapi.node 已成功生成。
+- Run #162 之后增加了旧库一次性元数据补齐逻辑及新回归测试；当前 HEAD 为 35e4d5e12829e116d8e2a36966436dbbddc90379，对应 Run #164。必须检查 Run #164 最终结论和当前最新 HEAD，不可把 #162 当作最新提交全部通过。
+- PR #2 尚未合并；PR CI 不会生成安装包 / GitHub Release。待 CI 全绿后合并 main，由 main workflow 生成 2.2.1 NSIS installer 与 SHA-256。
+- 未完成：Gapless / Crossfade 双 Deck；支持格式的真实音频文件播放矩阵；目标 PC 上 5 寸屏喇叭、WASAPI endpoint 拔插、独占占用与长时间欠载验收；六种 USB 模式 / 热插拔实机验收。
+- 注意：导入白名单不等于解码通过；WASAPI Exclusive 不等于 bit-perfect；Hosted CI 不代替用户 Windows 目标设备验收。
 
 
 ## 文件结构地图
@@ -51,6 +54,7 @@ npm.cmd ci --include=dev --no-audit --no-fund
 node .\scripts\validate-release-version.cjs
 npm.cmd run test:main
 npm.cmd run build:renderer
+npm.cmd run build:wasapi
 dotnet build .\HardwareService\HardwareService.csproj -c Release
 npm.cmd run test:storage
 ```
