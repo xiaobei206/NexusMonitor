@@ -81,3 +81,11 @@ test('USB display selection never replaces a missing saved target with an arbitr
   assert.match(page, /请选择五寸屏对应的显示器/);
   assert.match(page, /程序不会自动切换到其他屏幕/);
 });
+
+test('main window exposes the shared music dock on every main-app page; only the separate USB video output omits it', () => {
+  const app = read('src/renderer/App.tsx');
+  assert.match(app, /<MusicPlayerDock state=\{music\.state\} onCommand=\{music\.command\} onOpen=\{\(\) => setPage\('music'\)\}\/>/);
+  assert.doesNotMatch(app, /page === 'usb-display' && settings\.usbDisplayMode === 'video'.{0,100}<MusicPlayerDock/);
+  const usb = app.slice(app.indexOf('function UsbDisplayOutput('), app.indexOf('\nexport default function App'));
+  assert.match(usb, /mode!=='video'&&<div className="usb-output-music">/);
+});
