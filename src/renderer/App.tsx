@@ -34,6 +34,7 @@ const defaultSettings: AppSettings = {
   turingWallpaperFit: 'contain', turingWallpaperIntervalSeconds: 30,
   turingAutoBrightnessEnabled: false, turingDayBrightness: 70, turingNightBrightness: 25, turingDayStart: '08:00', turingNightStart: '20:00',
   musicOutputDeviceId: 'default', musicOutputDeviceLabel: '系统默认输出设备',
+  musicEqBands: [0,0,0,0,0,0,0,0,0,0],
   usbDisplayDisplayId: '', usbDisplayMode: 'monitor', usbDisplayImagePath: '', usbDisplayVideoPath: '', usbDisplayMediaFit: 'cover', shortcuts: [], compactMode: false,
   widgetVisibleMetrics: ['cpu','gpu','memory','storage','network','power','weather','sensors'], widgetSensorIds: [],
   widgetAlwaysOnTop: true, widgetPinned: false, widgetAutoHide: false, widgetSmartFullscreen: true,
@@ -53,6 +54,7 @@ function normalizeLoadedSettings(raw: Record<string, unknown>): { settings: AppS
     settings: {
       ...defaultSettings,
       ...raw,
+      musicEqBands: Array.isArray(raw.musicEqBands) ? Array.from({ length: 10 }, (_, index) => { const value = Number(raw.musicEqBands[index]); return Number.isFinite(value) ? Math.max(-12, Math.min(12, value)) : 0; }) : [...defaultSettings.musicEqBands],
       // Settings files survive upgrades. Treat malformed or old values as absent
       // instead of letting one null array crash the entire React root on startup.
       selectedNetworks: Array.isArray(raw.selectedNetworks) ? raw.selectedNetworks.filter((id): id is string => typeof id === 'string') : [...defaultSettings.selectedNetworks],
