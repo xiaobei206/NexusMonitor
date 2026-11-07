@@ -76,12 +76,12 @@ Main process: library / playlist / persistence / IPC / device inventory
 - 独立 Windows 输出 endpoint：系统设备选择器（Chromium 提供时）、枚举与 devicechange、保存设备 ID / label、HTMLMediaElement.setSinkId、440 Hz 测试音与真实状态提示。启用 Web Audio 处理后尝试 AudioContext.setSinkId；不支持或设备消失时明确反馈，不静默改用其他设备。该方案不是 WASAPI Exclusive native engine。
 - Music Service 仍只有主 Renderer 的唯一媒体宿主。静态 / GIF 独立背景音链路已移除；所有模式共用服务。非视频模式可显示迷你控制，视频模式维持原生视频循环。
 - 六种副屏模式：硬件监控、静态壁纸、GIF 壁纸、天气时钟、视频播放，以及 `music-only` 桌面壁纸 + 后台音乐；最后一种关闭 USB 输出窗口，不覆盖 Windows 原生桌面。
-- 十段 EQ：31 Hz / 62 Hz / 125 Hz / 250 Hz / 500 Hz / 1 kHz / 2 kHz / 4 kHz / 8 kHz / 16 kHz，±12 dB；默认全部 0 dB，播放时按需创建 Web Audio filter chain。
+- 十段 EQ：31 Hz / 62 Hz / 125 Hz / 250 Hz / 500 Hz / 1 kHz / 2 kHz / 4 kHz / 8 kHz / 16 kHz，±12 dB；默认全部 0 dB，播放时按需创建 Web Audio filter chain。提供平直、摇滚、流行、人声、古典、爵士、电子、低音增强、高音增强九组预设，手动调节时显示自定义曲线。
 - ReplayGain：启用/禁用，Track / Album 模式；解析标签并经 GainNode 应用，按 Peak 限制增益；没有 Peak 时只允许衰减，不做正向 boost。
 - 同名 LRC：仅从歌曲所在目录加载同名 .lrc，最大 1 MiB，支持多时间戳 / offset / BOM；不联网、不上传。播放时间通过二分查找当前行。
 - 睡眠定时：15 / 30 / 45 / 60 / 90 分钟，到时只暂停播放，不退出程序或关闭副屏；定时器存活于主 Renderer 全局状态。
 - 解码 / 文件缺失 / 读取失败等播放错误进入 MusicState，并显示在 Library / MiniPlayer / Dock。
-- **Windows CI Run #109 成功：** 14/14 版本门禁、Node 210/210、Renderer TypeScript + Vite production build、PawnIO resource validation、.NET Release build 0 Warning / 0 Error、Storage Tests。<https://github.com/xiaobei206/NexusMonitor/actions/runs/42349148127>。验证当前 PR tip `3152aa5a16b4ff52d0bf026fcd5e1d962cf19f4c`。
+- **Windows CI Run #114 成功：** 14/14 版本门禁、Node **211/211**、Renderer TypeScript + Vite production build、PawnIO resource validation、.NET Release build 0 Warning / 0 Error、Storage Tests。<https://github.com/xiaobei206/NexusMonitor/actions/runs/42349435741>。验证当前应用代码 HEAD `f1019858e17e2c82192e08a2c94709793ce6d1e7`。
 - 未完成：WASAPI Exclusive / bit-perfect、Gapless / Crossfade、播放内嵌歌词和在线歌词、waveform / spectrum / Auto DJ、逐格式真实音频解码验收、实际输出设备 / 五寸屏喇叭 / USB 显示器目标机测试、正式 2.2.1 Release。
 
 
