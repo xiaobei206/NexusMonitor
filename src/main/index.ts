@@ -165,6 +165,12 @@ function restoreConfiguredUsbDisplay() {
   // Never guess which external monitor is the 5-inch panel; only restore the saved ID.
   const displayId = String(currentSettings.usbDisplayDisplayId ?? '').trim();
   if (!displayId) { usbDisplayRestorePending = false; return false; }
+  if (String(currentSettings.usbDisplayMode ?? 'monitor') === 'music-only') {
+    usbDisplayRestorePending = false;
+    closeUsbDisplayWindow();
+    log('USB display output remains hidden in desktop wallpaper + music mode');
+    return true;
+  }
   const result = openUsbDisplayWindow(displayId);
   if (result.ok) {
     usbDisplayRestorePending = false;
@@ -636,6 +642,11 @@ function getPublicSettings() {
 function saveSettings(next: Record<string, unknown>) {
   const previous = { ...currentSettings };
   currentSettings = { ...currentSettings, ...next };
+  if (previous.usbDisplayMode !== currentSettings.usbDisplayMode && currentSettings.usbDisplayMode === 'music-only') {
+    usbDisplayRestorePending = false;
+    closeUsbDisplayWindow();
+    log('USB display output hidden; shared Music Service remains active');
+  }
   const file = getSettingsPath();
   mkdirSync(dirname(file), { recursive: true });
   writeFileSync(file, JSON.stringify(currentSettings, null, 2), 'utf8');
