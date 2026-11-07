@@ -1,6 +1,6 @@
 # NexusMonitor 统一开发日志（跨版本唯一主记录）
 
-**当前开发分支源码版本：2.2.1（PR #2；尚未合并 / 发布）**  
+**当前正式版本：2.2.3（已合入 main 并发布；下一轮从 2.2.4 开始）**  
 **记录规则：** 每个正式版本都追加到本文件；下一版不得新建第二份版本日志。按版本号和日期顺序记录功能、根因、修复、失败尝试、验证范围及未完成事项。历史测试结果不能冒充当前版本测试结果。
 
 ## 版本总览与跨版本教训
@@ -530,3 +530,13 @@ Property 'volume' does not exist on type 'AudioHTMLAttributes<HTMLAudioElement>'
 - 自动歌词：优先读取同名本地 LRC；否则通过 LRCLIB 查询 metadata-only signature/search。优先同步 LRC，纯文本歌词以可滚动静态文本显示；未命中/离线/超时/429 不影响播放。内存缓存命中 24h、未命中 10min、最多 300 首。只发送曲名/艺术家/专辑/时长，不发送路径或音频。
 - 新增 provider mocked-fetch tests 与 PCM tap fallback/source tests。
 - 本轮正式版本递增为 2.2.3；最终 CI / Release 结果需在运行后追加。实机出声仍必须由用户验收。
+
+
+### 2.2.3 最终 Windows CI 与正式发布收口（2026-11-07）
+
+- 正式版本：2.2.3；直接在 main 开发，无功能分支 / PR。
+- 最终应用代码提交：`317a093f562ce1950e91d53e72c56a8ee0cad079`。
+- [Windows CI Run #186](https://github.com/xiaobei206/NexusMonitor/actions/runs/42360024896) 全部成功：版本一致性 14/14；Node 测试 238/238（0 failed）；Renderer TypeScript/Vite；Windows N-API WASAPI native addon；PawnIO SHA 验证；.NET Release；Storage Tests；NSIS；SHA-256；GitHub Release 与 artifact 上传。
+- 正式 Release：[v2.2.3](https://github.com/xiaobei206/NexusMonitor/releases/tag/v2.2.3)。安装包 160,013,866 bytes；SHA-256 `bf405f570f01a72b8ad6382417a5eaed1326c795e022645f742ef16078f2c9cd`。
+- WASAPI 修复解决的是切换安全性和无 PCM 时的恢复路径，不等于已证明 P4 实体扬声器有声。用户必须复验独占开启/关闭和恢复路径。
+- LRCLIB 自动歌词使用 metadata-only 查询，音频和本地路径不会上传；同步歌词跟随播放时间，纯文本歌词不伪造时间戳；未命中/离线/429 不影响播放。

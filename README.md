@@ -75,13 +75,18 @@ NexusMonitor source in this package is provided for the user's development/testi
 
 ## Current source handoff
 
-The current working baseline is **main / 2.2.3 (in development)**. Work directly on `main`; do not create feature branches or pull requests unless explicitly requested.
+The current released baseline is **main / 2.2.3**. The personal repository is developed directly on `main`; no feature branches or PRs unless explicitly requested.
 
-2.2.3 addresses two issues found in target-PC testing of 2.2.2: WASAPI Exclusive could silence the shared renderer output before native PCM output was confirmed, and disabling/failing exclusive output did not explicitly resume the shared audio path. The new flow keeps ordinary output audible until native PCM frames are confirmed, automatically restores the shared route if no PCM is accepted/rendered within the startup watchdog window, and restores playback/output routing when exclusive mode is disabled or fails.
+2.2.3 fixes the target-PC WASAPI handoff issue by keeping shared playback audible until native PCM is accepted and rendered, automatically restoring ordinary playback when the native stream produces no frames, and explicitly restoring the AudioContext / output sink when exclusive mode is disabled or fails.
 
-Lyrics now prefer a same-name local LRC file and otherwise query LRCLIB by track title, artist, album and duration. Only metadata is sent; audio files and local file paths are never uploaded. Synced lyrics follow playback time; plain lyrics are displayed as an unsynchronized text panel; missing results are non-fatal and cached in memory.
+Lyrics now prefer a same-name local LRC and automatically query LRCLIB when no usable local lyrics exist. Synced lyrics follow playback time; plain lyrics are displayed as static text. Only title, artist, album and duration are sent; audio files and local paths are never uploaded.
 
-The 2.2.2 stable release remains available at [GitHub Releases](https://github.com/xiaobei206/NexusMonitor/releases/tag/v2.2.2). The 2.2.3 build and target-PC playback verification are pending CI / release validation.
+- [NexusMonitor 2.2.3 Release](https://github.com/xiaobei206/NexusMonitor/releases/tag/v2.2.3)
+- [Windows CI Run #186](https://github.com/xiaobei206/NexusMonitor/actions/runs/42360024896) — success; 14/14 version gates, 238/238 Node tests, Renderer/Vite, native WASAPI, PawnIO, .NET/Storage, NSIS, SHA-256 and Release upload.
+- Installer: [NexusMonitor-2.2.3-Setup.exe](https://github.com/xiaobei206/NexusMonitor/releases/download/v2.2.3/NexusMonitor-2.2.3-Setup.exe) (160,013,866 bytes).
+- SHA-256: `bf405f570f01a72b8ad6382417a5eaed1326c795e022645f742ef16078f2c9cd`.
+
+Hosted CI does not prove that the P4 physical speaker is audible. The user must still confirm real output and exclusive-mode on/off recovery on the target Windows PC.
 ## Intel Alder Lake Iris Xe GT temperature experiment
 
 For an Intel Alder Lake system where IGCL exposes GPU clocks/power but not temperature, see `docs/ALDERLAKE_GT_TEMPERATURE_CN.md`. The probe uses the official PawnIO `IntelMCHBAR` read module and only reads `THERM_STATUS_GT` at MCHBAR offset `0x59C0`; it never writes PCI configuration or hardware control registers. Run `powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\fetch-mchbar-module.ps1` once before building the hardware service. The project now fails the .NET build if the resource is missing, instead of silently omitting it. If the module or register validation is unavailable, the GPU temperature remains `—`.
@@ -90,6 +95,6 @@ For an Intel Alder Lake system where IGCL exposes GPU clocks/power but not tempe
 ## Repository history and operating records
 
 - The canonical cross-version development record is `NexusMonitor-DEVELOPMENT-LOG-CN.md`.
-- Current-version handoff and final build / CI boundaries are in `NexusMonitor-2.2.1-HANDOFF-CN.md` and `NexusMonitor-2.2.1-BUILD-REPORT.md`. Version 2.2.1 is already merged and released; target-PC acceptance remains documented separately.
+- Current-version handoff and final build / CI boundaries are in `NexusMonitor-2.2.3-HANDOFF-CN.md` and `NexusMonitor-2.2.3-BUILD-REPORT.md`. Version 2.2.3 is merged and released; target-PC acceptance remains documented separately.
 - Each GitHub Actions run retains its complete build/test log; see the linked 2.1.8 run above. Per-user application runtime logs and settings remain local under `%APPDATA%\\NexusMonitor` and are intentionally not committed.
 - Versioned engineering references and the historical patch archive are under `docs/`.
