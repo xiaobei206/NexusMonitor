@@ -225,7 +225,7 @@ test('local LRC lyrics are loaded only from a same-name sidecar and rendered aga
   const lyrics = read('src/main/music-lyrics.ts');
   assert.match(main, /function readMusicLyrics/);
   assert.match(main, /basename\(track\.path, extname\(track\.path\)\)\}\.lrc/);
-  assert.match(main, /info\.size > 1024 \* 1024/);
+  assert.match(main, /info\.size <= 1024 \* 1024/);
   assert.match(main, /parseLrc\(readFileSync\(sidecar, 'utf8'\)\)/);
   assert.match(preload, /getMusicLyrics:.*music:get-lyrics/);
   assert.match(types, /getMusicLyrics\(trackId:string\)/);

@@ -13,9 +13,10 @@ test('Initialize retries classic WAVEFORMATEX after extensible fails',()=>{
 });
 test('PCM tap keeps shared output audible until native PCM has rendered',()=>{
  const worklet=readFileSync(join(__dirname,'..','src/renderer/music-pcm-tap.worklet.js'),'utf8');
+ const player=readFileSync(join(__dirname,'..','src/renderer/music-player.tsx'),'utf8');
  assert.match(worklet,/this\.muteOutput = this\.exclusive && event\.data\.mute === true/);
  assert.match(worklet,/if \(this\.muteOutput\)/);
- assert.match(worklet,/mute: false/);assert.match(worklet,/mute: true/);
+ assert.match(player,/mute: false/);assert.match(player,/mute: true/);
 });
 test('native endpoint uses negotiated channels for audio frame sizing',()=>{
  assert.match(source,/requestedChannels != 1 && requestedChannels != 2/);
