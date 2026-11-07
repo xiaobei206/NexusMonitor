@@ -79,10 +79,10 @@ function setComment(target: ParsedMusicMetadata, key: string, value: string) {
     const number = Number.parseInt(clean.split('/')[0], 10);
     if (Number.isFinite(number) && number > 0) target.trackNumber = number;
   } else if (normalized === 'REPLAYGAIN_TRACK_GAIN' && target.replayGainTrackDb == null) {
-    const db = Number.parseFloat(clean.replace(/\\s*dB\\s*$/i, '').trim());
+    const db = Number.parseFloat(clean);
     if (Number.isFinite(db) && db >= -60 && db <= 30) target.replayGainTrackDb = db;
   } else if (normalized === 'REPLAYGAIN_ALBUM_GAIN' && target.replayGainAlbumDb == null) {
-    const db = Number.parseFloat(clean.replace(/\\s*dB\\s*$/i, '').trim());
+    const db = Number.parseFloat(clean);
     if (Number.isFinite(db) && db >= -60 && db <= 30) target.replayGainAlbumDb = db;
   } else if (normalized === 'REPLAYGAIN_TRACK_PEAK' && target.replayGainTrackPeak == null) {
     const peak = Number.parseFloat(clean);
