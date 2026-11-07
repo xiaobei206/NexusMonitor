@@ -177,3 +177,16 @@ test('ten-band EQ persists ten clamped bands and wires one Web Audio filter chai
   assert.match(player, /重置为平直/);
   assert.match(player, /不是 WASAPI 独占或 bit-perfect 输出/);
 });
+
+test('EQ stays flat by default, clamps persisted bands, and initializes processing lazily on playback', () => {
+  const app = read('src/renderer/App.tsx');
+  const player = read('src/renderer/music-player.tsx');
+  assert.match(app, /musicEqBands: \[0,0,0,0,0,0,0,0,0,0\]/);
+  assert.match(app, /musicEqBands: Array\.isArray\(raw\.musicEqBands\)/);
+  assert.match(app, /Math\.max\(-12, Math\.min\(12, value\)\)/);
+  assert.match(player, /const hasBoostOrCut = bands\.some\(value => value !== 0\)/);
+  assert.match(player, /if \(!audioContextRef\.current && !\(state\?\.isPlaying && hasBoostOrCut\)\) return/);
+  assert.match(player, /if \(bands\.some\(value => value !== 0\) && !audioContextRef\.current\) await ensureAudioGraph\(\)/);
+  assert.match(player, /filter\.Q\.value = 1\.4/);
+  assert.match(player, /gain\.setTargetAtTime/);
+});
