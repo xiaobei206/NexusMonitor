@@ -19,6 +19,7 @@ import { calculateWidgetDetailLayout } from './widget-detail-window';
 import { isFullscreenOnWidgetDisplay } from './fullscreen-detection';
 import { resolveUsbDisplayWindowBounds } from './usb-display-window';
 import { musicFormatLabel, readMusicMetadata } from './music-metadata';
+import { MusicExclusiveOutput } from './music-exclusive-output';
 import { parseLrc } from './music-lyrics';
 import { parseM3u, serializeM3u } from './music-playlist';
 
@@ -70,6 +71,7 @@ let musicState: MusicState = {
   currentTime: 0, duration: 0, volume: 0.7, isPlaying: false, errorMessage: null, shuffle: false, repeat: 'off',
 };
 let musicLastPersistAt = 0;
+const musicExclusiveOutput = new MusicExclusiveOutput();
 const MUSIC_AUDIO_EXTENSIONS = new Set(['.mp3', '.wav', '.flac', '.ogg', '.oga', '.opus', '.m4a', '.m4b', '.aac']);
 const MUSIC_AUDIO_FILTER_EXTENSIONS = [...MUSIC_AUDIO_EXTENSIONS].map(extension => extension.slice(1));
 const MUSIC_FOLDER_SCAN_LIMIT = 5000;
@@ -1135,7 +1137,7 @@ function createMainWindow() {
       mainWindow?.hide();
     }
   });
-  mainWindow.on('closed', () => { mainWindow = null; mainWindowNativeReady = false; mainWindowRendererReady = false; });
+  mainWindow.on('closed', () => { musicExclusiveOutput.close(); mainWindow = null; mainWindowNativeReady = false; mainWindowRendererReady = false; });
 }
 function clearWidgetDetailTimers() {
   if (widgetDetailHideTimer) clearTimeout(widgetDetailHideTimer);
@@ -1572,6 +1574,7 @@ if (!hasSingleInstanceLock) {
 }
 
 app.on('before-quit', () => {
+  musicExclusiveOutput.close();
   quitting = true;
   if (usbDisplayWindow && !usbDisplayWindow.isDestroyed()) usbDisplayWindow.destroy();
   usbDisplayWindow = null; usbDisplayTargetId = null;
@@ -1605,6 +1608,57 @@ ipcMain.handle('music:track-url', (_event, trackId: string) => {
 ipcMain.handle('music:artwork-url', (_event, trackId: string) => {
   const track = musicState.tracks.find(item => item.id === String(trackId));
   return track?.artworkPath && existsSync(track.artworkPath) ? pathToFileURL(track.artworkPath).href : null;
+});
+ipcMain.handle('music:wasapi-availability', (event) => {
+  if (!mainWindow || event.sender !== mainWindow.webContents) return { available: false, message: 'Untrusted audio control sender.' };
+  return musicExclusiveOutput.availability();
+});
+ipcMain.handle('music:wasapi-devices', (event) => {
+  if (!mainWindow || event.sender !== mainWindow.webContents) throw new Error('Untrusted audio control sender.');
+  return musicExclusiveOutput.listDevices();
+});
+ipcMain.handle('music:wasapi-open', async (event, deviceId: string, trackId: string, transportSampleRate: number) => {
+  if (!mainWindow || event.sender !== mainWindow.webContents) throw new Error('Untrusted audio control sender.');
+  const track = musicState.tracks.find(item => item.id === String(trackId));
+  if (!track || !existsSync(track.path)) throw new Error('Select an existing library track before opening exclusive output.');
+  if (!Number.isInteger(transportSampleRate) || transportSampleRate < 8000 || transportSampleRate > 384000) {
+    throw new Error('Invalid renderer PCM transport sample rate.');
+  }
+  return musicExclusiveOutput.openForTrack(String(deviceId ?? ''), track, transportSampleRate);
+});
+ipcMain.handle('music:wasapi-start', (event) => {
+  if (!mainWindow || event.sender !== mainWindow.webContents) throw new Error('Untrusted audio control sender.');
+  musicExclusiveOutput.start();
+  return true;
+});
+ipcMain.handle('music:wasapi-pause', (event) => {
+  if (!mainWindow || event.sender !== mainWindow.webContents) throw new Error('Untrusted audio control sender.');
+  musicExclusiveOutput.pause();
+  return true;
+});
+ipcMain.handle('music:wasapi-clear', (event) => {
+  if (!mainWindow || event.sender !== mainWindow.webContents) throw new Error('Untrusted audio control sender.');
+  musicExclusiveOutput.clear();
+  return true;
+});
+ipcMain.handle('music:wasapi-close', (event) => {
+  if (!mainWindow || event.sender !== mainWindow.webContents) throw new Error('Untrusted audio control sender.');
+  musicExclusiveOutput.close();
+  return true;
+});
+ipcMain.handle('music:wasapi-status', (event) => {
+  if (!mainWindow || event.sender !== mainWindow.webContents) throw new Error('Untrusted audio control sender.');
+  return musicExclusiveOutput.status();
+});
+ipcMain.on('music:wasapi-pcm', (event, payload: Uint8Array | ArrayBuffer) => {
+  if (!mainWindow || event.sender !== mainWindow.webContents) return;
+  try {
+    const data = payload instanceof Uint8Array ? payload : payload instanceof ArrayBuffer ? new Uint8Array(payload) : null;
+    if (!data || data.byteLength === 0) return;
+    musicExclusiveOutput.writeFloat32Pcm(data);
+  } catch (error) {
+    log(`WASAPI PCM transport failed: ${error instanceof Error ? error.message : String(error)}`);
+  }
 });
 ipcMain.handle('music:get-lyrics', (_event, trackId: string) => readMusicLyrics(String(trackId ?? '')));
 ipcMain.handle('music:choose-files', async () => {
