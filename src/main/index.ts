@@ -1655,6 +1655,10 @@ ipcMain.on('music:wasapi-pcm', (event, payload: Uint8Array | ArrayBuffer) => {
   try {
     const data = payload instanceof Uint8Array ? payload : payload instanceof ArrayBuffer ? new Uint8Array(payload) : null;
     if (!data || data.byteLength === 0) return;
+    if (data.byteLength > 65536 || data.byteLength % 8 !== 0) {
+      log(`Rejected invalid WASAPI PCM chunk (${data.byteLength} bytes)`);
+      return;
+    }
     musicExclusiveOutput.writeFloat32Pcm(data);
   } catch (error) {
     log(`WASAPI PCM transport failed: ${error instanceof Error ? error.message : String(error)}`);
