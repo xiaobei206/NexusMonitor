@@ -67,7 +67,7 @@ Main process: library / playlist / persistence / IPC / device inventory
 - 独占模式不等于 bit-perfect。只有当实际信号链、重采样、效果处理、共享混音路径和设备格式均得到验证时才可以显示相应能力声明。
 - Auto DJ、智能播放列表、Audio DNA / 相似歌曲推荐是后续可选项，不能阻塞基础播放器。
 
-## 5. 工程规则
+## 5. 首批已落地实现（以当前分支源码为准）\n\n- `src/main/music-metadata.ts` 提供无外部运行时依赖的 best-effort 标签读取：ID3、FLAC comments / STREAMINFO / picture、WAV INFO / fmt / data、Ogg Vorbis / Opus comments、M4A atom。封面写入应用数据 `music-artwork`，由 track ID IPC 返回 URL。\n- 曲库允许导入 MP3、WAV、FLAC、OGG、OGA、Opus、M4A、M4B、AAC；播放器显示实际文件扩展格式，搜索覆盖标题 / 艺术家 / 专辑 / 流派。**导入白名单不等于播放解码验收**；当前单音频 HTMLAudioElement 仍依赖 Electron Chromium codec 实际支持。WMA / ALAC / AIFF / APE / WavPack / TTA / Musepack / DSF / DFF 暂不纳入支持承诺。\n- 静态 / GIF 壁纸的独立音频元素和背景音乐选择控件已移除，所有音乐统一经 Music Service。\n- 第六模式 `music-only` 已加入设置类型 / 选择 UI / 窗口 close / startup restore：不创建可见 USB 输出 BrowserWindow，保留 Windows 桌面壁纸，Music Service 保持在主 Renderer。\n- 当前代码尚未通过此分支 CI，以上是代码已写入而非构建 / 运行验收状态。\n\n## 6. 工程规则
 
 1. **文档先于大规模修改。** 每个新会话先读 `START-HERE-NEXT-GPT.md`、`AGENTS.md`、本交接文档与本文；先检查远端 branch HEAD、`VERSION`、PR / Actions 状态。
 2. 每一阶段形成可编译、可回归的提交；不要只堆一大批未经验证的代码。不要使用 FIX / FIX1 版本名。
@@ -77,7 +77,7 @@ Main process: library / playlist / persistence / IPC / device inventory
 6. 绝不把用户文件路径、曲库数据、个人 settings 或运行日志加入仓库。曲库只保存文件引用和元数据，不拷贝或删除原始音频。
 7. CI 成功只证明 hosted Windows runner 构建 / 测试通过，不能声称已实测目标扬声器、五寸屏、混合 DPI、拔插和长期播放。
 
-## 6. 自动化与实机验收矩阵
+## 7. 自动化与实机验收矩阵
 
 ### 自动化
 
