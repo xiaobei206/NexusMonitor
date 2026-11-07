@@ -18,6 +18,8 @@ export type MusicWasapiStatus = {
   deviceName?: string;
   format?: string;
   sampleRate?: number;
+  bufferedBytes?: number;
+  underruns?: number;
   bitPerfect: false;
   bitPerfectCandidate?: boolean;
 };
@@ -402,6 +404,52 @@ export function MusicPlaybackRuntime({ state, outputDeviceId = 'default', eqBand
       state: 'error', message: `WASAPI 播放状态切换失败：${error instanceof Error ? error.message : String(error)}`, bitPerfect: false,
     }));
   }, [exclusiveEnabled, state?.isPlaying, onWasapiStatus]);
+
+  useEffect(() => {
+    if (!exclusiveEnabled || !exclusiveActiveRef.current) return;
+    let alive = true;
+    const refreshStatus = async () => {
+      try {
+        const native = await window.nexus.getMusicWasapiStatus();
+        if (!alive || !native) return;
+        if (native.error) {
+          exclusiveActiveRef.current = false;
+          onWasapiStatus?.({
+            state: 'error',
+            message: `WASAPI 输出中断：${native.error}`,
+            deviceName: native.deviceName,
+            format: native.format,
+            sampleRate: native.sampleRate,
+            bufferedBytes: native.bufferedBytes,
+            underruns: native.underruns,
+            bitPerfect: false,
+          });
+          return;
+        }
+        onWasapiStatus?.({
+          state: 'active',
+          message: native.underruns > 0
+            ? `独占输出运行中；累计缓冲欠载 ${native.underruns} 次`
+            : '独占输出运行中',
+          deviceName: native.deviceName,
+          format: native.format,
+          sampleRate: native.sampleRate,
+          bufferedBytes: native.bufferedBytes,
+          underruns: native.underruns,
+          bitPerfect: false,
+        });
+      } catch (error) {
+        if (alive) onWasapiStatus?.({
+          state: 'error',
+          message: `读取 WASAPI 状态失败：${error instanceof Error ? error.message : String(error)}`,
+          bitPerfect: false,
+        });
+      }
+    };
+    void refreshStatus();
+    const timer = window.setInterval(() => void refreshStatus(), 1000);
+    return () => { alive = false; window.clearInterval(timer); };
+  }, [exclusiveEnabled, onWasapiStatus]);
 
   useEffect(() => {
     if (!sleepTimerEndsAt) return;
@@ -835,6 +883,8 @@ export function MusicWasapiControls({ state, settings, updateSettings, status }:
     {status?.state === 'active' && <p className="nm-wasapi-format">
       实际协商：{status.deviceName} · {status.format?.toUpperCase()} · {status.sampleRate?.toLocaleString()} Hz
       {status.bitPerfectCandidate ? ' · 源格式与设备能力匹配' : ' · 需要格式转换'}
+      {typeof status.underruns === 'number' ? ` · 欠载 ${status.underruns} 次` : ''}
+      {typeof status.bufferedBytes === 'number' ? ` · 缓冲 ${Math.round(status.bufferedBytes / 1024)} KiB` : ''}
       <br/>当前路径为 Renderer Float32 PCM → WASAPI；bit-perfect：否。
     </p>}
     <small className="nm-wasapi-warning">独占模式会占用所选端点，其他应用可能暂时无法通过这个端点播放声音；电脑耳机或其他音频端点不受影响。当前实现不宣称 bit-perfect。</small>
