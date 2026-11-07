@@ -186,8 +186,8 @@ test('EQ stays flat by default, clamps persisted bands, and initializes processi
   assert.ok(app.includes('musicEqBands: Array.from({ length: 10 }'));
   assert.match(app, /Math\.max\(-12, Math\.min\(12, value\)\)/);
   assert.match(player, /const hasBoostOrCut = bands\.some\(value => value !== 0\)/);
-  assert.match(player, /if \(!audioContextRef\.current && !\(state\?\.isPlaying && needsProcessing\)\) return/);
-  assert.match(player, /if \(\(bands\.some\(value => value !== 0\) \|\| hasReplayGain\) && !audioContextRef\.current\) await ensureAudioGraph\(\)/);
+  assert.match(player, /if \(!audioContextRef\.current && !\(state\?\.isPlaying && needsProcessing\) && !\(exclusiveEnabled && state\?\.currentTrackId\)\) return/);
+  assert.match(player, /const needsProcessing = hasBoostOrCut \|\| hasReplayGain \|\| exclusiveEnabled/);\n  assert.match(player, /exclusiveEnabled && state\?\.currentTrackId/);\n  assert.match(player, /if \(\(bands\.some\(value => value !== 0\) \|\| hasReplayGain \|\| exclusiveEnabled\) && !audioContextRef\.current\) await ensureAudioGraph\(\)/);
   assert.match(player, /filter\.Q\.value = 1\.4/);
   assert.match(player, /gain\.setTargetAtTime/);
 });
