@@ -367,4 +367,5 @@ test('native WASAPI pause stops the audio client before a later Start call', () 
   assert.match(cpp, /if \(!engine->startRequested\.load\(std::memory_order_acquire\)\) \{[\s\S]{0,300}if \(engine->running\.load\(std::memory_order_acquire\)\) \{[\s\S]{0,160}audioClient->Stop\(\)/);
   assert.match(cpp, /if \(!engine->running\.load\(std::memory_order_acquire\)\) \{[\s\S]{0,120}audioClient->Start\(\)/);
   assert.match(cpp, /runtimeError = HresultMessage\("IAudioClient::Stop", hr\)/);
+  assert.match(cpp, /engine->ring\.Clear\(\);[\s\S]{0,100}WaitForSingleObject\(engine->controlEvent, 100\)/);
 });
