@@ -115,3 +115,20 @@ test('the six USB modes separate hidden desktop playback from visible output', (
   assert.match(main, /currentSettings\.usbDisplayMode === 'music-only'/);
   assert.match(main, /previous\.usbDisplayMode !== currentSettings\.usbDisplayMode/);
 });
+
+test('music output device routing is independent and reports unsupported or unavailable endpoints honestly', () => {
+  const player = read('src/renderer/music-player.tsx');
+  const types = read('src/shared/types.ts');
+  const app = read('src/renderer/App.tsx');
+  assert.match(types, /musicOutputDeviceId\?: string/);
+  assert.match(types, /musicOutputDeviceLabel\?: string/);
+  assert.match(player, /audio\.setSinkId\(requestedDeviceId\)/);
+  assert.match(player, /state: 'unsupported'/);
+  assert.match(player, /state: 'unavailable'/);
+  assert.match(player, /selectAudioOutput/);
+  assert.match(player, /AudioContext\.setSinkId/);
+  assert.match(player, /oscillator\.frequency\.value = 440/);
+  assert.match(player, /musicOutputDeviceId: device\.deviceId/);
+  assert.match(app, /outputDeviceId=\{settings\.musicOutputDeviceId \?\? 'default'\}/);
+  assert.doesNotMatch(player, /catch\(error\).*setSinkId[\s\S]{0,180}setSinkId\('default'\)/);
+});
