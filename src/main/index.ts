@@ -264,6 +264,10 @@ function loadMusicLibrary() {
         durationSeconds: typeof item.durationSeconds === 'number' && Number.isFinite(item.durationSeconds) ? item.durationSeconds : null,
         sampleRateHz: typeof item.sampleRateHz === 'number' && Number.isFinite(item.sampleRateHz) ? item.sampleRateHz : null,
         bitDepth: typeof item.bitDepth === 'number' && Number.isFinite(item.bitDepth) ? item.bitDepth : null,
+        replayGainTrackDb: typeof item.replayGainTrackDb === 'number' && Number.isFinite(item.replayGainTrackDb) ? item.replayGainTrackDb : null,
+        replayGainAlbumDb: typeof item.replayGainAlbumDb === 'number' && Number.isFinite(item.replayGainAlbumDb) ? item.replayGainAlbumDb : null,
+        replayGainTrackPeak: typeof item.replayGainTrackPeak === 'number' && Number.isFinite(item.replayGainTrackPeak) && item.replayGainTrackPeak > 0 ? item.replayGainTrackPeak : null,
+        replayGainAlbumPeak: typeof item.replayGainAlbumPeak === 'number' && Number.isFinite(item.replayGainAlbumPeak) && item.replayGainAlbumPeak > 0 ? item.replayGainAlbumPeak : null,
         format: typeof item.format === 'string' ? item.format : musicFormatLabel(target),
         artworkPath: typeof item.artworkPath === 'string' && existsSync(item.artworkPath) ? item.artworkPath : null,
         addedAt: typeof item.addedAt === 'string' ? item.addedAt : new Date().toISOString(),
@@ -334,7 +338,10 @@ function importMusicPaths(paths: string[]) {
         artist: metadata.artist ?? '未知艺术家', album: metadata.album ?? null,
         genre: metadata.genre ?? null, year: metadata.year ?? null, trackNumber: metadata.trackNumber ?? null,
         durationSeconds: metadata.durationSeconds ?? null, sampleRateHz: metadata.sampleRateHz ?? null,
-        bitDepth: metadata.bitDepth ?? null, format: musicFormatLabel(target), artworkPath,
+        bitDepth: metadata.bitDepth ?? null,
+        replayGainTrackDb: metadata.replayGainTrackDb ?? null, replayGainAlbumDb: metadata.replayGainAlbumDb ?? null,
+        replayGainTrackPeak: metadata.replayGainTrackPeak ?? null, replayGainAlbumPeak: metadata.replayGainAlbumPeak ?? null,
+        format: musicFormatLabel(target), artworkPath,
         addedAt: new Date().toISOString(),
       };
       musicState.tracks.push(track);
