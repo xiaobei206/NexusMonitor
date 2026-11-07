@@ -81,7 +81,7 @@ Main process: library / playlist / persistence / IPC / device inventory
 - 同名 LRC：仅从歌曲所在目录加载同名 .lrc，最大 1 MiB，支持多时间戳 / offset / BOM；不联网、不上传。播放时间通过二分查找当前行。
 - 睡眠定时：15 / 30 / 45 / 60 / 90 分钟，到时只暂停播放，不退出程序或关闭副屏；定时器存活于主 Renderer 全局状态。
 - 解码 / 文件缺失 / 读取失败等播放错误进入 MusicState，并显示在 Library / MiniPlayer / Dock。
-- **Windows CI Run #104 成功：** 14/14 版本门禁、Node 210/210、Renderer TypeScript + Vite production build、PawnIO resource validation、.NET Release build 0 Warning / 0 Error、Storage Tests。<https://github.com/xiaobei206/NexusMonitor/actions/runs/42348842265>。验证 HEAD 为 `c8d24d28d353834cc04059eb2637a46ef8d94e78`；随后 CSS 收尾提交 `b3f95d984118f74974f46dc62acde93d69a21908` 仍须跑最终 CI。
+- **Windows CI Run #109 成功：** 14/14 版本门禁、Node 210/210、Renderer TypeScript + Vite production build、PawnIO resource validation、.NET Release build 0 Warning / 0 Error、Storage Tests。<https://github.com/xiaobei206/NexusMonitor/actions/runs/42349148127>。验证当前 PR tip `3152aa5a16b4ff52d0bf026fcd5e1d962cf19f4c`。
 - 未完成：WASAPI Exclusive / bit-perfect、Gapless / Crossfade、播放内嵌歌词和在线歌词、waveform / spectrum / Auto DJ、逐格式真实音频解码验收、实际输出设备 / 五寸屏喇叭 / USB 显示器目标机测试、正式 2.2.1 Release。
 
 
