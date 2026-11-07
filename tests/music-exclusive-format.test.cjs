@@ -86,3 +86,18 @@ test('unknown rate and DSD are never labelled bit-perfect; unsupported source de
   assert.equal(noDepth.format, 's32');
   assert.equal(noDepth.depthPreserved, true);
 });
+
+test('honors the renderer transport sample rate so exclusive PCM is not mis-clocked', () => {
+  const source = { sampleRateHz: 44100, bitDepth: 16, channels: 2, lossless: true };
+  const match = chooseExclusiveFormat(source, [
+    { format: 's16', channels: 2, sampleRate: 44100 },
+    { format: 'f32', channels: 2, sampleRate: 48000 },
+  ], 48000);
+  assert.equal(match.sampleRate, 48000);
+  assert.equal(match.resampled, true);
+  assert.equal(match.bitPerfect, false);
+  const unsupported = chooseExclusiveFormat(source, [
+    { format: 's16', channels: 2, sampleRate: 44100 },
+  ], 96000);
+  assert.equal(unsupported, null);
+});
