@@ -214,3 +214,24 @@ test('ReplayGain is opt-in, selects track or album tags, and applies peak-safe g
   assert.match(player, /: 0;/);
   assert.match(player, /replayGainAppliedDb = useMemo/);
 });
+
+test('local LRC lyrics are loaded only from a same-name sidecar and rendered against shared playback time', () => {
+  const main = read('src/main/index.ts');
+  const preload = read('src/preload/index.ts');
+  const types = read('src/renderer/vite-env.d.ts');
+  const player = read('src/renderer/music-player.tsx');
+  const lyrics = read('src/main/music-lyrics.ts');
+  assert.match(main, /function readMusicLyrics/);
+  assert.match(main, /basename\(track\.path, extname\(track\.path\)\)\}\.lrc/);
+  assert.match(main, /info\.size > 1024 \* 1024/);
+  assert.match(main, /parseLrc\(readFileSync\(sidecar, 'utf8'\)\)/);
+  assert.match(preload, /getMusicLyrics:.*music:get-lyrics/);
+  assert.match(types, /getMusicLyrics\(trackId:string\)/);
+  assert.match(lyrics, /export function parseLrc/);
+  assert.match(player, /export function MusicMiniPlayer/);
+  assert.match(player, /function MusicLyricsPanel/);
+  assert.match(player, /window\.nexus\.getMusicLyrics\(track\.id\)/);
+  assert.match(player, /lines\[middle\]\.timeSeconds <= time \+ 0\.04/);
+  assert.match(player, /本地 LRC/);
+  assert.match(player, /不会联网搜索或上传/);
+});
