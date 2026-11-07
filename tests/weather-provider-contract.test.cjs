@@ -67,10 +67,12 @@ test('settings expose all weather providers and distinguish the AQI standard', (
   assert.match(app, /数据来源声明/);
 });
 
-test('vertical HUD defaults to a balanced 960px and clamps remembered height', () => {
-  assert.match(main, /width: 340, height: 960, minWidth: 340, minHeight: 700/);
+test('vertical HUD defaults to 960px and clamps the remembered height', () => {
+  assert.ok(main.includes('width: 340, height: savedHeight, minWidth: 340, minHeight: 700'));
+  assert.ok(main.includes('savedPositionRecord.height'));
+  assert.ok(main.includes(': 960;'));
   assert.match(main, /scheduleWidgetDimensionPersistence/);
-  assert.match(read('src/main/widget-docking.ts'), /preferredHeight = orientation === 'vertical' \? Math\.max\(700, Math\.min\(1200, Math\.round\(preferredVerticalHeight\)\)\) : 112/);
+  assert.ok(read('src/main/widget-docking.ts').includes("preferredHeight = orientation === 'vertical' ? Math.max(700, Math.min(1200, Math.round(preferredVerticalHeight))) : 112"));
 });
 
 test('AQI presentation uses Chinese MEP and US EPA labels for the same numeric bands', () => {

@@ -18,10 +18,11 @@ test('vertical HUD uses a dedicated icon-led information layout with weekday and
   assert.match(app, /<span>\{dateText\}<\/span><small>\{weekdayText\}<\/small>/);
 });
 
-test('horizontal HUD remains a separate original rendering branch and vertical defaults to 340x960', () => {
+test('horizontal HUD remains a separate original rendering branch and vertical defaults to remembered 340x960', () => {
   assert.match(app, /: <>\s*<div className="widget-brand">/);
   assert.match(app, /widget-stat cpu-stat/);
-  assert.match(main, /width: 340, height: 960/);
+  assert.ok(main.includes('width: 340, height: savedHeight'));
+  assert.ok(main.includes(': 960;'));
   assert.match(main, /scheduleWidgetDimensionPersistence/);
 });
 

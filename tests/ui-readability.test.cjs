@@ -35,12 +35,13 @@ test('floating HUD labels use readable metadata text instead of micro text', () 
 });
 
 
-test('vertical HUD defaults to a balanced 960px and remembers manual height per display', () => {
-  assert.match(main, /width: 340, height: 960, minWidth: 340, minHeight: 700/);
+test('vertical HUD defaults to 960px and restores the user's remembered height per display', () => {
+  assert.ok(main.includes('width: 340, height: savedHeight, minWidth: 340, minHeight: 700'));
+  assert.ok(main.includes('savedPositionRecord.height'));
+  assert.ok(main.includes(': 960;'));
   assert.match(main, /scheduleWidgetDimensionPersistence/);
-  assert.match(main, /savedRecord\\.height/);
-  assert.match(docking, /preferredHeight = orientation === 'vertical' \\? Math\\.max\\(700, Math\\.min\\(1200, Math\\.round\\(preferredVerticalHeight\\)\\)\\) : 112/);
-  assert.match(css, /@media\\(max-height:920px\\)[\\s\\S]*?\\.widget-shell\\.vertical \\.widget-vertical-daily\\{display:none\\}/);
+  assert.ok(docking.includes("preferredHeight = orientation === 'vertical' ? Math.max(700, Math.min(1200, Math.round(preferredVerticalHeight))) : 112"));
+  assert.match(css, /@media\(max-height:920px\)[\s\S]*?\.widget-shell\.vertical \.widget-vertical-daily\{display:none\}/);
 });
 
 test('weather and custom sensor blocks have responsive HUD layouts', () => {
@@ -82,10 +83,4 @@ test('music library and output settings use readable text sizes', () => {
   assert.match(musicCss, /\.nm-library-empty span\{font-size:13px/);
 });
 
-test('vertical HUD defaults to 960px, remembers manual height per display and adapts on short screens', () => {
-  assert.match(main, /width: 340, height: 960, minWidth: 340, minHeight: 700/);
-  assert.match(main, /scheduleWidgetDimensionPersistence/);
-  assert.match(main, /savedRecord\.height/);
-  assert.match(docking, /preferredHeight = orientation === 'vertical' \? Math\.max\(700, Math\.min\(1200, Math\.round\(preferredVerticalHeight\)\)\) : 112/);
-  assert.match(css, /@media\(max-height:920px\)[\s\S]*?\.widget-shell\.vertical \.widget-vertical-daily\{display:none\}/);
-});
+
