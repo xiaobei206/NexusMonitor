@@ -13,7 +13,7 @@ const api = {
     const listener = (_event: Electron.IpcRendererEvent, state: import('../shared/types').MusicState) => callback(state);
     ipcRenderer.on('music:state', listener); return () => ipcRenderer.removeListener('music:state', listener);
   },
-  onMusicEngineCommand: (callback: (command: { type: 'seek'; seconds: number }) => void) => {
+  onMusicEngineCommand: (callback: (command: { type: 'seek'; seconds: number; resume?: boolean }) => void) => {
     const listener = (_event: Electron.IpcRendererEvent, command: { type: 'seek'; seconds: number }) => callback(command);
     ipcRenderer.on('music:engine-command', listener); return () => ipcRenderer.removeListener('music:engine-command', listener);
   },
