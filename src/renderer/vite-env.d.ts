@@ -39,7 +39,7 @@ interface Window {
     getUsbDisplayStatus(): Promise<{open:boolean;targetDisplayId:string|null}>;
     openUsbDisplay(displayId:string): Promise<{ok:boolean;message?:string;status?:{open:boolean;targetDisplayId:string|null}}>;
     closeUsbDisplay(): Promise<{open:boolean;targetDisplayId:string|null}>;
-    chooseUsbDisplayMedia(kind:'image'|'video'|'audio'): Promise<{path:string;name:string}|null>;
+    chooseUsbDisplayMedia(kind:'image'|'video'): Promise<{path:string;name:string}|null>;
     readUsbDisplayImage(path:string): Promise<{ok:boolean;name?:string;dataUrl?:string;message?:string}>;
     getUsbDisplayVideoUrl(path:string): Promise<{ok:boolean;name?:string;url?:string;message?:string}>;
     getUsbDisplayAudioUrl(path:string): Promise<{ok:boolean;name?:string;url?:string;message?:string}>;
