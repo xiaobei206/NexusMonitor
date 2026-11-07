@@ -304,6 +304,7 @@ struct Engine {
   std::atomic<uint64_t> underruns{0};
   std::atomic<uint64_t> framesRendered{0};
   std::atomic<uint64_t> acceptedBytes{0};
+  std::atomic<uint64_t> droppedFrames{0};
 };
 
 Engine g_engine;
@@ -502,6 +503,7 @@ void CloseEngine() {
   g_engine.underruns.store(0, std::memory_order_relaxed);
   g_engine.framesRendered.store(0, std::memory_order_relaxed);
   g_engine.acceptedBytes.store(0, std::memory_order_relaxed);
+  g_engine.droppedFrames.store(0, std::memory_order_relaxed);
 }
 
 napi_value ListDevices(napi_env env, napi_callback_info info) {
@@ -715,6 +717,8 @@ napi_value Write(napi_env env, napi_callback_info info) {
   }
   const size_t accepted = g_engine.ring.Write(converted.data(), converted.size());
   g_engine.acceptedBytes.fetch_add(accepted, std::memory_order_relaxed);
+  const size_t dropped = converted.size() - accepted;
+  if (dropped > 0) g_engine.droppedFrames.fetch_add(dropped / g_engine.bytesPerFrame, std::memory_order_relaxed);
   napi_value result;
   napi_create_double(env, static_cast<double>(accepted / g_engine.bytesPerFrame), &result);
   return result;
@@ -749,6 +753,7 @@ napi_value Stats(napi_env env, napi_callback_info info) {
   SetNumber(env, result, "underruns", static_cast<double>(g_engine.underruns.load()));
   SetNumber(env, result, "framesRendered", static_cast<double>(g_engine.framesRendered.load()));
   SetNumber(env, result, "acceptedBytes", static_cast<double>(g_engine.acceptedBytes.load()));
+  SetNumber(env, result, "droppedFrames", static_cast<double>(g_engine.droppedFrames.load()));
   std::string error;
   {
     std::lock_guard<std::mutex> lock(g_engine.mutex);
