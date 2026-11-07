@@ -20,12 +20,16 @@ test('vertical floating HUD inserts only the compact player immediately before w
   assert.equal((widget.match(/<MusicMiniPlayer /g) ?? []).length, 1, 'no duplicate HUD player insertion');
 });
 
-test('all non-video USB output modes get shared controls while the existing wallpaper audio is not double-played', () => {
+test('non-video USB output uses the shared Music Service and has no legacy wallpaper audio engine', () => {
   const app = read('src/renderer/App.tsx');
   const usb = app.slice(app.indexOf('function UsbDisplayOutput('), app.indexOf('\nexport default function App'));
   assert.match(usb, /mode!=='video'&&<div className="usb-output-music">/);
-  assert.match(usb, /audioSource&&!music\.state\?\.currentTrackId/);
   assert.match(usb, /<MusicMiniPlayer state=\{music\.state\} onCommand=\{music\.command\}\/>/);
+  assert.doesNotMatch(usb, /audioSource|audioRef|usbDisplayAudioPath|<audio/);
+  assert.match(app, /\['music-only','桌面壁纸 \+ 音乐'/);
+  const main = read('src/main/index.ts');
+  assert.match(main, /USB display output hidden; shared Music Service remains active/);
+  assert.match(main, /USB display output remains hidden in desktop wallpaper \+ music mode/);
 });
 
 test('the main renderer owns the only audio engine and the library is separate from video mode', () => {
@@ -89,4 +93,25 @@ test('main window exposes the shared music dock on every main-app page; only the
   assert.doesNotMatch(app, /page === 'usb-display' && settings\.usbDisplayMode === 'video'.{0,100}<MusicPlayerDock/);
   const usb = app.slice(app.indexOf('function UsbDisplayOutput('), app.indexOf('\nexport default function App'));
   assert.match(usb, /mode!=='video'&&<div className="usb-output-music">/);
+});
+
+test('music import recognises common codecs and records parsed tags and cover paths', () => {
+  const main = read('src/main/index.ts');
+  assert.match(main, /new Set\(\['\.mp3', '\.wav', '\.flac', '\.ogg', '\.oga', '\.opus', '\.m4a', '\.m4b', '\.aac'\]\)/);
+  assert.match(main, /filters: \[\{ name: '常见音频文件', extensions: MUSIC_AUDIO_FILTER_EXTENSIONS \}\]/);
+  assert.match(main, /const metadata = readMusicMetadata\(target\)/);
+  assert.match(main, /artworkPath = join\(directory/);
+  assert.match(main, /'music:artwork-url'/);
+  const player = read('src/renderer/music-player.tsx');
+  assert.match(player, /track\.format \?\? 'AUDIO'/);
+  assert.match(player, /未知艺术家/);
+  assert.doesNotMatch(player, /添加 MP3|本地 MP3|首 MP3/);
+});
+
+test('the six USB modes separate hidden desktop playback from visible output', () => {
+  const types = read('src/shared/types.ts');
+  assert.match(types, /'video' \| 'music-only'/);
+  const main = read('src/main/index.ts');
+  assert.match(main, /currentSettings\.usbDisplayMode === 'music-only'/);
+  assert.match(main, /currentSettings\.usbDisplayMode !== currentSettings/);
 });
