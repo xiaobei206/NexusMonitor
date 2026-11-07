@@ -37,7 +37,8 @@ test('the main renderer owns the only audio engine and the library is separate f
   assert.match(player, /chooseMusicFolder/);
   assert.match(player, /move-track/);
   assert.match(player, /repeat/);
-  assert.match(app, /page === 'usb-display' && settings\.usbDisplayMode === 'video'/);
+  const usb = app.slice(app.indexOf('function UsbDisplayOutput('), app.indexOf('\nexport default function App'));
+  assert.match(usb, /mode!=='video'&&<div className="usb-output-music">/);
 });
 
 test('closing the main window hides it from taskbar and the tray explicitly restores or exits', () => {
