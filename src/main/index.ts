@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { spawn } from 'node:child_process';
 import type { ChildProcess } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, writeFileSync, readdirSync, copyFileSync, statSync } from 'node:fs';
-import { join, dirname, resolve, basename, extname } from 'node:path';
+import { join, dirname, resolve, basename, extname, isAbsolute } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { connect } from 'node:net';
 import { createInterface } from 'node:readline';
