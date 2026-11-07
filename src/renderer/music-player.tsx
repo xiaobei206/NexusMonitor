@@ -207,7 +207,7 @@ function MusicOutputDevicePicker({ settings, updateSettings, status }: {
     }
     try {
       const found = await media.enumerateDevices();
-      setDevices(found.filter(device => device.kind === 'audiooutput' && device.deviceId !== 'default'));
+      setDevices(found.filter(device => device.kind === 'audiooutput' && device.deviceId && device.deviceId !== 'default'));
     } catch (error) {
       setMessage(`读取音频设备失败：${error instanceof Error ? error.message : String(error)}`);
     }
