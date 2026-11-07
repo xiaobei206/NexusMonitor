@@ -90,10 +90,9 @@ const api = {
   getUsbDisplayStatus: () => ipcRenderer.invoke('desktop-displays:usb-status'),
   openUsbDisplay: (displayId: string) => ipcRenderer.invoke('desktop-displays:usb-open', displayId),
   closeUsbDisplay: () => ipcRenderer.invoke('desktop-displays:usb-close'),
-  chooseUsbDisplayMedia: (kind: 'image' | 'video' | 'audio') => ipcRenderer.invoke('desktop-displays:usb-choose-media', kind),
+  chooseUsbDisplayMedia: (kind: 'image' | 'video') => ipcRenderer.invoke('desktop-displays:usb-choose-media', kind),
   readUsbDisplayImage: (path: string) => ipcRenderer.invoke('desktop-displays:usb-read-image', path),
   getUsbDisplayVideoUrl: (path: string) => ipcRenderer.invoke('desktop-displays:usb-video-url', path),
-  getUsbDisplayAudioUrl: (path: string) => ipcRenderer.invoke('desktop-displays:usb-audio-url', path),
   onDesktopDisplaysChanged: (callback: (displays: Array<{id:string;index:number;primary:boolean;width:number;height:number;x:number;y:number;scaleFactor:number;label:string}>) => void) => {
     const listener = (_event: Electron.IpcRendererEvent, displays: Array<{id:string;index:number;primary:boolean;width:number;height:number;x:number;y:number;scaleFactor:number;label:string}>) => callback(displays);
     ipcRenderer.on('desktop-displays:changed', listener); return () => ipcRenderer.removeListener('desktop-displays:changed', listener);
