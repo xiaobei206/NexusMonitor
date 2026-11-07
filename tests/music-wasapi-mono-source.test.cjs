@@ -11,6 +11,12 @@ test('Initialize retries classic WAVEFORMATEX after extensible fails',()=>{
  assert.match(source,/HRESULT InitializeExclusiveStream\([\s\S]*?WAVEFORMATEXTENSIBLE extensible[\s\S]*?WAVEFORMATEX classic/);
  assert.match(source,/usedClassicFormat \? "IAudioClient::Initialize exclusive WAVEFORMATEX"/);
 });
+test('PCM tap keeps shared output audible until native PCM has rendered',()=>{
+ const worklet=readFileSync(join(__dirname,'..','src/renderer/music-pcm-tap.worklet.js'),'utf8');
+ assert.match(worklet,/this\.muteOutput = this\.exclusive && event\.data\.mute === true/);
+ assert.match(worklet,/if \(this\.muteOutput\)/);
+ assert.match(worklet,/mute: false/);assert.match(worklet,/mute: true/);
+});
 test('native endpoint uses negotiated channels for audio frame sizing',()=>{
  assert.match(source,/requestedChannels != 1 && requestedChannels != 2/);
  assert.match(source,/g_engine\.channels = static_cast<uint16_t>\(requestedChannels\)/);

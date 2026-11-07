@@ -4,7 +4,7 @@ import {
   Music2, Play, Pause, SkipBack, SkipForward, ListMusic, Folder, FolderOpen, Plus,
   Trash2, Shuffle, Repeat, Volume2, Search, X, ListPlus, Disc3, ArrowUp, ArrowDown,
 } from 'lucide-react';
-import type { AppSettings, MusicCommand, MusicLyricLine, MusicState, MusicTrack } from '../shared/types';
+import type { AppSettings, MusicCommand, MusicLyricsResult, MusicState, MusicTrack } from '../shared/types';
 
 export type MusicOutputStatus = {
   state: 'default' | 'active' | 'unsupported' | 'unavailable';
@@ -21,6 +21,8 @@ export type MusicWasapiStatus = {
   bufferedBytes?: number;
   underruns?: number;
   droppedFrames?: number;
+  acceptedBytes?: number;
+  framesRendered?: number;
   bitPerfect: false;
   bitPerfectCandidate?: boolean;
   channels?: 1 | 2;
@@ -96,6 +98,9 @@ export function MusicPlaybackRuntime({ state, outputDeviceId = 'default', eqBand
   const replayGainNodeRef = useRef<GainNode | null>(null);
   const pcmTapRef = useRef<AudioWorkletNode | null>(null);
   const exclusiveActiveRef = useRef(false);
+  const exclusiveMutedRef = useRef(false);
+  const exclusiveOpenedAtRef = useRef(0);
+  const latestPlayingRef = useRef(false);
   const lastReportAt = useRef(0);
   const bands = useMemo(
     () => MUSIC_EQ_FREQUENCIES.map((_, index) => {
@@ -179,6 +184,8 @@ export function MusicPlaybackRuntime({ state, outputDeviceId = 'default', eqBand
     }
   }, []);
 
+  useEffect(() => { latestPlayingRef.current = state?.isPlaying === true; }, [state?.isPlaying]);
+
   const applyOutputSink = useCallback(async () => {
     const audio = audioRef.current as (HTMLAudioElement & { setSinkId?: (deviceId: string) => Promise<void>; sinkId?: string }) | null;
     if (!audio) return;
@@ -233,6 +240,22 @@ export function MusicPlaybackRuntime({ state, outputDeviceId = 'default', eqBand
       });
     }
   }, [outputDeviceId, onOutputStatus]);
+
+  const restoreSharedAudioOutput = useCallback(async () => {
+    exclusiveActiveRef.current = false;
+    exclusiveMutedRef.current = false;
+    exclusiveOpenedAtRef.current = 0;
+    pcmTapRef.current?.port.postMessage({ type: 'exclusive', enabled: false });
+    await window.nexus.closeMusicWasapi().catch(() => undefined);
+    const context = audioContextRef.current;
+    if (context?.state === 'suspended') await context.resume().catch(() => undefined);
+    await applyOutputSink();
+    const audio = audioRef.current;
+    if (latestPlayingRef.current && audio?.paused) {
+      try { await audio.play(); }
+      catch (error) { window.nexus.reportMusicRuntime({ error: true, playing: false, errorMessage: `普通音频输出恢复失败：${error instanceof Error ? error.message : String(error)}` }); }
+    }
+  }, [applyOutputSink]);
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -336,9 +359,7 @@ export function MusicPlaybackRuntime({ state, outputDeviceId = 'default', eqBand
     const trackId = state?.currentTrackId;
     const tap = pcmTapRef.current;
     const disable = async () => {
-      exclusiveActiveRef.current = false;
-      tap?.port.postMessage({ type: 'exclusive', enabled: false });
-      await window.nexus.closeMusicWasapi().catch(() => undefined);
+      await restoreSharedAudioOutput();
       if (!cancelled) {
         onWasapiStatus?.({ state: 'off', message: 'WASAPI 独占输出已关闭', bitPerfect: false });
         await applyOutputSink();
@@ -366,7 +387,9 @@ export function MusicPlaybackRuntime({ state, outputDeviceId = 'default', eqBand
         return;
       }
       exclusiveActiveRef.current = true;
-      pcmTapRef.current?.port.postMessage({ type: 'exclusive', enabled: true });
+      exclusiveMutedRef.current = false;
+      exclusiveOpenedAtRef.current = Date.now();
+      pcmTapRef.current?.port.postMessage({ type: 'exclusive', enabled: true, mute: false });
       if (state?.isPlaying) await window.nexus.startMusicWasapi();
       onWasapiStatus?.({
         state: 'active',
@@ -376,18 +399,16 @@ export function MusicPlaybackRuntime({ state, outputDeviceId = 'default', eqBand
         channels: result.channels,
         bitPerfect: false,
         bitPerfectCandidate: result.bitPerfectCandidate,
-        message: `已打开 WASAPI 独占输出：${result.deviceName} · ${result.channels === 1 ? '单声道' : '立体声'} · ${result.format.toUpperCase()} · ${result.sampleRate} Hz。当前 Renderer PCM 传输路径不具备 bit-perfect 条件。`,
+        message: `WASAPI 端点已打开，正在确认 PCM 输出：${result.deviceName} · ${result.channels === 1 ? '单声道' : '立体声'} · ${result.format.toUpperCase()} · ${result.sampleRate} Hz。当前 Renderer PCM 传输路径不具备 bit-perfect 条件。`,
       });
       await applyOutputSink();
     };
     void open().catch(async error => {
       if (cancelled) return;
-      exclusiveActiveRef.current = false;
-      pcmTapRef.current?.port.postMessage({ type: 'exclusive', enabled: false });
-      await window.nexus.closeMusicWasapi().catch(() => undefined);
+      await restoreSharedAudioOutput();
       onWasapiStatus?.({
         state: 'error',
-        message: `WASAPI 独占输出失败：${error instanceof Error ? error.message : String(error)}`,
+        message: `WASAPI 独占输出失败：${error instanceof Error ? error.message : String(error)}；已恢复普通音频输出`,
         bitPerfect: false,
       });
       await applyOutputSink();
@@ -398,7 +419,7 @@ export function MusicPlaybackRuntime({ state, outputDeviceId = 'default', eqBand
       pcmTapRef.current?.port.postMessage({ type: 'exclusive', enabled: false });
       void window.nexus.closeMusicWasapi().catch(() => undefined);
     };
-  }, [exclusiveEnabled, exclusiveDeviceId, state?.currentTrackId, ensureAudioGraph, applyOutputSink]);
+  }, [exclusiveEnabled, exclusiveDeviceId, state?.currentTrackId, ensureAudioGraph, applyOutputSink, restoreSharedAudioOutput]);
 
   useEffect(() => {
     if (!exclusiveEnabled || !exclusiveActiveRef.current) return;
@@ -416,10 +437,7 @@ export function MusicPlaybackRuntime({ state, outputDeviceId = 'default', eqBand
         const native = await window.nexus.getMusicWasapiStatus();
         if (!alive || !native) return;
         if (native.error) {
-          exclusiveActiveRef.current = false;
-          pcmTapRef.current?.port.postMessage({ type: 'exclusive', enabled: false });
-          await window.nexus.closeMusicWasapi().catch(() => undefined);
-          await applyOutputSink();
+          await restoreSharedAudioOutput();
           onWasapiStatus?.({
             state: 'error',
             message: `WASAPI 输出中断：${native.error}；已恢复普通音频输出`,
@@ -433,17 +451,28 @@ export function MusicPlaybackRuntime({ state, outputDeviceId = 'default', eqBand
           });
           return;
         }
-        onWasapiStatus?.({
-          state: 'active',
-          message: native.underruns > 0
-            ? `独占输出运行中；累计缓冲欠载 ${native.underruns} 次`
-            : '独占输出运行中',
+        const openedForMs = exclusiveOpenedAtRef.current ? Date.now() - exclusiveOpenedAtRef.current : 0;
+        if (latestPlayingRef.current && openedForMs > 2500 && (native.acceptedBytes <= 0 || native.framesRendered <= 0)) {
+          await restoreSharedAudioOutput();
+          onWasapiStatus?.({ state: 'error', message: 'WASAPI 端点已打开，但未检测到有效 PCM 帧输出；已自动恢复普通音频输出。请检查设备状态后再试。',
+            deviceName: native.deviceName, format: native.format, sampleRate: native.sampleRate,
+            acceptedBytes: native.acceptedBytes, framesRendered: native.framesRendered, bitPerfect: false });
+          return;
+        }
+        if (native.acceptedBytes > 0 && native.framesRendered > 0 && !exclusiveMutedRef.current) {
+          exclusiveMutedRef.current = true;
+          pcmTapRef.current?.port.postMessage({ type: 'exclusive', enabled: true, mute: true });
+        }
+        onWasapiStatus?.({ state: 'active',
+          message: native.acceptedBytes > 0 && native.framesRendered > 0
+            ? (native.underruns > 0 ? `独占 PCM 已送入输出流；累计缓冲欠载 ${native.underruns} 次` : '独占 PCM 输出流已确认')
+            : '独占端点已打开，正在等待 PCM 数据…',
           deviceName: native.deviceName,
           format: native.format,
           sampleRate: native.sampleRate,
           bufferedBytes: native.bufferedBytes,
           underruns: native.underruns,
-          droppedFrames: native.droppedFrames,
+          droppedFrames: native.droppedFrames, acceptedBytes: native.acceptedBytes, framesRendered: native.framesRendered,
           bitPerfect: false,
         });
       } catch (error) {
@@ -457,7 +486,7 @@ export function MusicPlaybackRuntime({ state, outputDeviceId = 'default', eqBand
     void refreshStatus();
     const timer = window.setInterval(() => void refreshStatus(), 1000);
     return () => { alive = false; window.clearInterval(timer); };
-  }, [exclusiveEnabled, onWasapiStatus, applyOutputSink]);
+  }, [exclusiveEnabled, onWasapiStatus, restoreSharedAudioOutput]);
 
   useEffect(() => {
     if (!sleepTimerEndsAt) return;
@@ -762,12 +791,12 @@ export function MusicReplayGainControls({ state, settings, updateSettings }: {
 
 export function MusicLyricsPanel({ state }: { state: MusicState | null }) {
   const track = activeTrack(state);
-  const [lines, setLines] = useState<MusicLyricLine[]>([]);
+  const [lyrics, setLyrics] = useState<MusicLyricsResult>({ lines: [], synced: false, source: 'none' });
   const [loaded, setLoaded] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
   useEffect(() => {
     let alive = true;
-    setLines([]);
+    setLyrics({ lines: [], synced: false, source: 'none' });
     setLoaded(false);
     if (!track?.id) {
       setLoaded(true);
@@ -775,13 +804,14 @@ export function MusicLyricsPanel({ state }: { state: MusicState | null }) {
     }
     void window.nexus.getMusicLyrics(track.id).then(result => {
       if (!alive) return;
-      setLines(Array.isArray(result) ? result : []);
+      setLyrics(result && Array.isArray(result.lines) ? result : { lines: [], synced: false, source: 'none' });
       setLoaded(true);
     }).catch(() => {
-      if (alive) { setLines([]); setLoaded(true); }
+      if (alive) { setLyrics({ lines: [], synced: false, source: 'none' }); setLoaded(true); }
     });
     return () => { alive = false; };
   }, [track?.id, reloadKey]);
+  const lines = lyrics.lines;
   const currentIndex = useMemo(() => {
     const time = Math.max(0, state?.currentTime ?? 0);
     let low = 0, high = lines.length - 1, found = -1;
@@ -798,7 +828,7 @@ export function MusicLyricsPanel({ state }: { state: MusicState | null }) {
   const next = currentIndex >= 0 ? lines[currentIndex + 1] ?? null : lines[0] ?? null;
   return <section className="nm-lyrics-panel">
     <header>
-      <span><b>同步歌词</b><small>{track?.title ?? '尚未选择歌曲'} · 本地 LRC</small></span>
+      <span><b>同步歌词</b><small>{track?.title ?? '尚未选择歌曲'} · {lyrics.source === 'local' ? '本地 LRC' : lyrics.source === 'online' ? (lyrics.synced ? '在线同步歌词' : '在线纯文本歌词') : '自动搜索'}</small></span>
       <button type="button" className="btn-secondary" disabled={!track} onClick={() => setReloadKey(value => value + 1)}>重新读取</button>
     </header>
     {!track
@@ -806,12 +836,14 @@ export function MusicLyricsPanel({ state }: { state: MusicState | null }) {
       : !loaded
         ? <div className="nm-lyrics-empty">正在读取本地歌词…</div>
         : lines.length === 0
-          ? <div className="nm-lyrics-empty">未找到可用歌词。将 UTF-8 的同名 .lrc 文件放在音频文件旁即可；不会联网搜索或上传。</div>
-          : <div className="nm-lyrics-current">
+          ? <div className="nm-lyrics-empty">未找到可用歌词，已尝试在线搜索；可以稍后重新读取。</div>
+          : !lyrics.synced
+            ? <div className="nm-lyrics-plain">{lines.map((line, index) => <p key={index}>{line.text}</p>)}</div>
+            : <div className="nm-lyrics-current">
               <strong>{current?.text || '♪'}</strong>
               <span>{next?.text || ' '}</span>
             </div>}
-    <footer>歌词仅从歌曲同目录同名 .lrc 读取；时间戳按播放进度同步。</footer>
+    <footer>{lyrics.source === 'online' ? '歌词来自 LRCLIB；仅查询曲名、艺术家、专辑和时长，不会上传音频文件。' : '优先读取同名本地 LRC；未找到时自动在线搜索，时间戳歌词按播放进度同步。'}</footer>
   </section>;
 }
 

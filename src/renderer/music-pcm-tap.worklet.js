@@ -2,13 +2,15 @@ class NexusMusicPcmTap extends AudioWorkletProcessor {
   constructor() {
     super();
     this.exclusive = false;
+    this.muteOutput = false;
     this.batchFrames = 1024;
     this.buffer = new Float32Array(this.batchFrames * 2);
     this.offset = 0;
     this.port.onmessage = event => {
       if (event.data && event.data.type === 'exclusive') {
         this.exclusive = event.data.enabled === true;
-        if (!this.exclusive) this.offset = 0;
+        this.muteOutput = this.exclusive && event.data.mute === true;
+        if (!this.exclusive) { this.offset = 0; this.muteOutput = false; }
       }
     };
   }
@@ -22,14 +24,14 @@ class NexusMusicPcmTap extends AudioWorkletProcessor {
 
     const outLeft = output[0];
     const outRight = output[1] || output[0];
-    if (!this.exclusive) {
+    if (this.muteOutput) {
+      outLeft.fill(0);
+      if (output[1]) outRight.fill(0);
+    } else {
       outLeft.set(left);
       if (output[1]) outRight.set(right);
-      return true;
     }
-
-    outLeft.fill(0);
-    if (output[1]) outRight.fill(0);
+    if (!this.exclusive) return true;
     for (let frame = 0; frame < left.length; frame++) {
       this.buffer[this.offset++] = left[frame];
       this.buffer[this.offset++] = right[frame];
