@@ -1142,14 +1142,12 @@ function UsbDisplayPage({settings,updateSettings,notify}:any){
   const [busy,setBusy]=useState(false);
   const mode=settings.usbDisplayMode??'monitor';
   const persistedDisplay=displays.find(display=>display.id===String(settings.usbDisplayDisplayId??''))??null;
-  const fallbackDisplay=displays.find(display=>!display.primary)??null;
-  const selectedDisplay=persistedDisplay??fallbackDisplay;
+  const selectedDisplay=persistedDisplay;
   const activeDisplay=displayStatus.open?displays.find(display=>display.id===displayStatus.targetDisplayId)??selectedDisplay:selectedDisplay;
   const refresh=useCallback(async()=>{
     try{
       const [found,status]=await Promise.all([window.nexus.getDesktopDisplays(),window.nexus.getUsbDisplayStatus()]);
       setDisplays(Array.isArray(found)?found:[]);setDisplayStatus(status??{open:false,targetDisplayId:null});
-      if(Array.isArray(found)){const saved=found.find((display:UsbDisplayInfo)=>display.id===String(settings.usbDisplayDisplayId??''));const external=found.find((display:UsbDisplayInfo)=>!display.primary);if(!saved&&external)updateSettings({usbDisplayDisplayId:external.id});}
     }catch(error){console.warn('USB display discovery failed',error);}
   },[settings.usbDisplayDisplayId,updateSettings]);
   useEffect(()=>{void refresh();const timer=window.setInterval(()=>void refresh(),5000);const off=window.nexus.onDesktopDisplaysChanged(()=>void refresh());const statusOff=window.nexus.onUsbDisplayStatusChanged(value=>setDisplayStatus(value));return()=>{window.clearInterval(timer);off();statusOff();};},[refresh]);
@@ -1173,10 +1171,11 @@ function UsbDisplayPage({settings,updateSettings,notify}:any){
         <div className="panel-heading"><div><span className="card-kicker">DISPLAY TARGET</span><h3>显示器与运行状态</h3></div><MonitorPlay size={19}/></div>
         <div className="usb-display-status-card usb-display-status-card-v2"><div className={`usb-display-status-icon ${displayStatus.open?'active':''}`}><Monitor size={25}/></div><div><b>{displayStatus.open?'5 寸副屏窗口正在显示':'5 寸副屏尚未启动'}</b><span>{activeDisplay?`${activeDisplay.label} · ${activeDisplay.width} × ${activeDisplay.height} · ${activeDisplay.primary?'主显示器':'扩展显示器'}`:'请选择已连接的扩展显示器'}</span></div><span className={`status-dot ${displayStatus.open?'online':''}`}/></div>
         <label className="field-label">目标显示器</label>
-        <select className="select-input" value={String(settings.usbDisplayDisplayId??'')} onChange={e=>updateSettings({usbDisplayDisplayId:e.target.value})}>
-          <option value="">自动选择第二块显示器</option>
+        <select className="select-input" value={persistedDisplay?String(settings.usbDisplayDisplayId??''):''} onChange={e=>updateSettings({usbDisplayDisplayId:e.target.value})}>
+          <option value="">请选择五寸屏对应的显示器</option>
           {displays.map(display=><option key={display.id} value={display.id}>{display.label} · {display.width}×{display.height}{display.primary?' · 主屏':''}</option>)}
         </select>
+        {settings.usbDisplayDisplayId&&!persistedDisplay&&<p className="panel-note">上次保存的显示器目前未检测到。为避免误把其他外接屏当成五寸屏，请重新选择目标显示器；程序不会自动切换到其他屏幕。</p>}
         <div className="usb-display-actions"><button className="btn-primary" disabled={busy||displayStatus.open} onClick={()=>void start()}><Play size={15}/>{busy?'处理中…':'启动副屏'}</button><button className="btn-secondary" disabled={busy||!displayStatus.open} onClick={()=>void close()}><Power size={15}/>关闭副屏</button><button className="icon-button" title="刷新显示器" onClick={()=>void refresh()}><RefreshCw size={15}/></button></div>
         <p className="panel-note">副屏输出只控制 NexusMonitor 的独立窗口，不改变 Windows 的扩展桌面模式。关闭输出窗口后，Windows 仍保持扩展显示。</p>
         {displays.length>0&&<div className="usb-display-list">{displays.map(display=><div key={display.id}><span className="display-number">{display.index}</span><span><b>{display.label}{display.primary?'（主屏）':''}</b><small>{display.width} × {display.height} · 坐标 {display.x}, {display.y} · 缩放 {Math.round(display.scaleFactor*100)}%</small></span><span className={`display-tag ${display.id===String(settings.usbDisplayDisplayId??'')?'selected':''}`}>{display.id===String(settings.usbDisplayDisplayId??'')?'当前目标':display.primary?'主屏':'可选'}</span></div>)}</div>}
