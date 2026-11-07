@@ -31,13 +31,13 @@ Control files `ZIP-CONTENTS.md` and the source manifest are included in the ZIP;
 | `NexusMonitor-2.1.8-HANDOFF-CN.md` | 4580 |
 | `NexusMonitor-2.1.8-Windows-验收命令.txt` | 668 |
 | `NexusMonitor-2.2.0-BUILD-RELEASE.cjs` | 3050 |
-| `NexusMonitor-2.2.0-BUILD-REPORT.md` | 4493 |
+| `NexusMonitor-2.2.0-BUILD-REPORT.md` | 4844 |
 | `NexusMonitor-2.2.0-HANDOFF-CN.md` | 7251 |
 | `NexusMonitor-2.2.0-Windows-验收命令.txt` | 2930 |
-| `NexusMonitor-DEVELOPMENT-LOG-CN.md` | 37069 |
+| `NexusMonitor-DEVELOPMENT-LOG-CN.md` | 37388 |
 | `PROTOCOL_REFERENCE.md` | 7966 |
 | `README.md` | 9165 |
-| `START-HERE-NEXT-GPT.md` | 5611 |
+| `START-HERE-NEXT-GPT.md` | 5683 |
 | `VERSION` | 6 |
 | `build-and-run.bat` | 123 |
 | `build-only.bat` | 1989 |
