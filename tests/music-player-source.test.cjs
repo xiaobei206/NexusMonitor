@@ -320,3 +320,42 @@ test('native WASAPI backend is built on Windows, packaged outside ASAR, and only
   assert.match(cpp, /napi_get_buffer_info/);
   assert.match(buildScript, /node-gyp@13\.1\.0/);
 });
+
+test('native WASAPI exclusive output is wired from trusted IPC through AudioWorklet PCM to one shared audio host', () => {
+  const main = read('src/main/index.ts');
+  const preload = read('src/preload/index.ts');
+  const types = read('src/renderer/vite-env.d.ts');
+  const app = read('src/renderer/App.tsx');
+  const player = read('src/renderer/music-player.tsx');
+  const worklet = read('src/renderer/music-pcm-tap.worklet.js');
+  const service = read('src/main/music-exclusive-output.ts');
+  assert.match(main, /new MusicExclusiveOutput\(\)/);
+  assert.match(main, /event\.sender !== mainWindow\.webContents/);
+  assert.match(main, /music:wasapi-open/);
+  assert.match(main, /music:wasapi-pcm/);
+  assert.match(main, /writeFloat32Pcm\(data\)/);
+  assert.match(preload, /openMusicWasapi/);
+  assert.match(preload, /writeMusicWasapiPcm/);
+  assert.match(types, /getMusicWasapiDevices\(\)/);
+  assert.match(app, /exclusiveEnabled=\{settings\.musicWasapiEnabled === true\}/);
+  assert.match(app, /onWasapiStatus=\{setMusicWasapiStatus\}/);
+  assert.match(player, /new AudioWorkletNode\(context, 'nexus-music-pcm-tap'/);
+  assert.match(player, /writeMusicWasapiPcm\(pcm\)/);
+  assert.match(player, /openMusicWasapi\(exclusiveDeviceId, trackId, context\.sampleRate\)/);
+  assert.match(player, /bitPerfect: false/);
+  assert.match(player, /WASAPI 独占输出/);
+  assert.match(worklet, /registerProcessor\('nexus-music-pcm-tap'/);
+  assert.match(worklet, /this\.port\.postMessage\(\{ type: 'pcm'/);
+  assert.match(service, /transport: 'renderer-float32-pcm'/);
+  assert.match(service, /bitPerfect: false/);
+});
+
+test('exclusive mode cleanup restores the ordinary output path and serializes audio graph initialization', () => {
+  const player = read('src/renderer/music-player.tsx');
+  assert.match(player, /audioGraphPromiseRef = useRef<Promise<AudioContext> \| null>/);
+  assert.match(player, /if \(audioGraphPromiseRef\.current\) return audioGraphPromiseRef\.current/);
+  assert.match(player, /port\.postMessage\(\{ type: 'exclusive', enabled: false \}\)/);
+  assert.match(player, /await window\.nexus\.closeMusicWasapi\(\)/);
+  assert.match(player, /if \(exclusiveActiveRef\.current\)/);
+  assert.match(player, /await applyOutputSink\(\)/);
+});
