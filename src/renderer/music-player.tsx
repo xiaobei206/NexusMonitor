@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { PointerEvent as ReactPointerEvent, ReactNode } from 'react';
 import {
-  Music2, Play, Pause, SkipBack, SkipForward, ListMusic, FolderOpen, Plus,
+  Music2, Play, Pause, SkipBack, SkipForward, ListMusic, Folder, FolderOpen, Plus,
   Trash2, Shuffle, Repeat, Volume2, Search, X, ListPlus, Disc3, ArrowUp, ArrowDown,
 } from 'lucide-react';
 import type { AppSettings, MusicCommand, MusicState, MusicTrack } from '../shared/types';
