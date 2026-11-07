@@ -803,6 +803,17 @@ export function MusicLibraryPage({ state, onCommand, notify, settings, updateSet
     const result = await window.nexus.chooseMusicFolder();
     if (result.added || result.skipped) notify(`文件夹扫描完成：导入 ${result.added} 个音频文件，跳过 ${result.skipped} 个${result.truncated ? '（达到 5000 个文件扫描上限）' : ''}`);
   };
+  const importPlaylist = async () => {
+    const result = await window.nexus.importMusicPlaylist();
+    if (result.ok) notify(`已导入歌单“${result.name ?? 'M3U'}”：${result.added} 首新歌曲，${result.skipped} 个跳过`);
+    else if (result.message) notify(result.message);
+  };
+  const exportPlaylist = async () => {
+    if (!currentPlaylist) return;
+    const result = await window.nexus.exportMusicPlaylist(currentPlaylist.id);
+    if (result.ok) notify(`歌单已导出：${result.count ?? 0} 首歌曲`);
+    else if (!result.canceled && result.message) notify(`导出失败：${result.message}`);
+  };
   const createPlaylist = () => {
     const name = window.prompt('请输入歌单名称');
     if (name?.trim()) onCommand({ type: 'create-playlist', name: name.trim() });
@@ -826,6 +837,7 @@ export function MusicLibraryPage({ state, onCommand, notify, settings, updateSet
     <div className="nm-library-heading">
       <div><span>MUSIC / LOCAL LIBRARY</span><h1>音乐播放器</h1><p>曲库、专辑、艺术家、流派、文件夹与歌单 · 全局共享播放</p></div>
       <div className="nm-library-actions">
+        <button type="button" className="btn-secondary" onClick={() => void importPlaylist()}><ListMusic size={15}/>导入 M3U</button>
         <button type="button" className="btn-secondary" onClick={() => void importFolder()}><FolderOpen size={15}/>导入文件夹</button>
         <button type="button" className="btn-primary" onClick={() => void importFiles()}><Plus size={15}/>添加音频</button>
       </div>
@@ -860,6 +872,7 @@ export function MusicLibraryPage({ state, onCommand, notify, settings, updateSet
           <ListMusic size={15}/><span>{playlist.name}</span><small>{playlist.trackIds.length}</small>
         </button>)}
         {currentPlaylist && <div className="nm-playlist-management">
+          <button type="button" onClick={exportPlaylist}>导出 M3U8</button>
           <button type="button" onClick={renamePlaylist}>重命名</button>
           <button type="button" onClick={() => { if (window.confirm(`删除歌单“${currentPlaylist.name}”？歌曲文件不会被删除。`)) onCommand({ type: 'delete-playlist', playlistId: currentPlaylist.id }); }}>删除歌单</button>
         </div>}
