@@ -30,6 +30,16 @@ const formatTime = (value: number) => {
   return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
 };
 const activeTrack = (state: MusicState | null) => state?.tracks.find(track => track.id === state.currentTrackId) ?? null;
+function TrackArtwork({ trackId, className, fallback }: { trackId: string | null; className: string; fallback: ReactNode }) {
+  const [url, setUrl] = useState<string | null>(null);
+  useEffect(() => {
+    let alive = true;
+    setUrl(null);
+    if (trackId) void window.nexus.getMusicArtworkUrl(trackId).then(value => { if (alive) setUrl(value); }).catch(() => { if (alive) setUrl(null); });
+    return () => { alive = false; };
+  }, [trackId]);
+  return url ? <img className={`${className} has-image`} src={url} alt="" draggable={false}/> : <span className={className}>{fallback}</span>;
+}
 const repeatLabel = (repeat: MusicState['repeat']) => repeat === 'one' ? '单曲循环' : repeat === 'all' ? '列表循环' : '不循环';
 const stopWidgetDrag = (event: ReactPointerEvent) => event.stopPropagation();
 
@@ -159,10 +169,10 @@ export function MusicMiniPlayer({ state, onCommand }: { state: MusicState | null
     <div className="nm-widget-player-main">
       <button type="button" className="nm-widget-player-info" onClick={() => setOpen(value => !value)}
         aria-expanded={open} title="打开迷你播放器" data-no-widget-drag="true">
-        <span className="nm-player-art"><Music2 size={18}/></span>
+        <TrackArtwork trackId={track?.id ?? null} className="nm-player-art" fallback={<Music2 size={18}/>} />
         <span className="nm-player-copy">
           <b>{track?.title ?? '尚未选择歌曲'}</b>
-          <small>{track?.missing ? '文件已移动或删除' : track?.artist ?? '添加本地 MP3 开始播放'}</small>
+          <small>{track?.missing ? '文件已移动或删除' : track?.artist ?? '添加本地音频开始播放'}</small>
         </span>
         <ListMusic size={16} className="nm-player-list-indicator"/>
       </button>
@@ -203,8 +213,8 @@ export function MusicPlayerDock({ state, onCommand, onOpen }: {
   const track = activeTrack(state);
   return <div className="nm-music-dock">
     <button type="button" className="nm-dock-track" onClick={onOpen}>
-      <span className="nm-dock-art"><Disc3 size={20}/></span>
-      <span><b>{track?.title ?? '尚未选择歌曲'}</b><small>{track?.artist ?? '打开音乐库导入 MP3'}</small></span>
+      <TrackArtwork trackId={track?.id ?? null} className="nm-dock-art" fallback={<Disc3 size={20}/>} />
+      <span><b>{track?.title ?? '尚未选择歌曲'}</b><small>{track?.artist ?? '打开音乐库导入音频'}</small></span>
     </button>
     <div className="nm-dock-center">
       <div className="nm-dock-controls">
@@ -233,16 +243,16 @@ export function MusicLibraryPage({ state, onCommand, notify }: {
     if (!state) return [];
     const ids = currentPlaylist ? new Set(currentPlaylist.trackIds) : null;
     const needle = query.trim().toLocaleLowerCase();
-    return state.tracks.filter(track => (!ids || ids.has(track.id)) && (!needle || `${track.title} ${track.artist}`.toLocaleLowerCase().includes(needle)));
+    return state.tracks.filter(track => (!ids || ids.has(track.id)) && (!needle || `${track.title} ${track.artist} ${track.album ?? ''} ${track.genre ?? ''}`.toLocaleLowerCase().includes(needle)));
   }, [state, currentPlaylist, query]);
 
   const importFiles = async () => {
     const result = await window.nexus.chooseMusicFiles();
-    if (result.added || result.skipped) notify(`已导入 ${result.added} 首 MP3，跳过 ${result.skipped} 个文件`);
+    if (result.added || result.skipped) notify(`已导入 ${result.added} 个音频文件，跳过 ${result.skipped} 个文件`);
   };
   const importFolder = async () => {
     const result = await window.nexus.chooseMusicFolder();
-    if (result.added || result.skipped) notify(`文件夹扫描完成：导入 ${result.added} 首，跳过 ${result.skipped} 首${result.truncated ? '（达到 5000 首扫描上限）' : ''}`);
+    if (result.added || result.skipped) notify(`文件夹扫描完成：导入 ${result.added} 个音频文件，跳过 ${result.skipped} 个${result.truncated ? '（达到 5000 个文件扫描上限）' : ''}`);
   };
   const createPlaylist = () => {
     const name = window.prompt('请输入歌单名称');
@@ -256,15 +266,15 @@ export function MusicLibraryPage({ state, onCommand, notify }: {
   const playAll = () => {
     const first = visibleTracks.find(track => !track.missing);
     if (first) onCommand({ type: 'play-track', trackId: first.id });
-    else notify('当前列表没有可播放的 MP3 文件');
+    else notify('当前列表没有可播放的本地音频文件');
   };
 
   return <div className="nm-library-page">
     <div className="nm-library-heading">
-      <div><span>MUSIC / LOCAL LIBRARY</span><h1>音乐播放器</h1><p>本地 MP3 · 歌单管理 · 全局共享播放队列</p></div>
+      <div><span>MUSIC / LOCAL LIBRARY</span><h1>音乐播放器</h1><p>本地音频 · 标签与封面 · 歌单管理 · 全局共享播放</p></div>
       <div className="nm-library-actions">
         <button type="button" className="btn-secondary" onClick={() => void importFolder()}><FolderOpen size={15}/>导入文件夹</button>
-        <button type="button" className="btn-primary" onClick={() => void importFiles()}><Plus size={15}/>添加 MP3</button>
+        <button type="button" className="btn-primary" onClick={() => void importFiles()}><Plus size={15}/>添加音频</button>
       </div>
     </div>
     <div className="nm-library-layout">
@@ -294,12 +304,12 @@ export function MusicLibraryPage({ state, onCommand, notify }: {
         {state?.playlists.length ? <div className="nm-add-playlist-row"><label>将歌曲加入歌单</label><select value={targetPlaylist} onChange={event => setTargetPlaylist(event.target.value)}><option value="">选择歌单</option>{state.playlists.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select><span>在“全部歌曲”中使用每首歌右侧的加入按钮。</span></div> : null}
         <div className="nm-track-list">
           <div className="nm-track-list-head"><span>#</span><span>歌曲</span><span>格式</span><span>操作</span></div>
-          {visibleTracks.length === 0 ? <div className="nm-library-empty"><Music2 size={28}/><b>{state?.tracks.length ? '没有匹配的歌曲' : '音乐库还是空的'}</b><span>导入本地 MP3 文件或整个音乐文件夹，即可建立自己的歌单。</span></div> :
+          {visibleTracks.length === 0 ? <div className="nm-library-empty"><Music2 size={28}/><b>{state?.tracks.length ? '没有匹配的歌曲' : '音乐库还是空的'}</b><span>导入本地音频文件或整个音乐文件夹，即可建立自己的歌单。</span></div> :
             visibleTracks.map((track: MusicTrack, index) => <div key={track.id} className={`nm-track-row ${state?.currentTrackId === track.id ? 'playing' : ''} ${track.missing ? 'missing' : ''}`}
               onDoubleClick={() => !track.missing && onCommand({ type: 'play-track', trackId: track.id })}>
               <span className="nm-track-index">{state?.currentTrackId === track.id && state.isPlaying ? <span className="nm-playing-bars">▮▮</span> : String(index + 1).padStart(2, '0')}</span>
               <span className="nm-track-name"><b>{track.title}</b><small>{track.missing ? '文件不存在或已移动' : track.artist}</small></span>
-              <span className="nm-track-format">MP3</span>
+              <span className="nm-track-format">{track.format ?? 'AUDIO'}</span>
               <span className="nm-track-row-actions">
                 <button type="button" title="播放歌曲" disabled={track.missing} onClick={() => onCommand({ type: 'play-track', trackId: track.id })}><Play size={14}/></button>
                 {targetPlaylist && !currentPlaylist && <button type="button" title="加入所选歌单" onClick={() => onCommand({ type: 'add-to-playlist', trackId: track.id, playlistId: targetPlaylist })}><ListPlus size={15}/></button>}
