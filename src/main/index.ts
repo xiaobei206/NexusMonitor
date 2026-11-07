@@ -19,6 +19,11 @@ import { calculateWidgetDetailLayout } from './widget-detail-window';
 import { isFullscreenOnWidgetDisplay } from './fullscreen-detection';
 import { resolveUsbDisplayWindowBounds } from './usb-display-window';
 
+// Music controls may arrive from a separate HUD/USB BrowserWindow after an explicit
+// user click there. The shared, hidden main-renderer audio element must be allowed to
+// start in response to that trusted IPC command; playback state is always restored paused.
+app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
+
 const SERVICE_PORT = 18765;
 const SERVICE_URL = `http://127.0.0.1:${SERVICE_PORT}`;
 const SNAPSHOT_TIMEOUT_MS = 6_000;
