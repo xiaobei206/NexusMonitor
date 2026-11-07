@@ -143,3 +143,18 @@ test('music library exposes separate album artist genre and folder group views',
   assert.match(player, /nm-library-groups/);
   assert.match(player, /getMusicLibraryGroup\(track, view\)\.id !== selectedGroupId/);
 });
+
+test('codec and playback failures reach the shared MusicState and remain visible in controls', () => {
+  const types = read('src/shared/types.ts');
+  const main = read('src/main/index.ts');
+  const preload = read('src/preload/index.ts');
+  const player = read('src/renderer/music-player.tsx');
+  assert.match(types, /errorMessage\?: string \| null/);
+  assert.match(main, /errorMessage: payload\.errorMessage\?\.trim\(\)/);
+  assert.match(main, /errorMessage: null/);
+  assert.match(preload, /errorMessage\?: string/);
+  assert.match(player, /音频解码失败/);
+  assert.match(player, /当前 Electron Chromium 不支持此音频编码/);
+  assert.match(player, /nm-player-error/);
+  assert.match(player, /nm-playback-error/);
+});
