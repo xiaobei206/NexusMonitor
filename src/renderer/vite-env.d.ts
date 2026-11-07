@@ -2,7 +2,15 @@
 
 interface Window {
   nexus: {
-    getSettings(): Promise<any>; saveSettings(settings: Record<string, unknown>): Promise<any>; onSettingsUpdated(callback: (settings: Record<string, unknown>) => void): () => void; getWeatherKeyStatus(source:string):Promise<{configured:boolean}>; saveWeatherApiKey(source:string,key:string):Promise<{ok:boolean;configured?:boolean;message?:string}>; setStartup(value:boolean): Promise<boolean>;
+    getSettings(): Promise<any>;
+    getMusicState(): Promise<import('../shared/types').MusicState>;
+    chooseMusicFiles(): Promise<{added:number;skipped:number}>;
+    chooseMusicFolder(): Promise<{added:number;skipped:number}>;
+    getMusicTrackUrl(trackId:string): Promise<string | null>;
+    musicCommand(command:import('../shared/types').MusicCommand):Promise<import('../shared/types').MusicState>;
+    reportMusicRuntime(payload:{currentTime?:number;duration?:number;playing?:boolean;error?:boolean}):void;
+    onMusicState(callback:(state:import('../shared/types').MusicState)=>void):()=>void;
+    onMusicEngineCommand(callback:(command:{type:'seek';seconds:number})=>void):()=>void; saveSettings(settings: Record<string, unknown>): Promise<any>; onSettingsUpdated(callback: (settings: Record<string, unknown>) => void): () => void; getWeatherKeyStatus(source:string):Promise<{configured:boolean}>; saveWeatherApiKey(source:string,key:string):Promise<{ok:boolean;configured?:boolean;message?:string}>; setStartup(value:boolean): Promise<boolean>;
     getSnapshot(): Promise<any>; getSnapshotResult(): Promise<import('../shared/types').SnapshotResult>; getDevices(): Promise<any>; getWeather(): Promise<any>;
     chooseBackground(): Promise<string | null>; openPath(path: string): Promise<string>; openUrl(url: string): Promise<void>;
     showMain(): Promise<void>; minimize(): Promise<void>; close(): Promise<void>; toggleMaximize(): Promise<boolean>;
