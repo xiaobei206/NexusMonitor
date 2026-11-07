@@ -1,4 +1,4 @@
-# NexusMonitor 2.2.0 — Electron Edition (stable baseline; 2.2.1 music refactor in progress)
+# NexusMonitor 2.2.1 — Electron Edition (development branch; 2.2.0 remains the stable main baseline)
 
 > **新对话 / 新开发者接手：先读 [START-HERE-NEXT-GPT.md](START-HERE-NEXT-GPT.md) 和根目录 [AGENTS.md](AGENTS.md)。** 入口文档列出阅读顺序、源码目录地图、验证命令与硬件验收边界。
 
@@ -31,7 +31,7 @@ The Electron 45 stable channel was current at the project date, and its release 
 - USB 5-inch Windows extended-display page: display selection, independent output window, hardware monitoring, static/GIF wallpaper, weather clock, local video and desktop-wallpaper + background-music modes; true USB-panel backlight control is intentionally deferred pending firmware command confirmation
 - Wujiang/Suzhou weather and US AQI from Open-Meteo, with six upcoming hourly records and six future daily records for the Turing weather-clock screen
 - Local shortcut list and manifest-based plugin inventory
-- Unified local Music Service: single main-Renderer playback host, shared controls across the main UI / HUD / non-video USB modes; the 2.2.1 branch adds common audio import formats, best-effort embedded metadata / artwork and the sixth desktop-wallpaper + background-music mode (codec playback and output routing remain under validation)
+- Unified local Music Service: one persistent main-Renderer playback host; Nora-style songs / albums / artists / genres / folders / playlists library; best-effort embedded tags and artwork; shared controls across main UI / HUD / non-video USB modes; selectable Windows output endpoint and the sixth desktop-wallpaper + background-music mode (actual codec playback and physical output routing still need target-PC validation)
 - Vertical HUD mini-player inserted above the existing weather block without reordering the weather, clock or hardware metrics
 - Main window closes to the system tray; the hidden main renderer stays alive for playback and Turing display refresh
 - Saved USB 5-inch display target reopens on startup before HardwareService startup; delayed display enumeration is retried without guessing a different monitor
@@ -75,10 +75,9 @@ NexusMonitor source in this package is provided for the user's development/testi
 
 ## Current source handoff
 
-For the current version, read `NexusMonitor-2.1.8-HANDOFF-CN.md` first, then the single cross-version history `NexusMonitor-DEVELOPMENT-LOG-CN.md`. All historical release reports and duplicate handoff/prompt documents have been consolidated into those two files. The Turing protocol remains documented in `PROTOCOL_REFERENCE.md`; focused engineering references remain under `docs/`.
+The stable `main` baseline is version 2.2.0. The 2.2.1 music platform refactor is in `feature/2.2.1-music-platform`, PR #2. Start with `START-HERE-NEXT-GPT.md`, then read `NexusMonitor-2.2.1-HANDOFF-CN.md`, `docs/MUSIC-PLATFORM-2.2.1-CN.md`, and the unique cross-version `NexusMonitor-DEVELOPMENT-LOG-CN.md`. Always re-check the branch HEAD and Actions status before relying on a CI result.
 
-The 2.1.8 Windows Electron/Renderer/.NET build and NSIS installer are verified by [GitHub Actions run 42239092025](https://github.com/xiaobei206/NexusMonitor/actions/runs/42239092025), and the installer is published under [Release v2.1.8](https://github.com/xiaobei206/NexusMonitor/releases/tag/v2.1.8). This does **not** claim physical COM3, USB 5-inch display, multi-monitor placement or first-launch GUI acceptance; those still require the target Windows machine.
-
+The latest verified application-code CI at the time of this document is [Run #44](https://github.com/xiaobei206/NexusMonitor/actions/runs/42344000038): 14/14 version checks, 195/195 Node tests, Renderer/Vite production build, PawnIO resource validation, .NET Release build (0 warnings / 0 errors), and Storage Tests. That run checked app-code HEAD `fafbe3e24c9e5127de6608bb72c9cacd3a65aaea`; later commits in this branch include documentation updates, so verify current HEAD before continuing. No 2.2.1 installer or Release has been published by the PR workflow. Physical USB / Turing / speaker / multi-display / codec acceptance remains pending on the target Windows PC.
 
 ## Intel Alder Lake Iris Xe GT temperature experiment
 
