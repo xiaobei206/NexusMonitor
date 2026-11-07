@@ -20,6 +20,7 @@ import { isFullscreenOnWidgetDisplay } from './fullscreen-detection';
 import { resolveUsbDisplayWindowBounds } from './usb-display-window';
 import { musicFormatLabel, readMusicMetadata } from './music-metadata';
 import { parseLrc } from './music-lyrics';
+import { parseM3u, serializeM3u } from './music-playlist';
 
 // Music controls may arrive from a separate HUD/USB BrowserWindow after an explicit
 // user click there. The shared, hidden main-renderer audio element must be allowed to
@@ -325,7 +326,7 @@ function musicQueueIds() {
   const ids = active ? active.trackIds : musicState.tracks.map(track => track.id);
   return ids.filter(id => musicState.tracks.some(track => track.id === id));
 }
-function importMusicPaths(paths: string[]) {
+function importMusicPaths(paths: string[], addToActivePlaylist = true) {
   const existing = new Set(musicState.tracks.map(track => resolve(track.path).toLowerCase()));
   let added = 0, skipped = 0;
   for (const rawPath of paths) {
@@ -358,7 +359,7 @@ function importMusicPaths(paths: string[]) {
         addedAt: new Date().toISOString(),
       };
       musicState.tracks.push(track);
-      if (musicState.activePlaylistId) {
+      if (addToActivePlaylist && musicState.activePlaylistId) {
         const playlist = musicState.playlists.find(item => item.id === musicState.activePlaylistId);
         if (playlist) playlist.trackIds.push(track.id);
       }
@@ -367,6 +368,41 @@ function importMusicPaths(paths: string[]) {
   }
   if (added) persistAndPublishMusicState();
   return { added, skipped };
+}
+function importMusicPlaylist(filePath: string) {
+  try {
+    const info = statSync(filePath);
+    if (!info.isFile() || info.size <= 0 || info.size > 8 * 1024 * 1024) {
+      return { ok: false, added: 0, skipped: 0, message: 'M3U 文件为空或超过 8 MiB 限制' };
+    }
+    const entries = parseM3u(readFileSync(filePath, 'utf8'));
+    const candidatePaths = entries.map(entry => isAbsolute(entry.location)
+      ? resolve(entry.location)
+      : resolve(dirname(filePath), entry.location));
+    const imported = importMusicPaths(candidatePaths, false);
+    const seen = new Set<string>();
+    const trackIds: string[] = [];
+    for (const candidate of candidatePaths) {
+      const key = candidate.toLowerCase();
+      if (seen.has(key)) continue;
+      const track = musicState.tracks.find(item => resolve(item.path).toLowerCase() === key);
+      if (track) { seen.add(key); trackIds.push(track.id); }
+    }
+    if (!trackIds.length) {
+      return { ok: false, added: imported.added, skipped: imported.skipped, message: 'M3U 中没有找到可用的本地音乐文件' };
+    }
+    const playlist: MusicPlaylist = {
+      id: randomUUID(),
+      name: basename(filePath, extname(filePath)).slice(0, 80) || '导入歌单',
+      trackIds,
+      createdAt: new Date().toISOString(),
+    };
+    musicState = { ...musicState, playlists: [...musicState.playlists, playlist], activePlaylistId: playlist.id };
+    persistAndPublishMusicState();
+    return { ok: true, added: imported.added, skipped: imported.skipped, playlistId: playlist.id, name: playlist.name };
+  } catch (error) {
+    return { ok: false, added: 0, skipped: 0, message: error instanceof Error ? error.message : String(error) };
+  }
 }
 function scanMusicFolder(rootPath: string) {
   const pending = [resolve(rootPath)];
@@ -1583,6 +1619,33 @@ ipcMain.handle('music:choose-folder', async () => {
   const paths = scanMusicFolder(result.filePaths[0]);
   const resultCount = importMusicPaths(paths);
   return { ...resultCount, truncated: paths.length >= MUSIC_FOLDER_SCAN_LIMIT };
+});
+ipcMain.handle('music:import-playlist', async () => {
+  const result = await dialog.showOpenDialog({
+    properties: ['openFile'],
+    filters: [{ name: 'M3U 播放列表', extensions: ['m3u', 'm3u8'] }],
+  });
+  if (result.canceled || !result.filePaths[0]) return { ok: false, added: 0, skipped: 0 };
+  return importMusicPlaylist(result.filePaths[0]);
+});
+ipcMain.handle('music:export-playlist', async (_event, playlistId: string) => {
+  const playlist = musicState.playlists.find(item => item.id === String(playlistId));
+  if (!playlist) return { ok: false, message: '歌单不存在' };
+  const tracks = playlist.trackIds.flatMap(id => {
+    const track = musicState.tracks.find(item => item.id === id);
+    return track && existsSync(track.path) ? [track] : [];
+  });
+  const result = await dialog.showSaveDialog({
+    defaultPath: `${playlist.name}.m3u8`,
+    filters: [{ name: 'M3U8 播放列表', extensions: ['m3u8'] }],
+  });
+  if (result.canceled || !result.filePath) return { ok: false, canceled: true };
+  try {
+    writeFileSync(result.filePath, serializeM3u(tracks), 'utf8');
+    return { ok: true, count: tracks.length, path: result.filePath };
+  } catch (error) {
+    return { ok: false, message: error instanceof Error ? error.message : String(error) };
+  }
 });
 ipcMain.handle('music:command', (_event, command: MusicCommand) => handleMusicCommand(command));
 ipcMain.on('music:runtime', (event, payload: { currentTime?: number; duration?: number; playing?: boolean; error?: boolean; errorMessage?: string }) => {
