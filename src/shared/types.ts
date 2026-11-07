@@ -43,7 +43,7 @@ export interface AppSettings {
   weatherLocation: 'suzhou' | 'wujiang'; weatherSource?: WeatherSourceId; weatherApiKeyConfigured?: Record<string, boolean>; turingDiskId?: string; turingNetworkId?: string;
   turingDisplayMode?: 'monitor' | 'wallpaper' | 'weather-clock'; turingWallpaperMode?: 'single' | 'slideshow';
   turingAutoBrightnessEnabled?: boolean; turingDayBrightness?: number; turingNightBrightness?: number; turingDayStart?: string; turingNightStart?: string;
-  usbDisplayDisplayId?: string; usbDisplayMode?: 'monitor' | 'static' | 'gif' | 'weather-clock' | 'video' | 'music-only'; usbDisplayImagePath?: string; usbDisplayVideoPath?: string; usbDisplayAudioPath?: string; usbDisplayAudioVolume?: number; usbDisplayAudioLoop?: boolean; usbDisplayMediaFit?: 'contain' | 'cover'; usbDisplayMediaOrientation?: 'landscape' | 'portrait';
+  usbDisplayDisplayId?: string; usbDisplayMode?: 'monitor' | 'static' | 'gif' | 'weather-clock' | 'video' | 'music-only'; usbDisplayImagePath?: string; usbDisplayVideoPath?: string; usbDisplayMediaFit?: 'contain' | 'cover'; usbDisplayMediaOrientation?: 'landscape' | 'portrait';
   turingWallpaperFile?: string; turingWallpaperDirectory?: string;
   turingWallpaperFit?: 'contain' | 'cover' | 'stretch'; turingWallpaperIntervalSeconds?: 30 | 60 | 90 | 120;
   shortcuts: ShortcutItem[]; compactMode: boolean;
