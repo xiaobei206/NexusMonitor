@@ -1,6 +1,13 @@
 # NexusMonitor — 新接手 GPT 请先看这里
 
-以当前任务对应的 GitHub 开发分支源码为准。2.2.0 当前开发分支为 `feature/2.2.0-music-and-window-lifecycle`，工作入口是 PR #1；`main` 是稳定基线，不要把开发分支误切回 main。每次新对话必须重新读取 PR HEAD、`VERSION`、依赖版本和最新 Actions 状态。
+当前稳定基线为 `main` / 2.2.0；2.2.1 音乐平台重构在 `feature/2.2.1-music-platform`。开始任何工作前，必须重新读取该分支 HEAD、`VERSION`、依赖版本与最新 Actions 状态，不能根据旧对话认定工作已完成。
+
+## 当前任务入口（NexusMonitor 2.2.1）
+
+1. 阅读 [NexusMonitor-2.2.1-HANDOFF-CN.md](NexusMonitor-2.2.1-HANDOFF-CN.md) 与 [音乐平台重构设计](docs/MUSIC-PLATFORM-2.2.1-CN.md)；文档明确的架构决策优先于聊天摘要。
+2. 检查 `feature/2.2.1-music-platform` 最新 HEAD / Actions，以及 `main` 当前 HEAD、PR / Release 状态；对照 `VERSION` 和 `package.json`。
+3. 本轮基线：main 的 2.2.0 合并提交 `bc0d29f19fbb98f7ea994fbe30dc68dfb35a38c9`。开发分支初始只提交交接 / 设计文档，源码修改和 CI 必须以最新分支为准。
+4. 音乐重构前先核对旧音乐路径与新 Music Service 的具体调用，遵循设计文档中的六种输出模式、唯一音频宿主和音频 endpoint 要求。
 
 ## 接手顺序
 
@@ -10,7 +17,7 @@
 4. 按本轮任务阅读专题文档，再对照源码与 `tests/`。文档和源码冲突时，以当前源码、测试为准，并修正文档。
 5. 用户要求实际开发时，不要只给计划：修改、测试、提交推送，检查新提交的 CI，并如实区分自动化与实机验收。
 
-## 已有基线（接手时重新核对）
+## 2.2.1 基线与当前目标（接手时重新核对）
 
 - 当前开发分支版本为 2.2.0，PR #1 为 Draft，尚未合并 `main` / 尚未正式发布。功能代码 Run #23（`e45c93bd4e8e2faf17270fdbcda382a8f66e9086`）与文档同步 Run #24（`d6a6f6ab9ac996f0d74d688d155d07b14a2ada6c`）均已成功；每次接手仍须读取最新 HEAD 与 Actions。最终以当前分支 `VERSION` 和 GitHub HEAD 为准。
 - 技术栈：Electron 45.2.1、React 19、TypeScript 7、Vite 8、.NET 10 HardwareService、LibreHardwareMonitorLib。
