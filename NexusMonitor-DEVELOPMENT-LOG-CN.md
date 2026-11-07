@@ -1,9 +1,9 @@
 # NexusMonitor 统一开发日志（跨版本唯一主记录）
 
-**当前正式发布：2.2.5；当前 main 开发版本：2.2.6；2.2.6 发布后下一版本从 2.2.7 开始。**  
+**当前正式发布：2.2.6（Windows CI Run #201 全部通过）；下一正式行为版本从 2.2.7 开始。**  
 **记录规则：** 每个正式版本都追加到本文件；下一版不得新建第二份版本日志。按版本号和日期顺序记录功能、根因、修复、失败尝试、验证范围及未完成事项。历史测试结果不能冒充当前版本测试结果。
 
-## 2.2.6（2026-11-07，源码开发 / Windows CI 结果待回填）
+## 2.2.6（2026-11-07，已发布 / Windows CI Run #201 success）
 
 ### 用户目标
 - 将 2.2.5 默认 1200px 的竖向悬浮 HUD 调整到更合适的首屏高度，并记住用户手动调整，避免每次启动都重新拖动。
@@ -24,9 +24,17 @@
 - WeatherCN 四个 API 请求按 15 分钟刷新频率理论约 384 次/日（定位缓存命中后），接近每日 500 次标准测试额度；手动测试也会增加用量。不能将试用额度描述为永久无限免费。
 - 本版本不修改音乐播放或 WASAPI native backend。
 
+### 本版本 CI 迭代记录（保留失败轮次）
+- Run #196（`67025fb`）失败：Turing 天气时钟源文件在署名补丁过程中被意外截断，TypeScript 报 TS1128；已从 2.2.5 完整文件恢复后重新应用 AQI 与来源标注。
+- Run #197（`5d4af81`）失败：历史布局测试仍要求固定 1200px；改为 960px 默认和每显示器高度记忆。
+- Run #198（`719e4cd`）失败：UI / Provider 合同测试仍把 960px 写为固定对象字面量；改为验证 `savedHeight` 与默认回退。
+- Run #199（`82538fb`）失败：UI 测试名称中的单引号导致 JavaScript 语法错误；已修正。
+- Run #200（`492dfe1`）通过 Main 回归但 Renderer 编译失败：可选 `weather.attributionUrl` 可能为 undefined；补充字符串回退。
+- Run #201（`7ee6870`）完整成功并发布 v2.2.6。以上失败轮次如实保留，不计作通过。
+
 ### 测试与验收边界
 - 新增 Weather Provider 合同回归，覆盖 QWeather V1 + JWT、WeatherCN Header 与定位缓存、Caiyun V2.6 签名、天气源选择、AQI 标准与 HUD 高度保存。设置页“测试连接”强制绕过 12 分钟缓存；失败时不以旧缓存冒充连通成功，普通自动刷新仍保留缓存。
-- Windows CI / .NET / NSIS / Release 结果以 2.2.6 构建报告为准；不沿用 2.2.5 Run #195 结果。
+- Windows CI Run #201 全部成功：版本同步、Main / Renderer 构建、Node 回归、native WASAPI、PawnIO 资源、.NET HardwareService、硬件 / 存储测试、NSIS、校验文件及 GitHub Release 上传均通过。详见 `NexusMonitor-2.2.6-BUILD-REPORT.md`。
 - 没有用户自己的新 Provider 凭据，不能声称它们已通过真实账户权限 / 实时网络验证。
 - 目标机需检查 HUD 高度跨重启与多显示器记忆、三个新 Provider 实测、AQI 标签、USB 5 寸屏、Turing COM3。
 - P4 Exclusive 旧问题保持原样：不修改 native backend。

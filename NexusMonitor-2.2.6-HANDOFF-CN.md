@@ -1,9 +1,12 @@
 # NexusMonitor 2.2.6 — 天气 Provider 扩展与 HUD 高度记忆交接
 
 **当前版本：** 2.2.6  
-**基线：** 2.2.5 正式 Release  
+**基线：** 2.2.6 正式 Release（已发布）  
 **主线：** main  
-**下一正式行为版本：** 2.2.7（须先确认 2.2.6 Release 已发布）。
+**CI：** Windows Run #201 全部成功  
+**正式发布：** https://github.com/xiaobei206/NexusMonitor/releases/tag/v2.2.6  
+**发布提交：** `7ee687003ee151b4dd22ea41b5394c65091953d8`  
+**下一正式行为版本：** 2.2.7。
 
 ## 用户目标
 
@@ -85,7 +88,7 @@
 ## 发布 / 验收边界
 
 - 版本元数据统一 2.2.6；发布入口 NexusMonitor-2.2.6-BUILD-RELEASE.cjs。
-- CI 通过只证明 Hosted Windows 构建 / 测试；没有用户真实 Key 时，不能声称新 Provider 账户权限和实网已验收。
+- Windows CI Run #201 已全绿，证明 Hosted Windows 编译、自动化回归与 NSIS 安装包生成成功；没有用户真实 Key 时，仍不能声称新 Provider 账户权限和实时请求已在目标机验收。
 - 用户目标机需要测试 HUD 高度记忆、多显示器独立记忆、QWeather V1 控制台登记 / JWT、WeatherCN 免费 Key 日用量、Caiyun 签名连接、AQI 分类，以及 USB 5 寸屏 / COM3 Turing。
 - 下一正式行为版本从 2.2.7 开始。
 

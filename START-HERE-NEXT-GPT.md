@@ -1,13 +1,13 @@
 # NexusMonitor — 新接手 GPT 请先看这里
 
-**当前主线源码版本：2.2.6；唯一工作基线：GitHub main。先核对本版本 Windows CI / Release 状态，不能把源码提交等同于发布。**
+**当前正式发布：2.2.6；Windows CI Run #201 全部成功。唯一工作基线：GitHub main。接手时先核对 main 最新 HEAD；下一个正式行为版本从 2.2.7 开始。**
 
-- 上一正式发布：[NexusMonitor 2.2.5](https://github.com/xiaobei206/NexusMonitor/releases/tag/v2.2.5)
+- 当前正式发布：[NexusMonitor 2.2.6](https://github.com/xiaobei206/NexusMonitor/releases/tag/v2.2.6)
 - 当前交接：[NexusMonitor-2.2.6-HANDOFF-CN.md](NexusMonitor-2.2.6-HANDOFF-CN.md)
 - 当前构建报告：[NexusMonitor-2.2.6-BUILD-REPORT.md](NexusMonitor-2.2.6-BUILD-REPORT.md)
 - 唯一跨版本日志：[NexusMonitor-DEVELOPMENT-LOG-CN.md](NexusMonitor-DEVELOPMENT-LOG-CN.md)
 - 架构与硬性约束：[AGENTS.md](AGENTS.md)
-- 2.2.6 发布完成后的下一正式行为版本为 2.2.7。
+- 2.2.6 已发布；下一正式行为版本为 2.2.7。CI #201：https://github.com/xiaobei206/NexusMonitor/actions/runs/42378652196
 
 ## 2.2.6 变更落点
 

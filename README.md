@@ -1,4 +1,4 @@
-# NexusMonitor 2.2.6 — Electron Edition (mainline update; Windows CI pending)
+# NexusMonitor 2.2.6 — Electron Edition (released; Windows CI passed)
 
 > **新对话 / 新开发者接手：先读 [START-HERE-NEXT-GPT.md](START-HERE-NEXT-GPT.md) 和根目录 [AGENTS.md](AGENTS.md)。** 入口文档列出阅读顺序、源码目录地图、验证命令与硬件验收边界。
 
@@ -107,6 +107,6 @@ For an Intel Alder Lake system where IGCL exposes GPU clocks/power but not tempe
 ## Repository history and operating records
 
 - The canonical cross-version development record is `NexusMonitor-DEVELOPMENT-LOG-CN.md`.
-- Current handoff and build / CI boundaries are in `NexusMonitor-2.2.6-HANDOFF-CN.md` and `NexusMonitor-2.2.6-BUILD-REPORT.md`. Previous release baseline: [NexusMonitor 2.2.5](https://github.com/xiaobei206/NexusMonitor/releases/tag/v2.2.5); target-PC acceptance remains documented separately.
+- Current handoff and build / CI boundaries are in `NexusMonitor-2.2.6-HANDOFF-CN.md` and `NexusMonitor-2.2.6-BUILD-REPORT.md`. 正式发布：[NexusMonitor 2.2.6](https://github.com/xiaobei206/NexusMonitor/releases/tag/v2.2.6)（Windows CI Run #201 success）；target-PC acceptance remains documented separately。
 - Each GitHub Actions run retains its complete build/test log; see the linked 2.1.8 run above. Per-user application runtime logs and settings remain local under `%APPDATA%\\NexusMonitor` and are intentionally not committed.
 - Versioned engineering references and the historical patch archive are under `docs/`.

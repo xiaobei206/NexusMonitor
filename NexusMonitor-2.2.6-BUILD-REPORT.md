@@ -2,7 +2,7 @@
 
 **版本：** 2.2.6  
 **基线：** NexusMonitor 2.2.5 Release  
-**发布状态：** 以本文件最终 GitHub Actions / Release 记录为准。
+**发布状态：** 已正式发布，GitHub Release v2.2.6；Windows CI Run #201 全部成功。
 
 ## 主要变更
 
@@ -24,7 +24,20 @@
 
 ## 自动化验证
 
-本节应由本次 2.2.6 GitHub Actions 实际结果回填；不得沿用 2.2.5 Run #195，也不预先宣称 .NET / NSIS / Release 通过。
+**Windows CI：** [Run #201 — success](https://github.com/xiaobei206/NexusMonitor/actions/runs/42378652196)，目标提交 `7ee687003ee151b4dd22ea41b5394c65091953d8`。
+
+- 版本同步门禁：通过。
+- Main TypeScript 构建及回归测试：通过。
+- Renderer TypeScript 检查及 Vite 生产构建：通过。
+- Native WASAPI 模块构建：通过（本版本未更改实现）。
+- PawnIO MCHBAR 资源验证：通过。
+- .NET 10 HardwareService 构建：通过。
+- 硬件 / 存储回归：通过。
+- Windows NSIS 安装包：构建成功。
+- SHA-256 sidecar：生成成功。
+- GitHub Release 发布及 workflow artifact 上传：成功。
+
+正式 Release：[v2.2.6](https://github.com/xiaobei206/NexusMonitor/releases/tag/v2.2.6)，发布日期 2026-11-07。安装包 `NexusMonitor-2.2.6-Setup.exe`（160,023,304 bytes）及 `NexusMonitor-2.2.6-Setup.exe.sha256` 均已挂载。Release tag 指向上述 CI 目标提交。
 
 ## 目标机验收清单
 
