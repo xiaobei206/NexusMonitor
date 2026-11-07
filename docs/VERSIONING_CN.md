@@ -1,34 +1,31 @@
 # NexusMonitor 版本、交付文件与交接记录规则
 
-当前开发分支源码版本：`2.2.0`（分支 `feature/2.2.0-music-and-window-lifecycle`，尚未合并或发布）；`main` 和 Release 的版本应另行核实。
+## 当前基线
 
-## 正式版本
+- 唯一开发基线：GitHub `main`。
+- 当前工作版本：`2.2.4`，目标是修复目标机 P4 Mono UAC Direct v62 普通输出设备路由在启用 WASAPI 后丢失的问题。
+- 上一正式发布：`2.2.3`。
+- 个人项目默认直接在 `main` 开发；没有明确要求时不创建功能分支或 PR。
 
-- **每一轮完成并交付的开发迭代都必须递增正式版本号**；补丁级修复也递增 PATCH（例如 `2.1.0` → `2.1.1` → `2.1.2` → `2.1.3` → `2.1.4` → `2.1.5` → `2.1.6` → `2.1.7` → `2.1.8` → `2.2.0`），不得继续沿用旧版本号交付源码补丁，也不以 FIX/FIX1/FIX2 作为版本名。
-- 同步 `package.json`、`package-lock.json` 根项目、`VERSION`、Renderer/About、HardwareService API/状态、.NET Assembly/File/InformationalVersion 与发布校验器。
-- 源码目录与 ZIP 使用 `NexusMonitor-<version>`。
-- 构建报告、交接文档、Windows 验收命令、源码清单、SHA-256 文件、构建入口等版本专属文件都必须使用 `NexusMonitor-<version>-...` 命名。
+## 正式版本规则
 
-## 唯一跨版本开发日志
+- 每轮正式行为改动必须递增语义版本号；补丁级修复也必须递增 PATCH，不得用 FIX/FIX1/FIX2 代替版本号。
+- 同步 `VERSION`、`package.json`、`package-lock.json` 根项目、Renderer 版本与 About、HardwareService assembly/API/snapshot、版本校验器要求的版本化 release entrypoint。
+- 每轮更新本文件、唯一跨版本开发日志 `NexusMonitor-DEVELOPMENT-LOG-CN.md`、当前 handoff 和 build report。日志不得拆成多个并行的主记录。
+- 新正式版本完成 Windows CI、版本门禁、测试、原生模块、.NET、安装包与校验和检查后，才能标记为 Release 成功。
+- Hosted CI 不证明物理设备验收；P4 音频输出、独占切换和输出设备恢复需记录用户目标机实测结果。
 
-项目只有一个持续更新的开发日志：`NexusMonitor-DEVELOPMENT-LOG-CN.md`。不要每个版本另建日志，也不要删除旧版本章节。每次发布在同一文件中追加版本、日期、改动、根因、失败尝试、测试结果和未完成验收项。由于它必须跨版本保持同一个路径，因此文件名本身不带版本号；当前版本在文件头明确标注。
+## 当前 2.2.4 验收要求
 
-## 唯一当前交接文档
+- 创建 Web Audio 图前绑定所选输出设备；非默认 sink 不能绑定时，拒绝接管 `HTMLAudioElement` 音源而不是回退到 Windows 默认设备。
+- 打开/关闭 WASAPI 独占时保持用户已选输出目标；失败与取消路径不能让后续播放一直使用默认声卡。
+- 更新版本门禁与源码回归测试，生成 Windows x64 NSIS 安装包和 SHA-256 sidecar。
+- 目标机测试 P4 普通输出、开启独占、关闭独占、暂停/恢复与应用重新启动前后的设备路由。
 
-每个源码包只保留一份当前交接说明，例如 `NexusMonitor-2.2.0-HANDOFF-CN.md`。它必须说明架构、源码位置、版本同步规则、构建入口、已知故障/踩坑、测试边界、设备验收清单，并明确要求新对话先读交接说明和唯一开发日志。旧版本的 build report/handoff/prompt 应在新信息合并后清理，避免互相矛盾。
+## 数据与交接
 
-## 用户数据路径
+- 用户设置、日志与缓存继续使用 Electron userData（`%APPDATA%\NexusMonitor`），版本升级不应更改路径或重置用户设置。
+- 唯一跨版本开发日志为 `NexusMonitor-DEVELOPMENT-LOG-CN.md`。
+- 当前接手文档：`NexusMonitor-2.2.4-HANDOFF-CN.md`。
+- 当前构建报告：`NexusMonitor-2.2.4-BUILD-REPORT.md`。
 
-配置、日志与插件数据继续使用 Electron userData（`%APPDATA%\NexusMonitor`）；升级版本不能改变数据路径或丢失现有设置。
-
-
-## NexusMonitor 2.2.3（2026-11-07）
-
-本轮针对 2.2.2 目标机实测的 WASAPI 静音 / 关闭后未恢复问题递增到 2.2.3，并加入 LRCLIB 自动歌词。每轮正式行为变更均同步版本门禁，默认直接在 main 开发。
-
-
-### 2.2.3 已正式发布（2026-11-07）
-
-- Windows CI Run #186 成功；版本门禁 14/14、Node tests 238/238。
-- Release：`v2.2.3`，安装包 160,013,866 bytes，SHA-256：`bf405f570f01a72b8ad6382417a5eaed1326c795e022645f742ef16078f2c9cd`。
-- 下一轮应用行为变更递增至 2.2.4。

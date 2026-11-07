@@ -1,4 +1,4 @@
-# NexusMonitor 2.2.3 — Electron Edition (released)
+# NexusMonitor 2.2.4 — Electron Edition (output routing fix)
 
 > **新对话 / 新开发者接手：先读 [START-HERE-NEXT-GPT.md](START-HERE-NEXT-GPT.md) 和根目录 [AGENTS.md](AGENTS.md)。** 入口文档列出阅读顺序、源码目录地图、验证命令与硬件验收边界。
 
@@ -75,18 +75,16 @@ NexusMonitor source in this package is provided for the user's development/testi
 
 ## Current source handoff
 
-The current released baseline is **main / 2.2.3**. The personal repository is developed directly on `main`; no feature branches or PRs unless explicitly requested.
+The current working baseline is **main / 2.2.4 (CI in progress)**. The personal repository is developed directly on `main`; do not create branches or PRs unless explicitly requested.
 
-2.2.3 fixes the target-PC WASAPI handoff issue by keeping shared playback audible until native PCM is accepted and rendered, automatically restoring ordinary playback when the native stream produces no frames, and explicitly restoring the AudioContext / output sink when exclusive mode is disabled or fails.
+2.2.4 fixes a target-PC audio routing regression: when a selected non-default output was replaced by a new Web Audio graph, the graph could briefly/default permanently route to Windows' default device before the exclusive-mode code skipped the later `applyOutputSink()` call. The graph now binds and checks the selected AudioContext sink before creating the MediaElementAudioSourceNode. If a non-default sink cannot be bound, the graph is not connected, so ordinary HTMLAudioElement playback remains on the selected output rather than silently falling back to the default device.
 
-Lyrics now prefer a same-name local LRC and automatically query LRCLIB when no usable local lyrics exist. Synced lyrics follow playback time; plain lyrics are displayed as static text. Only title, artist, album and duration are sent; audio files and local paths are never uploaded.
+Automatic lyrics remain enabled: same-name local LRC first, then LRCLIB metadata-only lookup. Synchronized lyrics follow the playhead; plain lyrics are shown as text. Audio files and local paths are never uploaded.
 
-- [NexusMonitor 2.2.3 Release](https://github.com/xiaobei206/NexusMonitor/releases/tag/v2.2.3)
-- [Windows CI Run #186](https://github.com/xiaobei206/NexusMonitor/actions/runs/42360024896) — success; 14/14 version gates, 238/238 Node tests, Renderer/Vite, native WASAPI, PawnIO, .NET/Storage, NSIS, SHA-256 and Release upload.
-- Installer: [NexusMonitor-2.2.3-Setup.exe](https://github.com/xiaobei206/NexusMonitor/releases/download/v2.2.3/NexusMonitor-2.2.3-Setup.exe) (160,013,866 bytes).
-- SHA-256: `bf405f570f01a72b8ad6382417a5eaed1326c795e022645f742ef16078f2c9cd`.
-
-Hosted CI does not prove that the P4 physical speaker is audible. The user must still confirm real output and exclusive-mode on/off recovery on the target Windows PC.
+- Last stable release: [NexusMonitor 2.2.3](https://github.com/xiaobei206/NexusMonitor/releases/tag/v2.2.3).
+- Current changes: output sink is assigned and verified before attaching the single audio element to Web Audio; a source regression test checks that ordering.
+- New build report and handoff: `NexusMonitor-2.2.4-BUILD-REPORT.md` and `NexusMonitor-2.2.4-HANDOFF-CN.md`.
+- Hosted CI and the physical P4 output must be verified separately. This change must not be described as hardware-accepted until the user confirms the selected P4 remains the output device after enabling and disabling WASAPI.
 ## Intel Alder Lake Iris Xe GT temperature experiment
 
 For an Intel Alder Lake system where IGCL exposes GPU clocks/power but not temperature, see `docs/ALDERLAKE_GT_TEMPERATURE_CN.md`. The probe uses the official PawnIO `IntelMCHBAR` read module and only reads `THERM_STATUS_GT` at MCHBAR offset `0x59C0`; it never writes PCI configuration or hardware control registers. Run `powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\fetch-mchbar-module.ps1` once before building the hardware service. The project now fails the .NET build if the resource is missing, instead of silently omitting it. If the module or register validation is unavailable, the GPU temperature remains `—`.
@@ -95,6 +93,6 @@ For an Intel Alder Lake system where IGCL exposes GPU clocks/power but not tempe
 ## Repository history and operating records
 
 - The canonical cross-version development record is `NexusMonitor-DEVELOPMENT-LOG-CN.md`.
-- Current-version handoff and final build / CI boundaries are in `NexusMonitor-2.2.3-HANDOFF-CN.md` and `NexusMonitor-2.2.3-BUILD-REPORT.md`. Version 2.2.3 is merged and released; target-PC acceptance remains documented separately.
+- Current-version handoff and final build / CI boundaries are in `NexusMonitor-2.2.4-HANDOFF-CN.md` and `NexusMonitor-2.2.4-BUILD-REPORT.md`. Version 2.2.4 is the current output-routing fix; target-PC acceptance remains documented separately.
 - Each GitHub Actions run retains its complete build/test log; see the linked 2.1.8 run above. Per-user application runtime logs and settings remain local under `%APPDATA%\\NexusMonitor` and are intentionally not committed.
 - Versioned engineering references and the historical patch archive are under `docs/`.

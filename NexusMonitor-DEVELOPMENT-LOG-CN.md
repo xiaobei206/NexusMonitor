@@ -1,6 +1,6 @@
 # NexusMonitor 统一开发日志（跨版本唯一主记录）
 
-**当前正式版本：2.2.3（已合入 main 并发布；下一轮从 2.2.4 开始）**  
+**当前工作版本：2.2.4（输出设备路由修复；CI 与 P4 实机验收进行中）**  
 **记录规则：** 每个正式版本都追加到本文件；下一版不得新建第二份版本日志。按版本号和日期顺序记录功能、根因、修复、失败尝试、验证范围及未完成事项。历史测试结果不能冒充当前版本测试结果。
 
 ## 版本总览与跨版本教训
@@ -540,3 +540,11 @@ Property 'volume' does not exist on type 'AudioHTMLAttributes<HTMLAudioElement>'
 - 正式 Release：[v2.2.3](https://github.com/xiaobei206/NexusMonitor/releases/tag/v2.2.3)。安装包 160,013,866 bytes；SHA-256 `bf405f570f01a72b8ad6382417a5eaed1326c795e022645f742ef16078f2c9cd`。
 - WASAPI 修复解决的是切换安全性和无 PCM 时的恢复路径，不等于已证明 P4 实体扬声器有声。用户必须复验独占开启/关闭和恢复路径。
 - LRCLIB 自动歌词使用 metadata-only 查询，音频和本地路径不会上传；同步歌词跟随播放时间，纯文本歌词不伪造时间戳；未命中/离线/429 不影响播放。
+
+### 2.2.4 — P4 输出设备路由固定（2026-11-07，CI 待确认）
+
+- 用户复测 2.2.3 后报告：音频输出先选 P4 Mono UAC Direct v62 且普通播放正常；一旦开启 WASAPI 独占，声音立即切到 Windows 默认声卡。关独占、暂停/重新播放仍无法恢复；退出重启应用才恢复。
+- 根因路径确认：共享音频图只有在 `AudioContext` 创建后才尝试应用所选 sink；独占 effect 可以先把 `exclusiveActiveRef` 置 true，导致 `applyOutputSink()` 提前返回。新建 Web Audio graph 因此可能始终使用默认输出。
+- 修复：创建 AudioContext 时同时传入目标 `sinkId`，并在 `createMediaElementSource(audio)` 连接前显式调用 `context.setSinkId(requestedDeviceId)`、校验实际 `context.sinkId`。若非默认设备无法绑定，关闭尚未连接媒体源的 Context 并失败退出，避免静默切换到 Windows 默认声卡。
+- 回归测试检查 sink 绑定发生在 `createMediaElementSource(audio)` 之前，以及非默认 sink 不支持时拒绝切换音频图。
+- 版本号递增到 2.2.4，已同步版本字段和发布入口。最终 CI 尚待检查；P4 实体设备上的开启/关闭/恢复仍需用户复测。
