@@ -1,6 +1,6 @@
 # NexusMonitor 统一开发日志（跨版本唯一主记录）
 
-**当前开发分支源码版本：2.2.0（尚未发布）**  
+**当前开发分支源码版本：2.2.1（PR #2；尚未合并 / 发布）**  
 **记录规则：** 每个正式版本都追加到本文件；下一版不得新建第二份版本日志。按版本号和日期顺序记录功能、根因、修复、失败尝试、验证范围及未完成事项。历史测试结果不能冒充当前版本测试结果。
 
 ## 版本总览与跨版本教训
@@ -431,4 +431,15 @@ Property 'volume' does not exist on type 'AudioHTMLAttributes<HTMLAudioElement>'
 - 2026-11-07 Windows CI Run #44 **成功**，HEAD `fafbe3e24c9e5127de6608bb72c9cacd3a65aaea`：版本 14/14；Node 主进程测试 195/195；Renderer TypeScript / Vite 生产构建；PawnIO 官方资源；.NET Release build 0 Warning / 0 Error；Storage Tests。PR 阶段按 workflow 设计跳过 NSIS / Release 发布。CI：<https://github.com/xiaobei206/NexusMonitor/actions/runs/42344000038>。
 - Hosted CI 不证明实际 codec 文件解码、五寸屏喇叭出声、输出 endpoint 热拔插、WASAPI 独占或 USB 显示器目标机行为成功。
 - 后续：继续做音频信号链高级能力与格式验证矩阵；补完成安装包 / Release 的 CI 验收，再安排目标机测试。
+
+### 2.2.1 增强音频功能与 Run #104（2026-11-07）
+
+- EQ / ReplayGain：新增 10-band peaking EQ（31 Hz–16 kHz、±12 dB、默认 flat、lazy AudioContext），以及 ReplayGain Track / Album tags / Peak 解析与 GainNode，Peak safety 限制正向增益；缺 Peak 时仅允许衰减。
+- 本地歌词：新增 LRC parser 与同目录同名 sidecar IPC / UI，支持 BOM、毫秒 offset、多时间戳、1 MiB 文件上限；不联网、不上传。
+- 播放器 sleep timer：15 / 30 / 45 / 60 / 90 分钟，到点暂停唯一的主 Renderer 音频宿主，不关闭程序或副屏。
+- Playlist 文件：新增 M3U/M3U8 parser / serializer，本地相对路径 / Windows absolute path 导入为独立歌单，导出 M3U8 保留本地路径、曲名、艺术家及时长；拒绝网络 URI。
+- 共享播放状态增加可见解码错误；MiniPlayer / Dock / Library 显示错误提示。
+- Windows CI Run #104 **成功**，HEAD `c8d24d28d353834cc04059eb2637a46ef8d94e78`：版本门禁 14/14，Node tests **210/210**，Renderer TypeScript / Vite production build、PawnIO resource validation、.NET Release build 0 Warning / 0 Error、Storage Tests 全通过。<https://github.com/xiaobei206/NexusMonitor/actions/runs/42348842265>。
+- Run #104 之后新增睡眠计时器 / M3U controls CSS 收尾提交 `b3f95d984118f74974f46dc62acde93d69a21908`，须继续运行最终 Windows CI。Run #104 是 PR CI，未构建 / 发布 2.2.1 installer。
+- 当前未完成：WASAPI Exclusive native backend、bit-perfect negotiation、Gapless / Crossfade、逐格式实音解码矩阵、目标 PC 输出 endpoint / 五寸屏喇叭和六模式验收。Chromium setSinkId 不能替代 WASAPI Exclusive；Hosted CI 不能证明实机扬声器出声。
 
