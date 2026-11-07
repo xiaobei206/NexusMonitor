@@ -4,6 +4,11 @@ import type { MusicCommand, ServiceStatus } from '../shared/types';
 const api = {
   getSettings: () => ipcRenderer.invoke('app:get-settings'),
   getMusicState: () => ipcRenderer.invoke('music:get-state'),
+  showMusicLibrary: () => ipcRenderer.invoke('music:open-library'),
+  onOpenMusicLibrary: (callback: () => void) => {
+    const listener = () => callback();
+    ipcRenderer.on('music:open-library', listener); return () => ipcRenderer.removeListener('music:open-library', listener);
+  },
   chooseMusicFiles: () => ipcRenderer.invoke('music:choose-files'),
   chooseMusicFolder: () => ipcRenderer.invoke('music:choose-folder'),
   getMusicTrackUrl: (trackId: string) => ipcRenderer.invoke('music:track-url', trackId),
