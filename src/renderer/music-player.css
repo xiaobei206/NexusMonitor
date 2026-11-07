@@ -44,3 +44,10 @@
 @media(max-width:850px){.nm-music-dock{grid-template-columns:minmax(110px,1fr) auto;min-height:68px;flex-basis:68px}.nm-dock-center{grid-column:2;grid-row:1}.nm-dock-volume{display:none}.nm-dock-track{max-width:210px}.nm-library-layout{grid-template-columns:165px minmax(0,1fr)}.nm-track-toolbar{align-items:flex-start;flex-direction:column}.nm-track-actions{width:100%;justify-content:space-between}}
 @media(max-width:650px){.nm-library-heading{align-items:flex-start;flex-direction:column}.nm-library-layout{grid-template-columns:1fr}.nm-playlist-sidebar{max-height:200px;overflow:auto}.nm-track-list-head,.nm-track-row{grid-template-columns:28px minmax(0,1fr) 42px 94px;gap:5px}.nm-track-format{display:none}.nm-track-search input{width:100px}.nm-dock-track small{display:none}}
 @media(max-height:700px){.nm-widget-player{padding:5px 7px;gap:3px}.nm-widget-player .nm-player-art{width:29px;height:29px;flex-basis:29px}.nm-widget-player .nm-widget-player-controls{gap:3px}.nm-widget-player .nm-player-icon-button{height:23px}}
+
+.usb-output-music{--accent:#98a7ff;--muted:#a9b9cb;position:absolute;z-index:20;right:clamp(10px,2vw,22px);bottom:clamp(10px,2vh,20px);width:min(268px,42vw);filter:drop-shadow(0 8px 20px #0008)}
+.usb-output-music .nm-widget-player{background:#111c2bdc;border-color:#a9c5dc35;backdrop-filter:blur(16px)}
+.usb-output-music .nm-player-popover{top:auto;bottom:calc(100% + 8px);left:auto;right:0}
+.usb-output-music .nm-player-copy b{color:#edf4fb}
+.usb-output-music .nm-player-copy small{color:#a9b9cb}
+@media(max-width:560px){.usb-output-music{width:min(238px,48vw)}}
