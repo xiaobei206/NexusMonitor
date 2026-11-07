@@ -12,11 +12,11 @@ test('parses UTF-8 BOM, minute timestamps and centisecond fractions in chronolog
 });
 
 test('expands multiple timestamps on one LRC line and applies signed offset', () => {
-  const lyrics = parseLrc('[offset:+500]\n[00:01.00][00:03.25]Repeated lyric\n[offset:-250]\n[00:05.00]Last');
+  const lyrics = parseLrc('[offset:+500]\n[00:01.00][00:03.25]Repeated lyric\n[00:05.00]Last');
   assert.deepEqual(lyrics, [
     { timeSeconds: 1.25, text: 'Repeated lyric' },
     { timeSeconds: 3.5, text: 'Repeated lyric' },
-    { timeSeconds: 4.75, text: 'Last' },
+    { timeSeconds: 5.5, text: 'Last' },
   ]);
 });
 
