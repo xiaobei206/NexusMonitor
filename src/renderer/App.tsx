@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import type { AppPage, AppSettings, CpuSnapshot, DiskSnapshot, GpuSnapshot, MusicCommand, MusicState, NetworkSnapshot, ServiceStatus, SnapshotResult, SystemSnapshot, ThemeId, WeatherSnapshot, SensorValue } from '../shared/types';
 import { MusicLibraryPage, MusicMiniPlayer, MusicPlaybackRuntime, MusicPlayerDock, useMusicState } from './music-player';
+import type { MusicOutputStatus } from './music-player';
 import { renderTuringDashboard, renderTuringWeatherClock } from './turing-dashboard';
 import { getWeatherSceneAsset } from './weather-scene';
 import { selectTuringDisk, selectTuringGpu, selectTuringNetwork, selectNetworkInterfaces } from './turing-selection';
@@ -32,6 +33,7 @@ const defaultSettings: AppSettings = {
   turingDisplayMode: 'monitor', turingWallpaperMode: 'single', turingWallpaperFile: '', turingWallpaperDirectory: '',
   turingWallpaperFit: 'contain', turingWallpaperIntervalSeconds: 30,
   turingAutoBrightnessEnabled: false, turingDayBrightness: 70, turingNightBrightness: 25, turingDayStart: '08:00', turingNightStart: '20:00',
+  musicOutputDeviceId: 'default', musicOutputDeviceLabel: '系统默认输出设备',
   usbDisplayDisplayId: '', usbDisplayMode: 'monitor', usbDisplayImagePath: '', usbDisplayVideoPath: '', usbDisplayMediaFit: 'cover', shortcuts: [], compactMode: false,
   widgetVisibleMetrics: ['cpu','gpu','memory','storage','network','power','weather','sensors'], widgetSensorIds: [],
   widgetAlwaysOnTop: true, widgetPinned: false, widgetAutoHide: false, widgetSmartFullscreen: true,
@@ -599,6 +601,7 @@ function MainApp() {
   const isWidget = widgetQuery.get('widget') === '1';
   const isWidgetDetail = widgetQuery.get('widget-detail') === '1';
   const music = useMusicState();
+  const [musicOutputStatus, setMusicOutputStatus] = useState<MusicOutputStatus | null>(null);
   const persistTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const settingsRef = useRef(settings);
   const settingsPromise = useRef<Promise<AppSettings | null> | null>(null);
@@ -737,7 +740,7 @@ function MainApp() {
   };
 
   return <div className={`app-shell theme-${themeClass}`} style={{'--accent':settings.accent,'--opacity':settings.opacity/100,...(settings.theme==='portrait'&&settings.backgroundDataUrl?{backgroundImage:`linear-gradient(90deg,rgba(8,13,20,.94),rgba(8,13,20,.79)),url(${settings.backgroundDataUrl})`,backgroundSize:'cover',backgroundPosition:'center'}:{})} as any}>
-    <MusicPlaybackRuntime state={music.state}/>
+    <MusicPlaybackRuntime state={music.state} outputDeviceId={settings.musicOutputDeviceId ?? 'default'} onOutputStatus={setMusicOutputStatus}/>
     <aside className="sidebar">
       <div className="app-brand"><div className="brand-emblem"><span>N</span><i/></div><div><strong>NEXUS<span>MONITOR</span></strong><small>HARDWARE INTELLIGENCE</small></div></div>
       <div className="sidebar-divider"/>
@@ -766,7 +769,7 @@ function MainApp() {
 
         {page==='devices'&&<DevicesPage snapshot={snapshot} settings={settings} updateSettings={updateSettings} notify={notify} refreshSnapshot={refreshSnapshot}/>}
         {page==='usb-display'&&<UsbDisplayPage settings={settings} updateSettings={updateSettings} notify={notify}/>}
-        {page==='music'&&<MusicLibraryPage state={music.state} onCommand={music.command} notify={notify}/> }
+        {page==='music'&&<MusicLibraryPage state={music.state} onCommand={music.command} notify={notify} settings={settings} updateSettings={updateSettings} outputStatus={musicOutputStatus}/> }
         <div className={`turing-background-host ${page === 'turing' ? 'active' : 'inactive'}`} aria-hidden={page !== 'turing'}><TuringPage settings={settings} updateSettings={updateSettings} snapshot={snapshot} weather={weather} notify={notify} active={page === 'turing'} settingsLoaded={settingsLoaded} serviceReady={serviceStatus.phase === 'online' || serviceStatus.phase === 'degraded'}/></div>
         {page==='themes'&&<ThemePage settings={settings} updateSettings={updateSettings} notify={notify}/>}
         {page==='shortcuts'&&<ShortcutsPage settings={settings} updateSettings={updateSettings} notify={notify}/>}
