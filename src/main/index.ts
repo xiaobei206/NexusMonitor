@@ -322,7 +322,7 @@ function scanMusicFolder(rootPath: string) {
   const files: string[] = [];
   while (pending.length && files.length < MUSIC_FOLDER_SCAN_LIMIT) {
     const directory = pending.pop()!;
-    let entries: ReturnType<typeof readdirSync>;
+    let entries: import('node:fs').Dirent[];
     try { entries = readdirSync(directory, { withFileTypes: true }); } catch { continue; }
     for (const entry of entries) {
       const target = join(directory, entry.name);
@@ -344,6 +344,7 @@ function advanceMusicTrack(ended: boolean) {
   if (!ids.length) { musicState = { ...musicState, currentTrackId: null, currentTime: 0, duration: 0, isPlaying: false }; return; }
   if (ended && musicState.repeat === 'one' && musicState.currentTrackId) {
     musicState = { ...musicState, currentTime: 0, isPlaying: true };
+    if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('music:engine-command', { type: 'seek', seconds: 0 });
     return;
   }
   const currentIndex = ids.indexOf(musicState.currentTrackId ?? '');
@@ -357,7 +358,9 @@ function advanceMusicTrack(ended: boolean) {
     if (musicState.repeat === 'all') nextIndex = 0;
     else { musicState = { ...musicState, isPlaying: false, currentTime: 0 }; return; }
   }
-  musicState = { ...musicState, currentTrackId: ids[nextIndex], currentTime: 0, duration: 0, isPlaying: true };
+  const nextTrackId = ids[nextIndex];
+  musicState = { ...musicState, currentTrackId: nextTrackId, currentTime: 0, duration: 0, isPlaying: true };
+  if (nextTrackId === ids[currentIndex] && mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('music:engine-command', { type: 'seek', seconds: 0 });
 }
 function handleMusicCommand(command: MusicCommand) {
   switch (command.type) {
@@ -386,7 +389,9 @@ function handleMusicCommand(command: MusicCommand) {
       const ids = musicQueueIds();
       const index = ids.indexOf(musicState.currentTrackId ?? '');
       const previousIndex = index > 0 ? index - 1 : musicState.repeat === 'all' && ids.length ? ids.length - 1 : index;
-      musicState = { ...musicState, currentTrackId: ids[previousIndex] ?? musicState.currentTrackId, currentTime: 0, duration: 0 };
+      const previousTrackId = ids[previousIndex] ?? musicState.currentTrackId;
+      musicState = { ...musicState, currentTrackId: previousTrackId, currentTime: 0, duration: 0 };
+      if (previousTrackId === musicState.currentTrackId && mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('music:engine-command', { type: 'seek', seconds: 0 });
       break;
     }
     case 'seek': {
@@ -406,14 +411,18 @@ function handleMusicCommand(command: MusicCommand) {
       break;
     case 'play-track':
       if (musicState.tracks.some(track => track.id === command.trackId && existsSync(track.path))) {
+        const alreadySelected = musicState.currentTrackId === command.trackId;
         musicState = { ...musicState, currentTrackId: command.trackId, currentTime: 0, duration: 0, isPlaying: true };
+        if (alreadySelected && mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('music:engine-command', { type: 'seek', seconds: 0 });
       }
       break;
     case 'select-playlist': {
       const id = command.playlistId && musicState.playlists.some(item => item.id === command.playlistId) ? command.playlistId : null;
       const ids = id ? musicState.playlists.find(item => item.id === id)?.trackIds ?? [] : musicState.tracks.map(track => track.id);
       const currentTrackId = ids.includes(musicState.currentTrackId ?? '') ? musicState.currentTrackId : ids[0] ?? null;
+      const alreadySelected = currentTrackId === musicState.currentTrackId;
       musicState = { ...musicState, activePlaylistId: id, currentTrackId, currentTime: 0, duration: 0, isPlaying: false };
+      if (alreadySelected && currentTrackId && mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('music:engine-command', { type: 'seek', seconds: 0 });
       break;
     }
     case 'create-playlist': {
