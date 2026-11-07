@@ -423,3 +423,12 @@ Property 'volume' does not exist on type 'AudioHTMLAttributes<HTMLAudioElement>'
 - 删除静态 / GIF 壁纸的第二套 audio element，统一使用 Music Service；新增 `music-only` 六模式分支，隐藏 USB output BrowserWindow。
 - 新增 `tests/music-metadata.test.cjs` 与 source-level tests；截至本条记录尚未运行 2.2.1 CI，也未创建合并 PR。不能把 2.2.0 的 188/188 与 Windows build 结果说成当前分支通过。
 - 下一步：建立 Windows CI feedback loop，修复所有测试 / 编译问题；随后实施输出 endpoint 与完整曲库导航，再推进高级音频。
+
+### 曲库 / 输出设备实现与首轮 Windows CI（2026-11-07）
+
+- 曲库 UI 增加歌曲、专辑、艺术家、流派、文件夹、自定义歌单导航；按标签 / 文件路径分组，分组卡片显示内嵌封面，搜索能按标题 / 艺术家 / 专辑 / 流派过滤。
+- 音频输出 endpoint 选择已接入：Chromium 输出选择弹窗、设备列表与 devicechange 刷新、保存设备 ID / 名称、HTMLAudioElement.setSinkId 路由、状态回报和 440 Hz 测试音。设备不可用时保留设定并提示；这不是 WASAPI Exclusive 原生实现，不宣称 bit-perfect。
+- 2026-11-07 Windows CI Run #44 **成功**，HEAD `fafbe3e24c9e5127de6608bb72c9cacd3a65aaea`：版本 14/14；Node 主进程测试 195/195；Renderer TypeScript / Vite 生产构建；PawnIO 官方资源；.NET Release build 0 Warning / 0 Error；Storage Tests。PR 阶段按 workflow 设计跳过 NSIS / Release 发布。CI：<https://github.com/xiaobei206/NexusMonitor/actions/runs/42344000038>。
+- Hosted CI 不证明实际 codec 文件解码、五寸屏喇叭出声、输出 endpoint 热拔插、WASAPI 独占或 USB 显示器目标机行为成功。
+- 后续：继续做音频信号链高级能力与格式验证矩阵；补完成安装包 / Release 的 CI 验收，再安排目标机测试。
+
