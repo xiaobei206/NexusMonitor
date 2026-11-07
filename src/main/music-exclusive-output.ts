@@ -23,6 +23,7 @@ export interface WasapiNativeStatus {
   underruns: number;
   framesRendered: number;
   acceptedBytes: number;
+  droppedFrames: number;
   error: string;
 }
 interface WasapiNativeAddon {
