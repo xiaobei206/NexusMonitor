@@ -20,8 +20,8 @@
 ## 2.2.1 基线与当前交付状态（每次接手须重新核实）
 
 - 稳定 `main` 基线为 2.2.0；当前分支 `feature/2.2.1-music-platform`，PR #2 开放、尚未合并。
-- 已实现：本地多格式导入与 best-effort tags / artwork / ReplayGain；歌曲 / 专辑 / 艺术家 / 流派 / 文件夹 / 歌单曲库；M3U/M3U8 导入导出；统一 Music Service；六种副屏模式（含桌面壁纸 + 后台音乐）；Windows output endpoint setSinkId / 测试音；十段 EQ；Track / Album ReplayGain；本地 LRC；睡眠定时；播放错误可视化。
-- **最近成功 CI Run #109：** <https://github.com/xiaobei206/NexusMonitor/actions/runs/42349148127>，当前 PR tip `3152aa5a16b4ff52d0bf026fcd5e1d962cf19f4c`；14/14 版本门禁、Node 210/210、Renderer/Vite、PawnIO、.NET Release 0 Warning / 0 Error、Storage Tests 全通过。
+- 已实现：本地多格式导入与 best-effort tags / artwork / ReplayGain；歌曲 / 专辑 / 艺术家 / 流派 / 文件夹 / 歌单曲库；M3U/M3U8 导入导出；统一 Music Service；六种副屏模式（含桌面壁纸 + 后台音乐）；Windows output endpoint setSinkId / 测试音；十段 EQ（含九种预设）；Track / Album ReplayGain；本地 LRC；睡眠定时；播放错误可视化。
+- **最近成功 CI Run #114：** <https://github.com/xiaobei206/NexusMonitor/actions/runs/42349435741>，应用 HEAD `f1019858e17e2c82192e08a2c94709793ce6d1e7`；14/14 版本门禁、Node 211/211、Renderer/Vite、PawnIO、.NET Release 0 Warning / 0 Error、Storage Tests 全通过。
 - 未完成：WASAPI Exclusive native backend / bit-perfect；Gapless / Crossfade 双 Deck；完整格式实际文件播放矩阵；目标 PC 输出设备与五寸屏扬声器实测；六模式 / USB 热插拔实机验收；正式安装包与 Release。
 - 注意：导入白名单不等于解码通过；Chromium setSinkId 不等于 WASAPI Exclusive；Hosted CI 不能代替用户 Windows 硬件验收。
 
