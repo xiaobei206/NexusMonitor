@@ -32,7 +32,7 @@ const defaultSettings: AppSettings = {
   turingDisplayMode: 'monitor', turingWallpaperMode: 'single', turingWallpaperFile: '', turingWallpaperDirectory: '',
   turingWallpaperFit: 'contain', turingWallpaperIntervalSeconds: 30,
   turingAutoBrightnessEnabled: false, turingDayBrightness: 70, turingNightBrightness: 25, turingDayStart: '08:00', turingNightStart: '20:00',
-  usbDisplayDisplayId: '', usbDisplayMode: 'monitor', usbDisplayImagePath: '', usbDisplayVideoPath: '', usbDisplayAudioPath: '', usbDisplayAudioVolume: 65, usbDisplayAudioLoop: true, usbDisplayMediaFit: 'cover', shortcuts: [], compactMode: false,
+  usbDisplayDisplayId: '', usbDisplayMode: 'monitor', usbDisplayImagePath: '', usbDisplayVideoPath: '', usbDisplayMediaFit: 'cover', shortcuts: [], compactMode: false,
   widgetVisibleMetrics: ['cpu','gpu','memory','storage','network','power','weather','sensors'], widgetSensorIds: [],
   widgetAlwaysOnTop: true, widgetPinned: false, widgetAutoHide: false, widgetSmartFullscreen: true,
   thresholds: { loadWarning: 80, loadCritical: 95, tempWarning: 80, tempCritical: 95 },
@@ -1205,7 +1205,7 @@ function UsbDisplayPage({settings,updateSettings,notify}:any){
 }
 
 function UsbDisplayOutput(){
-  const [settings,setSettings]=useState<any>({usbDisplayMode:'monitor',usbDisplayMediaFit:'cover',usbDisplayAudioVolume:65,usbDisplayAudioLoop:true});
+  const [settings,setSettings]=useState<any>({usbDisplayMode:'monitor',usbDisplayMediaFit:'cover'});
   const music = useMusicState();
   const [snapshot,setSnapshot]=useState<any>(null);
   const [weather,setWeather]=useState<any>(null);
