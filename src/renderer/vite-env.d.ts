@@ -9,6 +9,7 @@ interface Window {
     chooseMusicFiles(): Promise<{added:number;skipped:number}>;
     chooseMusicFolder(): Promise<{added:number;skipped:number;truncated?:boolean}>;
     getMusicTrackUrl(trackId:string): Promise<string | null>;
+    getMusicArtworkUrl(trackId:string): Promise<string | null>;
     musicCommand(command:import('../shared/types').MusicCommand):Promise<import('../shared/types').MusicState>;
     reportMusicRuntime(payload:{currentTime?:number;duration?:number;playing?:boolean;error?:boolean}):void;
     onMusicState(callback:(state:import('../shared/types').MusicState)=>void):()=>void;
