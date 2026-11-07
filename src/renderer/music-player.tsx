@@ -47,15 +47,108 @@ function TrackArtwork({ trackId, className, fallback }: { trackId: string | null
   return url ? <img className={`${className} has-image`} src={url} alt="" draggable={false}/> : <span className={className}>{fallback}</span>;
 }
 const repeatLabel = (repeat: MusicState['repeat']) => repeat === 'one' ? '单曲循环' : repeat === 'all' ? '列表循环' : '不循环';
+const MUSIC_EQ_FREQUENCIES = [31, 62, 125, 250, 500, 1000, 2000, 4000, 8000, 16000] as const;
+const FLAT_MUSIC_EQ = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
 const stopWidgetDrag = (event: ReactPointerEvent) => event.stopPropagation();
 
-export function MusicPlaybackRuntime({ state, outputDeviceId = 'default', onOutputStatus }: {
+export function MusicPlaybackRuntime({ state, outputDeviceId = 'default', eqBands = FLAT_MUSIC_EQ, onOutputStatus }: {
   state: MusicState | null;
   outputDeviceId?: string;
+  eqBands?: number[];
   onOutputStatus?: (status: MusicOutputStatus) => void;
 }) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const mediaSourceRef = useRef<MediaElementAudioSourceNode | null>(null);
+  const eqFiltersRef = useRef<BiquadFilterNode[]>([]);
   const lastReportAt = useRef(0);
+  const bands = useMemo(
+    () => MUSIC_EQ_FREQUENCIES.map((_, index) => {
+      const value = Number(eqBands[index] ?? 0);
+      return Number.isFinite(value) ? Math.max(-12, Math.min(12, value)) : 0;
+    }),
+    [eqBands],
+  );
+  const bandKey = bands.join(',');
+
+  const ensureAudioGraph = useCallback(async () => {
+    const audio = audioRef.current;
+    if (!audio) throw new Error('播放宿主尚未就绪');
+    let context = audioContextRef.current;
+    if (!context) {
+      context = new AudioContext({ latencyHint: 'playback' });
+      try {
+        const source = context.createMediaElementSource(audio);
+        const filters = MUSIC_EQ_FREQUENCIES.map(frequency => {
+          const filter = context!.createBiquadFilter();
+          filter.type = 'peaking';
+          filter.frequency.value = Math.min(frequency, context!.sampleRate / 2);
+          filter.Q.value = 1.4;
+          filter.gain.value = 0;
+          return filter;
+        });
+        source.connect(filters[0]);
+        for (let index = 0; index < filters.length - 1; index++) filters[index].connect(filters[index + 1]);
+        filters[filters.length - 1].connect(context.destination);
+        audioContextRef.current = context;
+        mediaSourceRef.current = source;
+        eqFiltersRef.current = filters;
+      } catch (error) {
+        await context.close().catch(() => undefined);
+        throw error;
+      }
+    }
+    if (context.state === 'suspended') await context.resume();
+    return context;
+  }, []);
+
+  const applyOutputSink = useCallback(async () => {
+    const audio = audioRef.current as (HTMLAudioElement & { setSinkId?: (deviceId: string) => Promise<void>; sinkId?: string }) | null;
+    if (!audio) return;
+    const requestedDeviceId = outputDeviceId || 'default';
+    const context = audioContextRef.current as (AudioContext & { setSinkId?: (deviceId: string) => Promise<void>; sinkId?: string }) | null;
+    try {
+      if (context) {
+        if (typeof context.setSinkId !== 'function') {
+          onOutputStatus?.({
+            state: requestedDeviceId === 'default' ? 'default' : 'unsupported',
+            requestedDeviceId, actualDeviceId: context.sinkId || 'default',
+            message: requestedDeviceId === 'default'
+              ? '均衡器使用 Web Audio 默认输出设备'
+              : '均衡器已启用，但当前 Electron Chromium 不支持 AudioContext.setSinkId；此时无法将处理后的音频单独路由到指定设备',
+          });
+          return;
+        }
+        await context.setSinkId(requestedDeviceId);
+        onOutputStatus?.({
+          state: requestedDeviceId === 'default' ? 'default' : 'active',
+          requestedDeviceId, actualDeviceId: context.sinkId || requestedDeviceId,
+          message: requestedDeviceId === 'default' ? '均衡器使用系统默认输出设备' : '已将均衡后的音频路由到所选 Windows 输出设备',
+        });
+        return;
+      }
+      if (typeof audio.setSinkId !== 'function') {
+        onOutputStatus?.({
+          state: requestedDeviceId === 'default' ? 'default' : 'unsupported',
+          requestedDeviceId, actualDeviceId: audio.sinkId || 'default',
+          message: '当前 Electron 音频元素不支持 setSinkId，暂时只能使用系统默认输出设备',
+        });
+        return;
+      }
+      await audio.setSinkId(requestedDeviceId);
+      onOutputStatus?.({
+        state: requestedDeviceId === 'default' ? 'default' : 'active',
+        requestedDeviceId, actualDeviceId: audio.sinkId || requestedDeviceId,
+        message: requestedDeviceId === 'default' ? '正在使用系统默认输出设备' : '已切换到所选 Windows 音频输出设备',
+      });
+    } catch (error) {
+      onOutputStatus?.({
+        state: 'unavailable', requestedDeviceId,
+        actualDeviceId: context?.sinkId || audio.sinkId || 'default',
+        message: `输出设备切换失败：${error instanceof Error ? error.message : String(error)}`,
+      });
+    }
+  }, [outputDeviceId, onOutputStatus]);
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -85,7 +178,17 @@ export function MusicPlaybackRuntime({ state, outputDeviceId = 'default', onOutp
     const offEngine = window.nexus.onMusicEngineCommand(command => {
       if (command.type === 'seek' && Number.isFinite(command.seconds) && audio.duration > 0) {
         audio.currentTime = Math.max(0, Math.min(audio.duration, command.seconds));
-        if (command.resume) void audio.play().catch(error => window.nexus.reportMusicRuntime({ error: true, playing: false, errorMessage: error instanceof Error ? `播放启动失败：${error.message}` : '播放启动失败' }));
+        if (command.resume) {
+          const startPlayback = async () => {
+            try {
+              if (audioContextRef.current?.state === 'suspended') await audioContextRef.current.resume();
+              await audio.play();
+            } catch (error) {
+              window.nexus.reportMusicRuntime({ error: true, playing: false, errorMessage: error instanceof Error ? `播放启动失败：${error.message}` : '播放启动失败' });
+            }
+          };
+          void startPlayback();
+        }
         report();
       }
     });
@@ -111,34 +214,32 @@ export function MusicPlaybackRuntime({ state, outputDeviceId = 'default', onOutp
   }, [state?.volume]);
 
   useEffect(() => {
-    const audio = audioRef.current as (HTMLAudioElement & { setSinkId?: (deviceId: string) => Promise<void>; sinkId?: string }) | null;
-    if (!audio) return;
-    const requestedDeviceId = outputDeviceId || 'default';
-    if (typeof audio.setSinkId !== 'function') {
-      onOutputStatus?.({
-        state: 'unsupported', requestedDeviceId, actualDeviceId: audio.sinkId || 'default',
-        message: '当前 Electron 音频元素不支持 setSinkId，暂时只能使用系统默认输出设备',
-      });
-      return;
-    }
+    void applyOutputSink();
+  }, [applyOutputSink]);
+
+  useEffect(() => {
+    const hasBoostOrCut = bands.some(value => value !== 0);
+    if (!hasBoostOrCut && !audioContextRef.current) return;
     let alive = true;
-    void audio.setSinkId(requestedDeviceId).then(() => {
-      if (!alive) return;
-      const actualDeviceId = audio.sinkId || requestedDeviceId;
-      onOutputStatus?.({
-        state: requestedDeviceId === 'default' ? 'default' : 'active',
-        requestedDeviceId, actualDeviceId,
-        message: requestedDeviceId === 'default' ? '正在使用系统默认输出设备' : '已切换到所选 Windows 音频输出设备',
-      });
-    }).catch(error => {
-      if (!alive) return;
-      onOutputStatus?.({
-        state: 'unavailable', requestedDeviceId, actualDeviceId: audio.sinkId || 'default',
-        message: `输出设备切换失败：${error instanceof Error ? error.message : String(error)}`,
-      });
-    });
+    const applyBands = async () => {
+      try {
+        if (hasBoostOrCut) await ensureAudioGraph();
+        const context = audioContextRef.current;
+        if (!context) return;
+        eqFiltersRef.current.forEach((filter, index) => {
+          filter.gain.setTargetAtTime(bands[index] ?? 0, context.currentTime, 0.025);
+        });
+        await applyOutputSink();
+      } catch (error) {
+        if (alive) window.nexus.reportMusicRuntime({
+          error: true, playing: false,
+          errorMessage: `均衡器初始化失败：${error instanceof Error ? error.message : String(error)}`,
+        });
+      }
+    };
+    void applyBands();
     return () => { alive = false; };
-  }, [outputDeviceId, onOutputStatus]);
+  }, [bandKey, bands, ensureAudioGraph, applyOutputSink]);
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -170,12 +271,22 @@ export function MusicPlaybackRuntime({ state, outputDeviceId = 'default', onOutp
         if (Number.isFinite(restoreTime) && restoreTime > 0 && audio.duration > 0) {
           audio.currentTime = Math.min(restoreTime, Math.max(0, audio.duration - 0.1));
         }
-        if (shouldPlay) void audio.play().catch(error => window.nexus.reportMusicRuntime({ error: true, playing: false, errorMessage: error instanceof Error ? `播放启动失败：${error.message}` : '播放启动失败' }));
+        if (shouldPlay) {
+          const startPlayback = async () => {
+            try {
+              if (audioContextRef.current?.state === 'suspended') await audioContextRef.current.resume();
+              await audio.play();
+            } catch (error) {
+              window.nexus.reportMusicRuntime({ error: true, playing: false, errorMessage: error instanceof Error ? `播放启动失败：${error.message}` : '播放启动失败' });
+            }
+          };
+          void startPlayback();
+        }
       };
       audio.addEventListener('loadedmetadata', restorePosition, { once: true });
       if (audio.readyState >= 1) restorePosition();
     }).catch(() => {
-      if (!cancelled) window.nexus.reportMusicRuntime({ error: true, playing: false });
+      if (!cancelled) window.nexus.reportMusicRuntime({ error: true, playing: false, errorMessage: '读取音频资源失败' });
     });
     return () => { cancelled = true; };
   }, [state?.currentTrackId]);
@@ -184,11 +295,24 @@ export function MusicPlaybackRuntime({ state, outputDeviceId = 'default', onOutp
     const audio = audioRef.current;
     if (!audio || !state?.currentTrackId || audio.dataset.trackId !== state.currentTrackId) return;
     if (state.isPlaying) {
-      void audio.play().catch(() => window.nexus.reportMusicRuntime({ error: true, playing: false }));
+      const startPlayback = async () => {
+        try {
+          if (audioContextRef.current?.state === 'suspended') await audioContextRef.current.resume();
+          await audio.play();
+        } catch (error) {
+          window.nexus.reportMusicRuntime({ error: true, playing: false, errorMessage: error instanceof Error ? `播放启动失败：${error.message}` : '播放启动失败' });
+        }
+      };
+      void startPlayback();
     } else {
       audio.pause();
     }
   }, [state?.isPlaying, state?.currentTrackId]);
+
+  useEffect(() => () => {
+    const context = audioContextRef.current;
+    if (context && context.state !== 'closed') void context.close().catch(() => undefined);
+  }, []);
 
   return <audio ref={audioRef} preload="metadata" className="nm-audio-engine" aria-hidden="true"/>;
 }
