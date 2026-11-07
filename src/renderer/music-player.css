@@ -123,3 +123,13 @@
 .nm-replaygain-info{font-size:10px;line-height:1.5;color:var(--accent)}
 .nm-replaygain-info.muted{color:var(--muted)}
 @media(max-width:560px){.nm-replaygain-main{align-items:flex-start;flex-direction:column}.nm-replaygain-main select{width:100%}}
+
+.nm-sleep-timer{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:13px 16px;border:1px solid var(--line);border-radius:11px;background:var(--panel)}
+.nm-sleep-timer>div:first-child{display:flex;min-width:0;flex-direction:column;gap:4px}
+.nm-sleep-timer b{font-size:12px;color:var(--text)}
+.nm-sleep-timer small{font-size:10px;line-height:1.5;color:var(--muted)}
+.nm-sleep-timer-actions{display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:6px}
+.nm-sleep-timer-actions button{padding:6px 9px;border:1px solid var(--line);border-radius:7px;background:var(--surface2);color:var(--muted);font-size:10px;cursor:pointer}
+.nm-sleep-timer-actions button:hover,.nm-sleep-timer-actions button.selected{border-color:var(--accent);color:var(--accent)}
+.nm-sleep-timer-actions button.clear{color:#e28a84}
+@media(max-width:720px){.nm-sleep-timer{align-items:flex-start;flex-direction:column}.nm-sleep-timer-actions{justify-content:flex-start}}
