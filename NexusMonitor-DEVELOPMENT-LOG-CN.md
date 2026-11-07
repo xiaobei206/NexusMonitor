@@ -414,4 +414,12 @@ Property 'volume' does not exist on type 'AudioHTMLAttributes<HTMLAudioElement>'
 - 新增 `NexusMonitor-2.2.1-HANDOFF-CN.md` 与 `docs/MUSIC-PLATFORM-2.2.1-CN.md`，明确音乐服务唯一播放宿主、Nora / NewAmp 分工、六种 USB 输出模式、音频 endpoint 独立路由、格式实际验收与自动化 / 实机验收边界。
 - 文档提交后仍未表示任何 2.2.1 应用功能已完成；版本号、源码、测试与 CI 结果必须在相应代码阶段实际变更及验证后更新。不得将 2.2.0 历史 CI 结果用作 2.2.1 通过的证据。
 - 代码阶段开始前须复查现有播放器、壁纸音频、显示窗口生命周期、preload / shared types 与源码测试，然后依音乐平台设计文档按小批次实施。当前分支 HEAD 与 Actions 链接须由接手者实时核实。
-\n### 首批代码阶段（2.2.1，2026-11-07）\n\n- `feature/2.2.1-music-platform` 从 `main` 2.2.0 合并提交 `bc0d29f19fbb98f7ea994fbe30dc68dfb35a38c9` 创建；版本已升至 2.2.1，并同步 package / lockfile / `VERSION` / .NET 项目 / API / snapshot / Renderer / 构建入口。\n- 新增 `src/main/music-metadata.ts`，使用本地文件解析器读取常用 tag 与内嵌封面；增加合成 MP3 / FLAC / WAV 标签测试。\n- 曲库导入扩展到 MP3、WAV、FLAC、OGG、OGA、Opus、M4A、M4B、AAC；新导入歌曲存储标签字段，封面复制到应用自身数据目录，renderer 只通过 track ID 请求 artwork URL。**还没有真实格式解码测试，导入与播放要分开验收。**\n- 删除静态 / GIF 壁纸的第二套 audio element，统一使用 Music Service；新增 `music-only` 六模式分支，隐藏 USB output BrowserWindow。\n- 新增 `tests/music-metadata.test.cjs` 与 source-level tests；截至本条记录尚未运行 2.2.1 CI，也未创建合并 PR。不能把 2.2.0 的 188/188 与 Windows build 结果说成当前分支通过。\n- 下一步：建立 Windows CI feedback loop，修复所有测试 / 编译问题；随后实施输出 endpoint 与完整曲库导航，再推进高级音频。\n
+
+### 首批代码阶段（2.2.1，2026-11-07）
+
+- `feature/2.2.1-music-platform` 从 `main` 2.2.0 合并提交 `bc0d29f19fbb98f7ea994fbe30dc68dfb35a38c9` 创建；版本已升至 2.2.1，并同步 package / lockfile / `VERSION` / .NET 项目 / API / snapshot / Renderer / 构建入口。
+- 新增 `src/main/music-metadata.ts`，使用本地文件解析器读取常用 tag 与内嵌封面；增加合成 MP3 / FLAC / WAV 标签测试。
+- 曲库导入扩展到 MP3、WAV、FLAC、OGG、OGA、Opus、M4A、M4B、AAC；新导入歌曲存储标签字段，封面复制到应用自身数据目录，renderer 只通过 track ID 请求 artwork URL。**还没有真实格式解码测试，导入与播放要分开验收。**
+- 删除静态 / GIF 壁纸的第二套 audio element，统一使用 Music Service；新增 `music-only` 六模式分支，隐藏 USB output BrowserWindow。
+- 新增 `tests/music-metadata.test.cjs` 与 source-level tests；截至本条记录尚未运行 2.2.1 CI，也未创建合并 PR。不能把 2.2.0 的 188/188 与 Windows build 结果说成当前分支通过。
+- 下一步：建立 Windows CI feedback loop，修复所有测试 / 编译问题；随后实施输出 endpoint 与完整曲库导航，再推进高级音频。
