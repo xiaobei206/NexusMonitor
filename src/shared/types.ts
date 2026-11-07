@@ -79,6 +79,7 @@ export interface SnapshotResult {
 
 
 export interface MusicLyricLine { timeSeconds: number; text: string; }
+export interface MusicLyricsResult { lines: MusicLyricLine[]; synced: boolean; source: 'local' | 'online' | 'none'; }
 export type MusicRepeatMode = 'off' | 'all' | 'one';
 export interface MusicTrack {
   id: string;

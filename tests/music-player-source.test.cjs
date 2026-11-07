@@ -235,7 +235,11 @@ test('local LRC lyrics are loaded only from a same-name sidecar and rendered aga
   assert.match(player, /window\.nexus\.getMusicLyrics\(track\.id\)/);
   assert.match(player, /lines\[middle\]\.timeSeconds <= time \+ 0\.04/);
   assert.match(player, /本地 LRC/);
-  assert.match(player, /不会联网搜索或上传/);
+  assert.match(player, /在线同步歌词/);
+  assert.match(player, /已尝试在线搜索/);
+  assert.match(player, /不会上传音频文件/);
+  assert.match(main, /fetchOnlineLyrics/);
+  assert.match(lyrics, /lrclib.net/);
 });
 
 test('sleep timer is app-wide, keeps a stable callback, and pauses the single audio host at expiry', () => {

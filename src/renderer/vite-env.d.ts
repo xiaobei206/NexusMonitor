@@ -12,7 +12,7 @@ interface Window {
     exportMusicPlaylist(playlistId:string): Promise<{ok:boolean;count?:number;path?:string;message?:string;canceled?:boolean}>;
     getMusicTrackUrl(trackId:string): Promise<string | null>;
     getMusicArtworkUrl(trackId:string): Promise<string | null>;
-    getMusicLyrics(trackId:string): Promise<import('../shared/types').MusicLyricLine[]>;
+    getMusicLyrics(trackId:string): Promise<import('../shared/types').MusicLyricsResult>;
     getMusicWasapiAvailability():Promise<{available:boolean;message:string}>;
     getMusicWasapiDevices():Promise<Array<{id:string;name:string;isDefault:boolean}>>;
     openMusicWasapi(deviceId:string,trackId:string,transportSampleRate:number):Promise<import('../main/music-exclusive-output').WasapiOpenResult>;

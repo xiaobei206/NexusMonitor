@@ -7,7 +7,7 @@ import { join, dirname, resolve, basename, extname, isAbsolute } from 'node:path
 import { pathToFileURL } from 'node:url';
 import { connect } from 'node:net';
 import { createInterface } from 'node:readline';
-import type { MusicCommand, MusicPlaylist, MusicRepeatMode, MusicState, MusicTrack, ServiceStatus, SnapshotError, SnapshotResult, SystemSnapshot } from '../shared/types';
+import type { MusicCommand, MusicLyricsResult, MusicPlaylist, MusicRepeatMode, MusicState, MusicTrack, ServiceStatus, SnapshotError, SnapshotResult, SystemSnapshot } from '../shared/types';
 import { classifyFetchError } from './api-error';
 import { RotatingLogger } from './logger';
 import { restartDelayMs } from './service-backoff';
@@ -20,7 +20,7 @@ import { isFullscreenOnWidgetDisplay } from './fullscreen-detection';
 import { resolveUsbDisplayWindowBounds } from './usb-display-window';
 import { musicFormatLabel, readMusicMetadata } from './music-metadata';
 import { MusicExclusiveOutput } from './music-exclusive-output';
-import { parseLrc } from './music-lyrics';
+import { fetchOnlineLyrics, parseLrc } from './music-lyrics';
 import { parseM3u, serializeM3u } from './music-playlist';
 
 // Music controls may arrive from a separate HUD/USB BrowserWindow after an explicit
@@ -340,17 +340,33 @@ function loadMusicLibrary() {
     musicState = { tracks: [], playlists: [], activePlaylistId: null, currentTrackId: null, currentTime: 0, duration: 0, volume: 0.7, isPlaying: false, errorMessage: null, shuffle: false, repeat: 'off' };
   }
 }
-function readMusicLyrics(trackId: string) {
+const musicLyricsCache = new Map<string, { expiresAt: number; result: MusicLyricsResult }>();
+const musicLyricsRequests = new Map<string, Promise<MusicLyricsResult>>();
+const EMPTY_MUSIC_LYRICS: MusicLyricsResult = { lines: [], synced: false, source: 'none' };
+async function readMusicLyrics(trackId: string): Promise<MusicLyricsResult> {
   const track = musicState.tracks.find(item => item.id === String(trackId));
-  if (!track || !existsSync(track.path)) return [];
+  if (!track || !existsSync(track.path)) return EMPTY_MUSIC_LYRICS;
   const sidecar = join(dirname(track.path), `${basename(track.path, extname(track.path))}.lrc`);
   try {
     const info = statSync(sidecar);
-    if (!info.isFile() || info.size <= 0 || info.size > 1024 * 1024) return [];
-    return parseLrc(readFileSync(sidecar, 'utf8'));
-  } catch {
-    return [];
-  }
+    if (info.isFile() && info.size > 0 && info.size <= 1024 * 1024) {
+      const lines = parseLrc(readFileSync(sidecar, 'utf8'));
+      if (lines.length) return { lines, synced: true, source: 'local' };
+    }
+  } catch { /* Missing local lyrics falls through to online lookup. */ }
+  const now = Date.now();
+  const cached = musicLyricsCache.get(track.id);
+  if (cached && cached.expiresAt > now) return cached.result;
+  const pending = musicLyricsRequests.get(track.id);
+  if (pending) return pending;
+  const request = fetchOnlineLyrics(track).catch(() => EMPTY_MUSIC_LYRICS);
+  musicLyricsRequests.set(track.id, request);
+  try {
+    const result = await request;
+    musicLyricsCache.set(track.id, { result, expiresAt: Date.now() + (result.lines.length ? 24 * 60 * 60_000 : 10 * 60_000) });
+    while (musicLyricsCache.size > 300) musicLyricsCache.delete(musicLyricsCache.keys().next().value as string);
+    return result;
+  } finally { musicLyricsRequests.delete(track.id); }
 }
 function publicMusicState(): MusicState {
   return {
