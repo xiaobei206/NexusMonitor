@@ -374,6 +374,11 @@ test('native WASAPI pause stops the audio client before a later Start call', () 
   assert.match(player, /已恢复普通音频输出/);
   assert.match(player, /bufferedBytes: native\.bufferedBytes/);
   assert.match(player, /underruns: native\.underruns/);
+  assert.match(player, /droppedFrames: native\.droppedFrames/);
+  assert.match(player, /丢弃 \$\{status\.droppedFrames\} 帧/);
+  const native = read('native/wasapi-output/binding.cpp');
+  assert.match(native, /droppedFrames\.fetch_add\(dropped \/ g_engine\.bytesPerFrame/);
+  assert.match(native, /"droppedFrames"/);
 });
 
 test('2.2.0 music library records are enriched once and persisted without resetting playlist state', () => {
