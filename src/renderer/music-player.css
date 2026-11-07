@@ -59,3 +59,19 @@
 .usb-shared-music-note{display:flex;flex-direction:column;gap:6px;padding:13px 14px;border:1px solid var(--line);border-radius:10px;background:var(--surface2)}
 .usb-shared-music-note b{font-size:12px;color:var(--text)}
 .usb-shared-music-note small{font-size:11px;line-height:1.6;color:var(--muted)}
+
+.nm-output-device-panel{display:flex;flex-direction:column;gap:12px;padding:16px 18px;border:1px solid var(--line);border-radius:12px;background:var(--panel)}
+.nm-output-device-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.nm-output-device-heading>div{display:flex;flex-direction:column;gap:4px}
+.nm-output-device-heading b{font-size:13px;color:var(--text)}
+.nm-output-device-heading small{font-size:11px;line-height:1.5;color:var(--muted)}
+.nm-output-device-state{flex:0 0 auto;padding:4px 8px;border:1px solid var(--line);border-radius:99px;color:var(--muted);font-size:10px}
+.nm-output-device-state.active{border-color:color-mix(in srgb,#42c99a 48%,var(--line));color:#42c99a}
+.nm-output-device-state.error{border-color:color-mix(in srgb,#f17d79 48%,var(--line));color:#f17d79}
+.nm-output-device-controls{display:flex;align-items:flex-end;flex-wrap:wrap;gap:8px}
+.nm-output-device-controls label{display:flex;flex:1 1 250px;min-width:190px;flex-direction:column;gap:6px;color:var(--muted);font-size:11px}
+.nm-output-device-controls select{width:100%;height:36px;padding:0 10px;border:1px solid var(--line);border-radius:8px;background:var(--surface2);color:var(--text);font:inherit}
+.nm-output-device-controls .btn-secondary{min-height:36px}
+.nm-output-device-panel>p{margin:0;font-size:11px;line-height:1.5;color:var(--muted)}
+.nm-output-device-panel>p.nm-output-device-warning{color:#e6a15a}
+@media(max-width:650px){.nm-output-device-controls{align-items:stretch}.nm-output-device-controls label{flex-basis:100%}}
