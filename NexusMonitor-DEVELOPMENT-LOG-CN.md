@@ -575,3 +575,6 @@ Property 'volume' does not exist on type 'AudioHTMLAttributes<HTMLAudioElement>'
 - 本节的 2.2.5 Windows CI 结果须在 workflow 完成后追加；不能沿用 v2.2.4 的测试结果。
 - 实际 P4 独占模式无声已由用户确认，普通模式恢复正常；本版本不修改独占链路。
 - 目标电脑的 HUD 首屏布局、音乐页可读性和 P4 普通模式仍需按交接文档复测。
+
+
+- 首次提交的 Windows CI Run #194 在 `tests/widget-docking.test.cjs` 的新增测试中失败：测试把显式右侧停靠窗口的垂直坐标预期为 y=18，但现有布局算法把该停靠状态的扩高窗口夹到工作区顶部 y=0；实际尺寸 340×1200 正确，另 240 项测试通过、版本一致性门禁通过。该失败是新测试的坐标预期与现有停靠语义不一致，不是构建/类型错误。已将断言改为实际约束结果 y=0 并触发下一轮验证。

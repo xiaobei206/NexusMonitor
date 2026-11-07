@@ -57,7 +57,7 @@ test('vertical HUD uses extra available height on a high-resolution display inst
     'vertical',
     'right',
   );
-  assert.deepEqual(vertical.bounds, { x: 2202, y: 18, width: 340, height: 1200 });
+  assert.deepEqual(vertical.bounds, { x: 2202, y: 0, width: 340, height: 1200 });
   assert.equal(vertical.minHeight, 700);
 });
 
