@@ -1,5 +1,5 @@
 export type ThemeId = 'obsidian' | 'paper' | 'titanium' | 'portrait';
-export type AppPage = 'overview' | 'devices' | 'turing' | 'usb-display' | 'themes' | 'shortcuts' | 'plugins' | 'settings';
+export type AppPage = 'overview' | 'devices' | 'turing' | 'usb-display' | 'themes' | 'music' | 'shortcuts' | 'plugins' | 'settings';
 
 export interface SensorValue { hardware: string; name: string; value: number | null; unit: string; kind: string; id?: string | null; }
 export interface FanSnapshot { hardware: string; name: string; rpm: number | null; }
