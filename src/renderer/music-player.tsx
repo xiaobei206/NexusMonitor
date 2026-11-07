@@ -435,6 +435,38 @@ function MusicOutputDevicePicker({ settings, updateSettings, status }: {
   </section>;
 }
 
+function MusicEqualizer({ bands, onChange }: { bands: number[]; onChange: (bands: number[]) => void }) {
+  const values = MUSIC_EQ_FREQUENCIES.map((_, index) => {
+    const value = Number(bands[index] ?? 0);
+    return Number.isFinite(value) ? Math.max(-12, Math.min(12, value)) : 0;
+  });
+  const active = values.some(value => value !== 0);
+  const labelForFrequency = (frequency: number) => frequency >= 1000 ? `${frequency / 1000} kHz` : `${frequency} Hz`;
+  return <details className="nm-eq-panel">
+    <summary>
+      <span><b>十段均衡器</b><small>31 Hz – 16 kHz · Web Audio 参数均衡</small></span>
+      <em className={active ? 'active' : ''}>{active ? '自定义曲线' : '平直 / 关闭增强'}</em>
+    </summary>
+    <div className="nm-eq-grid">
+      {MUSIC_EQ_FREQUENCIES.map((frequency, index) => <label key={frequency} className="nm-eq-band">
+        <span>{labelForFrequency(frequency)}</span>
+        <input type="range" min="-12" max="12" step="1" value={values[index]}
+          aria-label={`${labelForFrequency(frequency)} 均衡`}
+          onChange={event => {
+            const next = [...values];
+            next[index] = Number(event.target.value);
+            onChange(next);
+          }}/>
+        <small>{values[index] > 0 ? '+' : ''}{values[index]} dB</small>
+      </label>)}
+    </div>
+    <footer>
+      <button type="button" className="btn-secondary" disabled={!active} onClick={() => onChange([...FLAT_MUSIC_EQ])}>重置为平直</button>
+      <small>提升频段可能增加峰值并造成失真；这条 Web Audio 处理链不是 WASAPI 独占或 bit-perfect 输出。</small>
+    </footer>
+  </details>;
+}
+
 export function MusicMiniPlayer({ state, onCommand }: { state: MusicState | null; onCommand: (command: MusicCommand) => void }) {
   const [open, setOpen] = useState(false);
   const root = useRef<HTMLDivElement | null>(null);
@@ -639,6 +671,7 @@ export function MusicLibraryPage({ state, onCommand, notify, settings, updateSet
       </div>
     </div>
     <MusicOutputDevicePicker settings={settings} updateSettings={updateSettings} status={outputStatus}/>
+    <MusicEqualizer bands={settings.musicEqBands ?? FLAT_MUSIC_EQ} onChange={bands => updateSettings({ musicEqBands: bands })}/>
     {state?.errorMessage && <div className="nm-playback-error" role="status"><b>播放失败</b><span>{state.errorMessage}</span></div>}
     <div className="nm-library-layout">
       <aside className="nm-playlist-sidebar">
