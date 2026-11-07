@@ -42,7 +42,6 @@ interface Window {
     chooseUsbDisplayMedia(kind:'image'|'video'): Promise<{path:string;name:string}|null>;
     readUsbDisplayImage(path:string): Promise<{ok:boolean;name?:string;dataUrl?:string;message?:string}>;
     getUsbDisplayVideoUrl(path:string): Promise<{ok:boolean;name?:string;url?:string;message?:string}>;
-    getUsbDisplayAudioUrl(path:string): Promise<{ok:boolean;name?:string;url?:string;message?:string}>;
     onDesktopDisplaysChanged(callback:(displays:Array<{id:string;index:number;primary:boolean;width:number;height:number;x:number;y:number;scaleFactor:number;label:string}>)=>void):()=>void;
     onUsbDisplayStatusChanged(callback:(status:{open:boolean;targetDisplayId:string|null})=>void):()=>void;
     onTelemetry(callback: (data: any) => void): () => void; onWeather(callback: (data: any) => void): () => void;
