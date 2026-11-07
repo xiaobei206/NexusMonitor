@@ -113,5 +113,5 @@ test('the six USB modes separate hidden desktop playback from visible output', (
   assert.match(types, /'video' \| 'music-only'/);
   const main = read('src/main/index.ts');
   assert.match(main, /currentSettings\.usbDisplayMode === 'music-only'/);
-  assert.match(main, /currentSettings\.usbDisplayMode !== currentSettings/);
+  assert.match(main, /previous\.usbDisplayMode !== currentSettings\.usbDisplayMode/);
 });
