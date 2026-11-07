@@ -1,4 +1,4 @@
-# NexusMonitor 2.1.8 — Electron Edition
+# NexusMonitor 2.2.0 — Electron Edition (development branch)
 
 > **新对话 / 新开发者接手：先读 [START-HERE-NEXT-GPT.md](START-HERE-NEXT-GPT.md) 和根目录 [AGENTS.md](AGENTS.md)。** 入口文档列出阅读顺序、源码目录地图、验证命令与硬件验收边界。
 
@@ -31,6 +31,10 @@ The Electron 45 stable channel was current at the project date, and its release 
 - USB 5-inch Windows extended-display page: display selection, independent fullscreen output window, hardware monitoring, static/GIF wallpaper, weather clock and local video modes; true USB-panel backlight control is intentionally deferred pending firmware command confirmation
 - Wujiang/Suzhou weather and US AQI from Open-Meteo, with six upcoming hourly records and six future daily records for the Turing weather-clock screen
 - Local shortcut list and manifest-based plugin inventory
+- Unified local MP3 player: main library page, editable playlists, queue controls, app-only volume, shuffle/repeat and a single shared playback engine across the main UI, vertical HUD and non-video USB output modes
+- Vertical HUD mini-player inserted above the existing weather block without reordering the weather, clock or hardware metrics
+- Main window closes to the system tray; the hidden main renderer stays alive for playback and Turing display refresh
+- Saved USB 5-inch display target reopens on startup before HardwareService startup; delayed display enumeration is retried without guessing a different monitor
 - Local-only API bound to 127.0.0.1
 
 ## Build and run

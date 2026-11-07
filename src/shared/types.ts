@@ -1,5 +1,5 @@
 export type ThemeId = 'obsidian' | 'paper' | 'titanium' | 'portrait';
-export type AppPage = 'overview' | 'devices' | 'turing' | 'usb-display' | 'themes' | 'shortcuts' | 'plugins' | 'settings';
+export type AppPage = 'overview' | 'devices' | 'turing' | 'usb-display' | 'themes' | 'music' | 'shortcuts' | 'plugins' | 'settings';
 
 export interface SensorValue { hardware: string; name: string; value: number | null; unit: string; kind: string; id?: string | null; }
 export interface FanSnapshot { hardware: string; name: string; rpm: number | null; }
@@ -75,3 +75,46 @@ export interface SnapshotResult {
   ageMs: number;
   status: ServiceStatus;
 }
+
+
+export type MusicRepeatMode = 'off' | 'all' | 'one';
+export interface MusicTrack {
+  id: string;
+  path: string;
+  title: string;
+  artist: string;
+  album?: string | null;
+  addedAt: string;
+  missing?: boolean;
+}
+export interface MusicPlaylist {
+  id: string;
+  name: string;
+  trackIds: string[];
+  createdAt: string;
+}
+export interface MusicState {
+  tracks: MusicTrack[];
+  playlists: MusicPlaylist[];
+  activePlaylistId: string | null;
+  currentTrackId: string | null;
+  currentTime: number;
+  duration: number;
+  volume: number;
+  isPlaying: boolean;
+  shuffle: boolean;
+  repeat: MusicRepeatMode;
+}
+export type MusicCommand =
+  | { type: 'play' | 'pause' | 'toggle' | 'next' | 'previous' | 'ended' | 'toggle-shuffle' | 'cycle-repeat' }
+  | { type: 'seek'; seconds: number }
+  | { type: 'set-volume'; volume: number }
+  | { type: 'play-track'; trackId: string }
+  | { type: 'select-playlist'; playlistId: string | null }
+  | { type: 'create-playlist'; name: string }
+  | { type: 'rename-playlist'; playlistId: string; name: string }
+  | { type: 'delete-playlist'; playlistId: string }
+  | { type: 'add-to-playlist'; trackId: string; playlistId: string }
+  | { type: 'remove-track'; trackId: string }
+  | { type: 'remove-from-playlist'; trackId: string; playlistId: string }
+  | { type: 'move-track'; trackId: string; playlistId: string; direction: 'up' | 'down' };

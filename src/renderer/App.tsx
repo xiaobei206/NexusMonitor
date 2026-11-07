@@ -8,9 +8,10 @@ import {
   Palette, Power, RefreshCw, Settings2, ShieldCheck, SlidersHorizontal, Sparkles,
   Square, Thermometer, Upload, Wifi, X, Zap, Clock3, CloudSun, Check, Plus, Search,
   Laptop, GripVertical, Database, GaugeCircle, Sun, Moon, Cable, RotateCcw, Puzzle, CalendarDays,
-  Image as ImageIcon, FolderOpen, Play, Pause, SkipBack, SkipForward, Film, MonitorPlay, Tv,
+  Image as ImageIcon, FolderOpen, Play, Pause, SkipBack, SkipForward, Film, MonitorPlay, Tv, Music2,
 } from 'lucide-react';
-import type { AppPage, AppSettings, CpuSnapshot, DiskSnapshot, GpuSnapshot, NetworkSnapshot, ServiceStatus, SnapshotResult, SystemSnapshot, ThemeId, WeatherSnapshot, SensorValue } from '../shared/types';
+import type { AppPage, AppSettings, CpuSnapshot, DiskSnapshot, GpuSnapshot, MusicCommand, MusicState, NetworkSnapshot, ServiceStatus, SnapshotResult, SystemSnapshot, ThemeId, WeatherSnapshot, SensorValue } from '../shared/types';
+import { MusicLibraryPage, MusicMiniPlayer, MusicPlaybackRuntime, MusicPlayerDock, useMusicState } from './music-player';
 import { renderTuringDashboard, renderTuringWeatherClock } from './turing-dashboard';
 import { getWeatherSceneAsset } from './weather-scene';
 import { selectTuringDisk, selectTuringGpu, selectTuringNetwork, selectNetworkInterfaces } from './turing-selection';
@@ -78,6 +79,7 @@ const navItems: Array<{ id: AppPage; label: string; icon: any; group: string }> 
   { id: 'turing', label: '图灵副屏', icon: Monitor, group: '设备输出' },
   { id: 'usb-display', label: 'USB 5 寸副屏', icon: MonitorPlay, group: '设备输出' },
   { id: 'themes', label: '主题工作室', icon: Palette, group: '个性化' },
+  { id: 'music', label: '音乐播放器', icon: Music2, group: '个性化' },
   { id: 'shortcuts', label: '快捷入口', icon: Link2, group: '个性化' },
   { id: 'plugins', label: '插件管理', icon: PuzzleIcon, group: '扩展管理' },
   { id: 'settings', label: '系统设置', icon: Settings2, group: '管理' },
@@ -184,7 +186,7 @@ type WidgetDragState = {
   moved: boolean;
 } | null;
 
-function WidgetView({ snapshot, settings, history, weather, detailOnly = false }: { snapshot: Nullable<SystemSnapshot>; settings: AppSettings; history: WidgetHistory; weather: Nullable<WeatherSnapshot>; detailOnly?: boolean }) {
+function WidgetView({ snapshot, settings, history, weather, detailOnly = false, musicState, musicCommand }: { snapshot: Nullable<SystemSnapshot>; settings: AppSettings; history: WidgetHistory; weather: Nullable<WeatherSnapshot>; detailOnly?: boolean; musicState: MusicState | null; musicCommand: (command: MusicCommand) => void }) {
   const [expanded, setExpanded] = useState(detailOnly);
   const [fadingOut, setFadingOut] = useState(false);
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -421,6 +423,7 @@ function WidgetView({ snapshot, settings, history, weather, detailOnly = false }
             <div className="widget-vertical-meta">{powerSummary.label}</div>
           </div>
         </div>}
+        {!detailOnly && <MusicMiniPlayer state={musicState} onCommand={musicCommand}/>}
         {showWidgetMetric('weather') && <div className="widget-vertical-weather">
           <div className="widget-vertical-weather-head"><CloudSun size={22}/><b>天气 · {weather?.location ?? '苏州'}</b><span className="widget-weather-glyph">{weatherGlyph(weather?.weatherCode)}</span><strong>{fmt(weather?.temperature,0)}°C</strong></div>
           <div className="widget-vertical-weather-meta">{weatherText(weather?.weatherCode)} · 体感 {fmt(weather?.apparentTemperature,0)}°C · 湿度 {fmt(weather?.humidity,0)}%</div>
@@ -595,6 +598,7 @@ function MainApp() {
   const widgetQuery = new URLSearchParams(window.location.search);
   const isWidget = widgetQuery.get('widget') === '1';
   const isWidgetDetail = widgetQuery.get('widget-detail') === '1';
+  const music = useMusicState();
   const persistTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const settingsRef = useRef(settings);
   const settingsPromise = useRef<Promise<AppSettings | null> | null>(null);
@@ -648,6 +652,8 @@ function MainApp() {
     void window.nexus.getWeather().then(w => { if (alive && w) setWeather(w); }).catch(() => undefined);
     return () => { alive = false; };
   }, [applySnapshotResult]);
+
+  useEffect(() => window.nexus.onOpenMusicLibrary(() => setPage('music')), []);
 
   useEffect(() => {
     return window.nexus.onSettingsUpdated(raw => {
@@ -705,7 +711,7 @@ function MainApp() {
     ? `物理磁盘不可用：${snapshot.storage.lastError ?? 'WMI 查询失败'}`
     : null;
 
-  if (isWidget) return <WidgetView snapshot={snapshot} settings={settings} history={history} weather={weather} detailOnly={isWidgetDetail}/>;
+  if (isWidget) return <WidgetView snapshot={snapshot} settings={settings} history={history} weather={weather} detailOnly={isWidgetDetail} musicState={music.state} musicCommand={music.command}/>;
 
   const cpu = snapshot?.cpu;
   const gpu = snapshot?.gpus?.[0];
@@ -731,13 +737,14 @@ function MainApp() {
   };
 
   return <div className={`app-shell theme-${themeClass}`} style={{'--accent':settings.accent,'--opacity':settings.opacity/100,...(settings.theme==='portrait'&&settings.backgroundDataUrl?{backgroundImage:`linear-gradient(90deg,rgba(8,13,20,.94),rgba(8,13,20,.79)),url(${settings.backgroundDataUrl})`,backgroundSize:'cover',backgroundPosition:'center'}:{})} as any}>
+    <MusicPlaybackRuntime state={music.state}/>
     <aside className="sidebar">
       <div className="app-brand"><div className="brand-emblem"><span>N</span><i/></div><div><strong>NEXUS<span>MONITOR</span></strong><small>HARDWARE INTELLIGENCE</small></div></div>
       <div className="sidebar-divider"/>
       {['监控中心','设备输出','个性化','扩展管理','管理'].map(group => <div className="nav-group" key={group}><div className="nav-group-title">{group}</div>{navItems.filter(n=>n.group===group).map(item=>{
         const Icon=item.icon; return <button key={item.id} className={`nav-item ${page===item.id?'active':''}`} onClick={()=>setPage(item.id)}><Icon size={17}/><span>{item.label}</span>{page===item.id&&<i/>}</button>;
       })}</div>)}
-      <div className="sidebar-bottom"><div className={`service-chip ${serviceState==='online'?'online':'offline'}`}><span className="pulse-dot"/><div><b>{serviceStatus.phase==='degraded'?'服务响应超时':serviceState==='online'?'本机服务在线':'等待硬件服务'}</b><small>{serviceState==='online'?'LOCAL TELEMETRY':serviceStatus.phase==='restarting'?'RESTARTING':'LOCALHOST :18765'}</small></div></div><div className="sidebar-footer"><span>NEXUS MONITOR</span><span>2.1.8</span></div></div>
+      <div className="sidebar-bottom"><div className={`service-chip ${serviceState==='online'?'online':'offline'}`}><span className="pulse-dot"/><div><b>{serviceStatus.phase==='degraded'?'服务响应超时':serviceState==='online'?'本机服务在线':'等待硬件服务'}</b><small>{serviceState==='online'?'LOCAL TELEMETRY':serviceStatus.phase==='restarting'?'RESTARTING':'LOCALHOST :18765'}</small></div></div><div className="sidebar-footer"><span>NEXUS MONITOR</span><span>2.2.0</span></div></div>
     </aside>
 
     <main className="main-area">
@@ -759,6 +766,7 @@ function MainApp() {
 
         {page==='devices'&&<DevicesPage snapshot={snapshot} settings={settings} updateSettings={updateSettings} notify={notify} refreshSnapshot={refreshSnapshot}/>}
         {page==='usb-display'&&<UsbDisplayPage settings={settings} updateSettings={updateSettings} notify={notify}/>}
+        {page==='music'&&<MusicLibraryPage state={music.state} onCommand={music.command} notify={notify}/> }
         <div className={`turing-background-host ${page === 'turing' ? 'active' : 'inactive'}`} aria-hidden={page !== 'turing'}><TuringPage settings={settings} updateSettings={updateSettings} snapshot={snapshot} weather={weather} notify={notify} active={page === 'turing'} settingsLoaded={settingsLoaded} serviceReady={serviceStatus.phase === 'online' || serviceStatus.phase === 'degraded'}/></div>
         {page==='themes'&&<ThemePage settings={settings} updateSettings={updateSettings} notify={notify}/>}
         {page==='shortcuts'&&<ShortcutsPage settings={settings} updateSettings={updateSettings} notify={notify}/>}
@@ -766,6 +774,7 @@ function MainApp() {
         {page==='settings'&&<SettingsPage settings={settings} updateSettings={updateSettings} notify={notify}/>}
         <footer className="content-footer"><span>© 2026 NEXUSMONITOR · DESKTOP TELEMETRY</span><span>LOCAL-FIRST · NO ACCOUNT · NO CLOUD SYNC</span></footer>
       </div>
+      <MusicPlayerDock state={music.state} onCommand={music.command} onOpen={() => setPage('music')}/>
     </main>
     {toast&&<div className="toast"><Check size={15}/>{toast}</div>}
   </div>;
@@ -1133,14 +1142,12 @@ function UsbDisplayPage({settings,updateSettings,notify}:any){
   const [busy,setBusy]=useState(false);
   const mode=settings.usbDisplayMode??'monitor';
   const persistedDisplay=displays.find(display=>display.id===String(settings.usbDisplayDisplayId??''))??null;
-  const fallbackDisplay=displays.find(display=>!display.primary)??null;
-  const selectedDisplay=persistedDisplay??fallbackDisplay;
+  const selectedDisplay=persistedDisplay;
   const activeDisplay=displayStatus.open?displays.find(display=>display.id===displayStatus.targetDisplayId)??selectedDisplay:selectedDisplay;
   const refresh=useCallback(async()=>{
     try{
       const [found,status]=await Promise.all([window.nexus.getDesktopDisplays(),window.nexus.getUsbDisplayStatus()]);
       setDisplays(Array.isArray(found)?found:[]);setDisplayStatus(status??{open:false,targetDisplayId:null});
-      if(Array.isArray(found)){const saved=found.find((display:UsbDisplayInfo)=>display.id===String(settings.usbDisplayDisplayId??''));const external=found.find((display:UsbDisplayInfo)=>!display.primary);if(!saved&&external)updateSettings({usbDisplayDisplayId:external.id});}
     }catch(error){console.warn('USB display discovery failed',error);}
   },[settings.usbDisplayDisplayId,updateSettings]);
   useEffect(()=>{void refresh();const timer=window.setInterval(()=>void refresh(),5000);const off=window.nexus.onDesktopDisplaysChanged(()=>void refresh());const statusOff=window.nexus.onUsbDisplayStatusChanged(value=>setDisplayStatus(value));return()=>{window.clearInterval(timer);off();statusOff();};},[refresh]);
@@ -1164,10 +1171,11 @@ function UsbDisplayPage({settings,updateSettings,notify}:any){
         <div className="panel-heading"><div><span className="card-kicker">DISPLAY TARGET</span><h3>显示器与运行状态</h3></div><MonitorPlay size={19}/></div>
         <div className="usb-display-status-card usb-display-status-card-v2"><div className={`usb-display-status-icon ${displayStatus.open?'active':''}`}><Monitor size={25}/></div><div><b>{displayStatus.open?'5 寸副屏窗口正在显示':'5 寸副屏尚未启动'}</b><span>{activeDisplay?`${activeDisplay.label} · ${activeDisplay.width} × ${activeDisplay.height} · ${activeDisplay.primary?'主显示器':'扩展显示器'}`:'请选择已连接的扩展显示器'}</span></div><span className={`status-dot ${displayStatus.open?'online':''}`}/></div>
         <label className="field-label">目标显示器</label>
-        <select className="select-input" value={String(settings.usbDisplayDisplayId??'')} onChange={e=>updateSettings({usbDisplayDisplayId:e.target.value})}>
-          <option value="">自动选择第二块显示器</option>
+        <select className="select-input" value={persistedDisplay?String(settings.usbDisplayDisplayId??''):''} onChange={e=>updateSettings({usbDisplayDisplayId:e.target.value})}>
+          <option value="">请选择五寸屏对应的显示器</option>
           {displays.map(display=><option key={display.id} value={display.id}>{display.label} · {display.width}×{display.height}{display.primary?' · 主屏':''}</option>)}
         </select>
+        {settings.usbDisplayDisplayId&&!persistedDisplay&&<p className="panel-note">上次保存的显示器目前未检测到。为避免误把其他外接屏当成五寸屏，请重新选择目标显示器；程序不会自动切换到其他屏幕。</p>}
         <div className="usb-display-actions"><button className="btn-primary" disabled={busy||displayStatus.open} onClick={()=>void start()}><Play size={15}/>{busy?'处理中…':'启动副屏'}</button><button className="btn-secondary" disabled={busy||!displayStatus.open} onClick={()=>void close()}><Power size={15}/>关闭副屏</button><button className="icon-button" title="刷新显示器" onClick={()=>void refresh()}><RefreshCw size={15}/></button></div>
         <p className="panel-note">副屏输出只控制 NexusMonitor 的独立窗口，不改变 Windows 的扩展桌面模式。关闭输出窗口后，Windows 仍保持扩展显示。</p>
         {displays.length>0&&<div className="usb-display-list">{displays.map(display=><div key={display.id}><span className="display-number">{display.index}</span><span><b>{display.label}{display.primary?'（主屏）':''}</b><small>{display.width} × {display.height} · 坐标 {display.x}, {display.y} · 缩放 {Math.round(display.scaleFactor*100)}%</small></span><span className={`display-tag ${display.id===String(settings.usbDisplayDisplayId??'')?'selected':''}`}>{display.id===String(settings.usbDisplayDisplayId??'')?'当前目标':display.primary?'主屏':'可选'}</span></div>)}</div>}
@@ -1195,6 +1203,7 @@ function UsbDisplayPage({settings,updateSettings,notify}:any){
 
 function UsbDisplayOutput(){
   const [settings,setSettings]=useState<any>({usbDisplayMode:'monitor',usbDisplayMediaFit:'cover',usbDisplayAudioVolume:65,usbDisplayAudioLoop:true});
+  const music = useMusicState();
   const [snapshot,setSnapshot]=useState<any>(null);
   const [weather,setWeather]=useState<any>(null);
   const [now,setNow]=useState(new Date());
@@ -1244,11 +1253,11 @@ function UsbDisplayOutput(){
   useEffect(()=>{
     if(audioRef.current)audioRef.current.volume=audioVolume;
   },[audioSource,mode,audioVolume]);
-  const audio=(mode==='static'||mode==='gif')&&audioSource?<audio ref={audioRef} src={audioSource} autoPlay loop={settings.usbDisplayAudioLoop!==false} controls={false}/>:null;
+  const audio=(mode==='static'||mode==='gif')&&audioSource&&!music.state?.currentTrackId?<audio ref={audioRef} src={audioSource} autoPlay loop={settings.usbDisplayAudioLoop!==false} controls={false}/>:null;
   const monitor=<div className="usb-output-monitor usb-output-monitor-v2"><div className="usb-monitor-grid"/><header><div><strong>NEXUS<span>MONITOR</span></strong><small>USB SECONDARY DISPLAY · 960 × 540</small></div><div className="usb-monitor-clock">{now.toLocaleTimeString('zh-CN',{hour12:false})}</div></header><section className="usb-monitor-top"><article className="usb-main-metric cpu"><div className="usb-metric-title"><span>CPU</span><i>PROCESSOR</i></div><div className="usb-metric-core"><BigRing value={cpu.load} color={pctColor(cpu.load)} label="LOAD"/></div><div className="usb-metric-readings"><b>{number(cpu.temperature)}<small>°C</small></b><b>{number(cpu.powerW)}<small> W</small></b><span>{cpu.name||'CPU'}</span></div><MiniAreaChart values={samples.map(v=>v.cpu)} color="#52d5a2"/></article><article className="usb-main-metric gpu"><div className="usb-metric-title"><span>GPU</span><i>GRAPHICS</i></div><div className="usb-metric-core"><BigRing value={gpu.load} color={pctColor(gpu.load)} label="LOAD"/></div><div className="usb-metric-readings"><b>{number(gpu.temperature)}<small>°C</small></b><b>{number(gpu.powerW)}<small> W</small></b><span>{gpu.name||'GPU'}</span></div><MiniAreaChart values={samples.map(v=>v.gpu)} color="#62a8ff"/></article></section><section className="usb-monitor-bottom"><article><div className="usb-stat-head"><span>MEMORY</span><b>{number(memory.percent)}%</b></div><div className="usb-bar"><i style={{width:`${Math.max(0,Math.min(100,Number(memory.percent)||0))}%`,background:pctColor(memory.percent)}}/></div><div className="usb-stat-foot"><span>{prettyBytes(memory.usedBytes)}</span><span>{prettyBytes(memory.totalBytes)}</span></div></article><article><div className="usb-stat-head"><span>NETWORK</span><b>↓ {prettyBytes(rx)}/s</b></div><MiniAreaChart values={samples.map(v=>v.rx)} color="#e5b65b" height={42}/><div className="usb-stat-foot"><span>UPLOAD ↑ {prettyBytes(tx)}/s</span><span>{snapshot?.networks?.find((n:any)=>n.isDefaultRoute&&n.status==='Up')?.name||'AUTO'}</span></div></article><article><div className="usb-stat-head"><span>STORAGE</span><b>{number(disk.temperature)}°C</b></div><div className="usb-bar"><i style={{width:`${Math.max(6,Math.min(100,Number(disk.load)||0))}%`,background:'#b26eff'}}/></div><div className="usb-stat-foot"><span>{disk.model||'Primary disk'}</span><span>{number(disk.load)}% ACTIVE</span></div></article></section><footer><span>{cpu.name||'CPU'} · {gpu.name||'GPU'}</span><span>更新 {snapshot?.timestamp?new Date(snapshot.timestamp).toLocaleTimeString('zh-CN',{hour12:false}):'—'}</span></footer></div>;
   const weatherView=<div className="usb-output-weather usb-output-weather-v2"><div className="usb-weather-grid"/><header><div><span>{weather?.location??'LOCAL WEATHER'}</span><small>WEATHER / AIR QUALITY</small></div><div className="usb-weather-time">{now.toLocaleTimeString('zh-CN',{hour12:false})}</div></header><section className="usb-weather-main"><div className="usb-weather-temp">{number(weather?.temperature)}<em>°C</em></div><div className="usb-weather-summary"><strong>{weatherText(weather?.weatherCode)}</strong><span>体感 {number(weather?.apparentTemperature)}° · 湿度 {number(weather?.humidity)}% · 风速 {number(weather?.windSpeed)} km/h</span></div><div className="usb-aqi-badge" style={{borderColor:aqi.color,boxShadow:`0 0 24px ${aqi.color}22`}}><small>US AQI</small><strong style={{color:aqi.textColor}}>{aqi.label==='—'?'—':number(weather?.aqi)}</strong><span style={{color:aqi.textColor}}>{aqi.level}</span></div></section><section className="usb-weather-details"><article><b>{number(weather?.pm25)}</b><span>PM2.5 µg/m³</span></article><article><b>{number(weather?.pm10)}</b><span>PM10 µg/m³</span></article><article><b>{number(weather?.todayMaxTemperature)}° / {number(weather?.todayMinTemperature)}°</b><span>今日最高 / 最低</span></article><article><b>{number(weather?.precipitationProbability)}%</b><span>降水概率</span></article></section><footer><span>{now.toLocaleDateString('zh-CN',{year:'numeric',month:'long',day:'numeric',weekday:'long'})}</span><span>数据源 {weather?.source||'—'}</span></footer></div>;
   const portraitMedia=settings.usbDisplayMediaOrientation==='portrait';
-  return <main className="usb-output-root">{mode==='monitor'?monitor:null}{(mode==='static'||mode==='gif')&&(mediaSource?<img className={`usb-output-media ${settings.usbDisplayMediaFit==='contain'?'contain':'cover'} ${portraitMedia?'portrait':''}`} src={mediaSource}/>:<div className="usb-output-empty">{mode==='gif'?'请选择 GIF 壁纸':'请选择静态壁纸'}</div>)}{mode==='video'&&(mediaSource?<video className={`usb-output-video ${portraitMedia?'portrait':''}`} src={mediaSource} autoPlay loop muted controls/>:<div className="usb-output-empty">请选择本地视频</div>)}{mode==='weather-clock'?weatherView:null}{audio}</main>;
+  return <main className="usb-output-root">{mode==='monitor'?monitor:null}{(mode==='static'||mode==='gif')&&(mediaSource?<img className={`usb-output-media ${settings.usbDisplayMediaFit==='contain'?'contain':'cover'} ${portraitMedia?'portrait':''}`} src={mediaSource}/>:<div className="usb-output-empty">{mode==='gif'?'请选择 GIF 壁纸':'请选择静态壁纸'}</div>)}{mode==='video'&&(mediaSource?<video className={`usb-output-video ${portraitMedia?'portrait':''}`} src={mediaSource} autoPlay loop muted controls/>:<div className="usb-output-empty">请选择本地视频</div>)}{mode==='weather-clock'?weatherView:null}{audio}{mode!=='video'&&<div className="usb-output-music"><MusicMiniPlayer state={music.state} onCommand={music.command}/></div>}</main>;
 }
 
 export default function App(){
@@ -1354,6 +1363,6 @@ function SettingsPage({settings,updateSettings,notify}:any){
       <p className="panel-note">每项独立开关。这里控制悬浮窗窄条及展开卡片中的模块；主界面总览的显示项目保持独立设置。单个底层传感器可在“硬件与网络”页面收藏。</p>
       <div className="widget-visibility-grid">{widgetOptions.map(([id,label])=><label className="widget-visibility-option" key={id}><input type="checkbox" checked={widgetVisible.includes(id)} onChange={()=>toggleWidgetMetric(id)}/><span>{label}</span></label>)}</div>
     </section>
-    <section className="panel about-panel"><div className="about-emblem">N</div><div><b>NexusMonitor 2.1.8</b><span>Electron + React UI · .NET 10 Hardware Service</span><small>本机优先，不需要账户；硬件数据通过 127.0.0.1 本地接口传递。</small></div><span className="count-pill">DEVELOPMENT BUILD</span></section>
+    <section className="panel about-panel"><div className="about-emblem">N</div><div><b>NexusMonitor 2.2.0</b><span>Electron + React UI · .NET 10 Hardware Service</span><small>本机优先，不需要账户；硬件数据通过 127.0.0.1 本地接口传递。</small></div><span className="count-pill">DEVELOPMENT BUILD</span></section>
   </>;
 }

@@ -1,4 +1,5 @@
 import { app, BrowserWindow, Tray, Menu, ipcMain, nativeImage, dialog, shell, screen, safeStorage } from 'electron';
+import { randomUUID } from 'node:crypto';
 import { spawn } from 'node:child_process';
 import type { ChildProcess } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, writeFileSync, readdirSync, copyFileSync, statSync } from 'node:fs';
@@ -6,7 +7,7 @@ import { join, dirname, resolve, basename, extname } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { connect } from 'node:net';
 import { createInterface } from 'node:readline';
-import type { ServiceStatus, SnapshotError, SnapshotResult, SystemSnapshot } from '../shared/types';
+import type { MusicCommand, MusicPlaylist, MusicRepeatMode, MusicState, MusicTrack, ServiceStatus, SnapshotError, SnapshotResult, SystemSnapshot } from '../shared/types';
 import { classifyFetchError } from './api-error';
 import { RotatingLogger } from './logger';
 import { restartDelayMs } from './service-backoff';
@@ -17,6 +18,11 @@ import type { DockEdge } from './widget-docking';
 import { calculateWidgetDetailLayout } from './widget-detail-window';
 import { isFullscreenOnWidgetDisplay } from './fullscreen-detection';
 import { resolveUsbDisplayWindowBounds } from './usb-display-window';
+
+// Music controls may arrive from a separate HUD/USB BrowserWindow after an explicit
+// user click there. The shared, hidden main-renderer audio element must be allowed to
+// start in response to that trusted IPC command; playback state is always restored paused.
+app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
 
 const SERVICE_PORT = 18765;
 const SERVICE_URL = `http://127.0.0.1:${SERVICE_PORT}`;
@@ -38,6 +44,7 @@ let widgetDetailFadeTimer: NodeJS.Timeout | null = null;
 let widgetCalendarWindow: BrowserWindow | null = null;
 let usbDisplayWindow: BrowserWindow | null = null;
 let usbDisplayTargetId: string | null = null;
+let usbDisplayRestorePending = false;
 let widgetDockEdge: DockEdge | null = null;
 let widgetRestoreBounds: { x: number; y: number; width: number; height: number } | null = null;
 let widgetRestoreMinSize: [number, number] | null = null;
@@ -55,6 +62,13 @@ let weatherTimer: NodeJS.Timeout | null = null;
 let weatherRetryTimer: NodeJS.Timeout | null = null;
 let lastWeather: unknown = null;
 let currentSettings: Record<string, unknown> = {};
+let musicState: MusicState = {
+  tracks: [], playlists: [], activePlaylistId: null, currentTrackId: null,
+  currentTime: 0, duration: 0, volume: 0.7, isPlaying: false, shuffle: false, repeat: 'off',
+};
+let musicLastPersistAt = 0;
+const MUSIC_AUDIO_EXTENSIONS = new Set(['.mp3']);
+const MUSIC_FOLDER_SCAN_LIMIT = 5000;
 let quitting = false;
 let appLogger: RotatingLogger | null = null;
 let lastServiceStatus: ServiceStatus = {
@@ -144,6 +158,20 @@ function openUsbDisplayWindow(displayId: string) {
   output.webContents.on('did-fail-load', (_event, code, description) => log(`USB display renderer load failed: ${code} ${description}`));
   return { ok: true, status: getUsbDisplayStatus() };
 }
+function restoreConfiguredUsbDisplay() {
+  if (!usbDisplayRestorePending) return false;
+  // Never guess which external monitor is the 5-inch panel; only restore the saved ID.
+  const displayId = String(currentSettings.usbDisplayDisplayId ?? '').trim();
+  if (!displayId) { usbDisplayRestorePending = false; return false; }
+  const result = openUsbDisplayWindow(displayId);
+  if (result.ok) {
+    usbDisplayRestorePending = false;
+    log(`Restored USB display ${displayId} with saved mode ${String(currentSettings.usbDisplayMode ?? 'monitor')}`);
+    return true;
+  }
+  log(`Saved USB display ${displayId} is not ready yet: ${result.message ?? 'unknown error'}`);
+  return false;
+}
 function chooseUsbDisplayMedia(kind: 'image' | 'video' | 'audio') {
   const filters = kind === 'video'
     ? [{ name: 'Video', extensions: ['mp4', 'm4v', 'webm', 'mov'] }]
@@ -205,6 +233,273 @@ function loadSettings() {
   try { currentSettings = JSON.parse(readFileSync(getSettingsPath(), 'utf8')); }
   catch { currentSettings = {}; }
   return currentSettings;
+}
+function musicLibraryPath() { return join(app.getPath('userData'), 'music-library.json'); }
+function persistMusicState() {
+  const persisted = {
+    tracks: musicState.tracks, playlists: musicState.playlists,
+    activePlaylistId: musicState.activePlaylistId, currentTrackId: musicState.currentTrackId,
+    currentTime: musicState.currentTime, volume: musicState.volume,
+    shuffle: musicState.shuffle, repeat: musicState.repeat,
+  };
+  const file = musicLibraryPath();
+  mkdirSync(dirname(file), { recursive: true });
+  writeFileSync(file, JSON.stringify(persisted, null, 2), 'utf8');
+  musicLastPersistAt = Date.now();
+}
+function loadMusicLibrary() {
+  try {
+    const raw = JSON.parse(readFileSync(musicLibraryPath(), 'utf8')) as Record<string, unknown>;
+    const tracks = Array.isArray(raw.tracks) ? raw.tracks.flatMap((item: any) => {
+      if (!item || typeof item.path !== 'string' || !MUSIC_AUDIO_EXTENSIONS.has(extname(item.path).toLowerCase())) return [];
+      const target = resolve(item.path);
+      return [{
+        id: typeof item.id === 'string' ? item.id : randomUUID(),
+        path: target,
+        title: typeof item.title === 'string' ? item.title : basename(target, extname(target)),
+        artist: typeof item.artist === 'string' ? item.artist : '本地音乐',
+        album: typeof item.album === 'string' ? item.album : null,
+        addedAt: typeof item.addedAt === 'string' ? item.addedAt : new Date().toISOString(),
+      } satisfies MusicTrack];
+    }) : [];
+    const trackIds = new Set(tracks.map(track => track.id));
+    const playlists = Array.isArray(raw.playlists) ? raw.playlists.flatMap((item: any) => {
+      if (!item || typeof item.id !== 'string' || typeof item.name !== 'string') return [];
+      return [{
+        id: item.id, name: item.name.slice(0, 80),
+        trackIds: Array.isArray(item.trackIds) ? item.trackIds.filter((id: unknown): id is string => typeof id === 'string' && trackIds.has(id)) : [],
+        createdAt: typeof item.createdAt === 'string' ? item.createdAt : new Date().toISOString(),
+      } satisfies MusicPlaylist];
+    }) : [];
+    const playlistId = typeof raw.activePlaylistId === 'string' && playlists.some(item => item.id === raw.activePlaylistId)
+      ? raw.activePlaylistId : null;
+    const currentTrackId = typeof raw.currentTrackId === 'string' && trackIds.has(raw.currentTrackId) ? raw.currentTrackId : null;
+    const rawVolume = Number(raw.volume);
+    const repeat: MusicRepeatMode = raw.repeat === 'all' || raw.repeat === 'one' ? raw.repeat : 'off';
+    musicState = {
+      tracks, playlists, activePlaylistId: playlistId, currentTrackId,
+      currentTime: Number.isFinite(Number(raw.currentTime)) ? Math.max(0, Number(raw.currentTime)) : 0,
+      duration: 0, volume: Number.isFinite(rawVolume) ? Math.max(0, Math.min(1, rawVolume)) : 0.7,
+      isPlaying: false, shuffle: raw.shuffle === true, repeat,
+    };
+    musicLastPersistAt = Date.now();
+  } catch {
+    musicState = { tracks: [], playlists: [], activePlaylistId: null, currentTrackId: null, currentTime: 0, duration: 0, volume: 0.7, isPlaying: false, shuffle: false, repeat: 'off' };
+  }
+}
+function publicMusicState(): MusicState {
+  return {
+    ...musicState,
+    tracks: musicState.tracks.map(track => ({ ...track, missing: !existsSync(track.path) })),
+    playlists: musicState.playlists.map(playlist => ({ ...playlist, trackIds: [...playlist.trackIds] })),
+  };
+}
+function publishMusicState() { sendToWindows('music:state', publicMusicState()); }
+function persistAndPublishMusicState() { persistMusicState(); publishMusicState(); }
+function musicQueueIds() {
+  const active = musicState.activePlaylistId ? musicState.playlists.find(item => item.id === musicState.activePlaylistId) : null;
+  const ids = active ? active.trackIds : musicState.tracks.map(track => track.id);
+  return ids.filter(id => musicState.tracks.some(track => track.id === id));
+}
+function importMusicPaths(paths: string[]) {
+  const existing = new Set(musicState.tracks.map(track => resolve(track.path).toLowerCase()));
+  let added = 0, skipped = 0;
+  for (const rawPath of paths) {
+    try {
+      const target = resolve(String(rawPath));
+      if (!MUSIC_AUDIO_EXTENSIONS.has(extname(target).toLowerCase()) || !existsSync(target) || existing.has(target.toLowerCase())) { skipped++; continue; }
+      const fileInfo = statSync(target);
+      if (!fileInfo.isFile() || fileInfo.size <= 0) { skipped++; continue; }
+      const track: MusicTrack = {
+        id: randomUUID(), path: target, title: basename(target, extname(target)),
+        artist: '本地音乐', album: null, addedAt: new Date().toISOString(),
+      };
+      musicState.tracks.push(track);
+      if (musicState.activePlaylistId) {
+        const playlist = musicState.playlists.find(item => item.id === musicState.activePlaylistId);
+        if (playlist) playlist.trackIds.push(track.id);
+      }
+      existing.add(target.toLowerCase()); added++;
+    } catch { skipped++; }
+  }
+  if (added) persistAndPublishMusicState();
+  return { added, skipped };
+}
+function scanMusicFolder(rootPath: string) {
+  const pending = [resolve(rootPath)];
+  const files: string[] = [];
+  while (pending.length && files.length < MUSIC_FOLDER_SCAN_LIMIT) {
+    const directory = pending.pop()!;
+    let entries: import('node:fs').Dirent[];
+    try { entries = readdirSync(directory, { withFileTypes: true }); } catch { continue; }
+    for (const entry of entries) {
+      const target = join(directory, entry.name);
+      if (entry.isDirectory()) pending.push(target);
+      else if (entry.isFile() && MUSIC_AUDIO_EXTENSIONS.has(extname(entry.name).toLowerCase())) {
+        files.push(target);
+        if (files.length >= MUSIC_FOLDER_SCAN_LIMIT) break;
+      }
+    }
+  }
+  return files;
+}
+function currentMusicTrackExists() {
+  const track = musicState.tracks.find(item => item.id === musicState.currentTrackId);
+  return Boolean(track && existsSync(track.path));
+}
+function advanceMusicTrack(ended: boolean) {
+  const ids = musicQueueIds();
+  if (!ids.length) { musicState = { ...musicState, currentTrackId: null, currentTime: 0, duration: 0, isPlaying: false }; return; }
+  if (ended && musicState.repeat === 'one' && musicState.currentTrackId) {
+    musicState = { ...musicState, currentTime: 0, isPlaying: true };
+    if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('music:engine-command', { type: 'seek', seconds: 0, resume: true });
+    return;
+  }
+  const currentIndex = ids.indexOf(musicState.currentTrackId ?? '');
+  let nextIndex = currentIndex < 0 ? 0 : currentIndex + 1;
+  if (musicState.shuffle && ids.length > 1) {
+    const candidates = ids.filter(id => id !== musicState.currentTrackId);
+    musicState = { ...musicState, currentTrackId: candidates[Math.floor(Math.random() * candidates.length)] ?? ids[0], currentTime: 0, duration: 0, isPlaying: true };
+    return;
+  }
+  if (nextIndex >= ids.length) {
+    if (musicState.repeat === 'all') nextIndex = 0;
+    else {
+      musicState = { ...musicState, isPlaying: false, currentTime: 0 };
+      if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('music:engine-command', { type: 'seek', seconds: 0 });
+      return;
+    }
+  }
+  const nextTrackId = ids[nextIndex];
+  musicState = { ...musicState, currentTrackId: nextTrackId, currentTime: 0, duration: 0, isPlaying: true };
+  if (nextTrackId === ids[currentIndex] && mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('music:engine-command', { type: 'seek', seconds: 0, resume: true });
+}
+function handleMusicCommand(command: MusicCommand) {
+  switch (command.type) {
+    case 'play': case 'toggle':
+      if (musicState.isPlaying && command.type === 'toggle') musicState = { ...musicState, isPlaying: false };
+      else {
+        if (!musicState.currentTrackId) musicState = { ...musicState, currentTrackId: musicQueueIds()[0] ?? null, currentTime: 0 };
+        musicState = { ...musicState, isPlaying: currentMusicTrackExists() };
+      }
+      break;
+    case 'pause':
+      musicState = { ...musicState, isPlaying: false };
+      break;
+    case 'next':
+      advanceMusicTrack(false);
+      break;
+    case 'ended':
+      advanceMusicTrack(true);
+      break;
+    case 'previous': {
+      if (musicState.currentTime > 3 && currentMusicTrackExists()) {
+        musicState = { ...musicState, currentTime: 0 };
+        if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('music:engine-command', { type: 'seek', seconds: 0 });
+        break;
+      }
+      const ids = musicQueueIds();
+      const index = ids.indexOf(musicState.currentTrackId ?? '');
+      const previousIndex = index > 0 ? index - 1 : musicState.repeat === 'all' && ids.length ? ids.length - 1 : index;
+      const previousTrackId = ids[previousIndex] ?? musicState.currentTrackId;
+      musicState = { ...musicState, currentTrackId: previousTrackId, currentTime: 0, duration: 0 };
+      if (previousTrackId === musicState.currentTrackId && mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('music:engine-command', { type: 'seek', seconds: 0 });
+      break;
+    }
+    case 'seek': {
+      const seconds = Number.isFinite(command.seconds) ? Math.max(0, Math.min(musicState.duration || command.seconds, command.seconds)) : 0;
+      musicState = { ...musicState, currentTime: seconds };
+      if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('music:engine-command', { type: 'seek', seconds });
+      break;
+    }
+    case 'set-volume':
+      musicState = { ...musicState, volume: Math.max(0, Math.min(1, Number.isFinite(command.volume) ? command.volume : musicState.volume)) };
+      break;
+    case 'toggle-shuffle':
+      musicState = { ...musicState, shuffle: !musicState.shuffle };
+      break;
+    case 'cycle-repeat':
+      musicState = { ...musicState, repeat: musicState.repeat === 'off' ? 'all' : musicState.repeat === 'all' ? 'one' : 'off' };
+      break;
+    case 'play-track':
+      if (musicState.tracks.some(track => track.id === command.trackId && existsSync(track.path))) {
+        const alreadySelected = musicState.currentTrackId === command.trackId;
+        musicState = { ...musicState, currentTrackId: command.trackId, currentTime: 0, duration: 0, isPlaying: true };
+        if (alreadySelected && mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('music:engine-command', { type: 'seek', seconds: 0, resume: true });
+      }
+      break;
+    case 'select-playlist': {
+      const id = command.playlistId && musicState.playlists.some(item => item.id === command.playlistId) ? command.playlistId : null;
+      const ids = id ? musicState.playlists.find(item => item.id === id)?.trackIds ?? [] : musicState.tracks.map(track => track.id);
+      const currentTrackId = ids.includes(musicState.currentTrackId ?? '') ? musicState.currentTrackId : ids[0] ?? null;
+      const alreadySelected = currentTrackId === musicState.currentTrackId;
+      musicState = { ...musicState, activePlaylistId: id, currentTrackId, currentTime: 0, duration: 0, isPlaying: false };
+      if (alreadySelected && currentTrackId && mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('music:engine-command', { type: 'seek', seconds: 0 });
+      break;
+    }
+    case 'create-playlist': {
+      const name = command.name.trim().slice(0, 80);
+      if (name) {
+        const playlist: MusicPlaylist = { id: randomUUID(), name, trackIds: [], createdAt: new Date().toISOString() };
+        musicState = { ...musicState, playlists: [...musicState.playlists, playlist], activePlaylistId: playlist.id, currentTrackId: null, currentTime: 0, duration: 0, isPlaying: false };
+      }
+      break;
+    }
+    case 'rename-playlist': {
+      const name = command.name.trim().slice(0, 80);
+      if (name) musicState = { ...musicState, playlists: musicState.playlists.map(item => item.id === command.playlistId ? { ...item, name } : item) };
+      break;
+    }
+    case 'delete-playlist': {
+      const playlists = musicState.playlists.filter(item => item.id !== command.playlistId);
+      musicState = { ...musicState, playlists, activePlaylistId: musicState.activePlaylistId === command.playlistId ? null : musicState.activePlaylistId };
+      break;
+    }
+    case 'add-to-playlist': {
+      const playlist = musicState.playlists.find(item => item.id === command.playlistId);
+      if (playlist && musicState.tracks.some(track => track.id === command.trackId) && !playlist.trackIds.includes(command.trackId)) {
+        musicState = { ...musicState, playlists: musicState.playlists.map(item => item.id === command.playlistId ? { ...item, trackIds: [...item.trackIds, command.trackId] } : item) };
+      }
+      break;
+    }
+    case 'remove-track': {
+      const tracks = musicState.tracks.filter(item => item.id !== command.trackId);
+      const playlists = musicState.playlists.map(item => ({ ...item, trackIds: item.trackIds.filter(id => id !== command.trackId) }));
+      musicState = { ...musicState, tracks, playlists, currentTrackId: musicState.currentTrackId === command.trackId ? null : musicState.currentTrackId, currentTime: musicState.currentTrackId === command.trackId ? 0 : musicState.currentTime, isPlaying: musicState.currentTrackId === command.trackId ? false : musicState.isPlaying };
+      break;
+    }
+    case 'remove-from-playlist': {
+      const playlist = musicState.playlists.find(item => item.id === command.playlistId);
+      if (playlist) {
+        const trackIds = playlist.trackIds.filter(id => id !== command.trackId);
+        const removedCurrent = musicState.activePlaylistId === command.playlistId && musicState.currentTrackId === command.trackId;
+        musicState = {
+          ...musicState,
+          playlists: musicState.playlists.map(item => item.id === command.playlistId ? { ...item, trackIds } : item),
+          currentTrackId: removedCurrent ? trackIds[0] ?? null : musicState.currentTrackId,
+          currentTime: removedCurrent ? 0 : musicState.currentTime,
+          duration: removedCurrent ? 0 : musicState.duration,
+          isPlaying: removedCurrent ? false : musicState.isPlaying,
+        };
+      }
+      break;
+    }
+    case 'move-track': {
+      const playlist = musicState.playlists.find(item => item.id === command.playlistId);
+      if (playlist) {
+        const index = playlist.trackIds.indexOf(command.trackId);
+        const target = index + (command.direction === 'up' ? -1 : 1);
+        if (index >= 0 && target >= 0 && target < playlist.trackIds.length) {
+          const trackIds = [...playlist.trackIds];
+          [trackIds[index], trackIds[target]] = [trackIds[target], trackIds[index]];
+          musicState = { ...musicState, playlists: musicState.playlists.map(item => item.id === command.playlistId ? { ...item, trackIds } : item) };
+        }
+      }
+      break;
+    }
+  }
+  persistAndPublishMusicState();
+  return publicMusicState();
 }
 function nativeWindowHandle(win: BrowserWindow | null): string | null {
   if (!win || win.isDestroyed()) return null;
@@ -682,6 +977,13 @@ function listPlugins() {
   });
 }
 
+function revealMainWindow() {
+  if (!mainWindow || mainWindow.isDestroyed()) createMainWindow();
+  if (!mainWindow || mainWindow.isDestroyed()) return;
+  mainWindow.setSkipTaskbar(false);
+  mainWindow.show();
+  mainWindow.focus();
+}
 function createTray() {
   if (tray) return;
   const iconPath = join(app.getAppPath(), 'build', 'tray.png');
@@ -689,19 +991,19 @@ function createTray() {
   tray = new Tray(icon);
   tray.setToolTip('NexusMonitor');
   tray.setContextMenu(Menu.buildFromTemplate([
-    { label: '打开主面板', click: () => { if (!mainWindow) createMainWindow(); mainWindow?.show(); mainWindow?.focus(); } },
+    { label: '打开主面板', click: () => revealMainWindow() },
     { label: '显示悬浮导航', click: () => toggleWidget(true) },
     { type: 'separator' },
     { label: '退出 NexusMonitor', click: () => { quitting = true; app.quit(); } },
   ]));
-  tray.on('double-click', () => { if (!mainWindow) createMainWindow(); mainWindow?.show(); mainWindow?.focus(); });
+  tray.on('double-click', () => revealMainWindow());
 }
 function showMainWindowAfterFirstPaint() {
   if (!mainWindow || mainWindow.isDestroyed() || !mainWindowNativeReady || !mainWindowRendererReady) return;
-  if (!app.getLoginItemSettings().wasOpenedAtLogin) mainWindow.show();
+  if (!app.getLoginItemSettings().wasOpenedAtLogin) { mainWindow.setSkipTaskbar(false); mainWindow.show(); }
 }
 function createMainWindow() {
-  if (mainWindow && !mainWindow.isDestroyed()) { mainWindow.show(); return; }
+  if (mainWindow && !mainWindow.isDestroyed()) { mainWindow.setSkipTaskbar(false); mainWindow.show(); return; }
   mainWindowNativeReady = false;
   mainWindowRendererReady = false;
   const area = screen.getPrimaryDisplay().workArea;
@@ -736,9 +1038,12 @@ function createMainWindow() {
     // Turing frame rendering is owned by this long-lived renderer. If the HUD
     // remains on screen, closing the visible dashboard must hide (not destroy)
     // this renderer so USB frames and weather-clock time continue to refresh.
-    const keepTuringRuntime = Boolean(widgetWindow && !widgetWindow.isDestroyed() && widgetWindow.isVisible());
-    if (!quitting && (currentSettings.minimizeToTray === true || keepTuringRuntime)) {
+    if (!quitting) {
       event.preventDefault();
+      // Hide rather than destroy: the tray, HUD and single shared audio engine
+      // remain alive. Electron removes a hidden window from the taskbar; the
+      // explicit flag also covers Windows taskbar recreation after display changes.
+      mainWindow?.setSkipTaskbar(true);
       mainWindow?.hide();
     }
   });
@@ -1132,27 +1437,23 @@ const hasSingleInstanceLock = app.requestSingleInstanceLock();
 if (!hasSingleInstanceLock) {
   app.quit();
 } else {
-  app.on('second-instance', () => {
-    if (!mainWindow || mainWindow.isDestroyed()) {
-      if (app.isReady()) createMainWindow();
-      return;
-    }
-    if (mainWindow.isMinimized()) mainWindow.restore();
-    mainWindow.show();
-    mainWindow.focus();
-  });
+  app.on('second-instance', () => revealMainWindow());
 
   app.whenReady().then(async () => {
     loadSettings();
+    loadMusicLibrary();
+    usbDisplayRestorePending = Boolean(String(currentSettings.usbDisplayDisplayId ?? '').trim());
     const notifyDisplayTopologyChanged = () => {
       const displays = listDesktopDisplays();
       if (usbDisplayWindow && usbDisplayTargetId && !displays.some(display => display.id === usbDisplayTargetId)) {
-        log(`USB display target ${usbDisplayTargetId} was removed; closing output window`);
+        log(`USB display target ${usbDisplayTargetId} was removed; waiting to restore it when reconnected`);
+        usbDisplayRestorePending = Boolean(String(currentSettings.usbDisplayDisplayId ?? '').trim());
         closeUsbDisplayWindow();
       } else if (usbDisplayWindow && usbDisplayTargetId) {
         const target = screen.getAllDisplays().find(display => String(display.id) === usbDisplayTargetId);
         if (target && !usbDisplayWindow.isDestroyed()) applyUsbDisplayWindowBounds(usbDisplayWindow, target);
       }
+      if (usbDisplayRestorePending) restoreConfiguredUsbDisplay();
       if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('desktop-displays:changed', displays);
       publishUsbDisplayStatus();
     };
@@ -1164,6 +1465,10 @@ if (!hasSingleInstanceLock) {
     // The floating HUD is a first-class part of the desktop app: show it on
     // every application launch, independently of the main dashboard window.
     toggleWidget(true);
+    // Restore only the display explicitly saved by the user. Never guess which
+    // external monitor is the 5-inch panel, and do not wait for hardware service.
+    restoreConfiguredUsbDisplay();
+    publishMusicState();
     await startService();
     const ready = await waitForService();
     if (!ready && lastServiceStatus.phase === 'starting') {
@@ -1174,7 +1479,7 @@ if (!hasSingleInstanceLock) {
     await refreshWeather();
     pollTimer = setInterval(() => void pollSnapshot(), Math.max(750, Number(currentSettings.refreshMs ?? 1000)));
     weatherTimer = setInterval(() => void refreshWeather(), 15 * 60 * 1000);
-    app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createMainWindow(); else mainWindow?.show(); });
+    app.on('activate', () => revealMainWindow());
   });
 }
 
@@ -1192,13 +1497,59 @@ app.on('before-quit', () => {
   }
   stopService('app-quit');
 });
-app.on('window-all-closed', () => { if (process.platform !== 'darwin' && currentSettings.minimizeToTray !== true) app.quit(); });
+app.on('window-all-closed', () => { /* The system tray owns application lifetime; exit is explicit in its menu. */ });
 
 ipcMain.handle('app:get-settings', () => getPublicSettings());
+ipcMain.handle('music:get-state', () => publicMusicState());
+ipcMain.handle('music:open-library', () => {
+  revealMainWindow();
+  const target = mainWindow;
+  if (!target || target.isDestroyed()) return false;
+  const showLibrary = () => { if (!target.isDestroyed()) target.webContents.send('music:open-library'); };
+  if (target.webContents.isLoading()) target.webContents.once('did-finish-load', showLibrary);
+  else showLibrary();
+  return true;
+});
+ipcMain.handle('music:track-url', (_event, trackId: string) => {
+  const track = musicState.tracks.find(item => item.id === String(trackId));
+  return track && existsSync(track.path) ? pathToFileURL(track.path).href : null;
+});
+ipcMain.handle('music:choose-files', async () => {
+  const result = await dialog.showOpenDialog({
+    properties: ['openFile', 'multiSelections'],
+    filters: [{ name: 'MP3 音频', extensions: ['mp3'] }],
+  });
+  return result.canceled ? { added: 0, skipped: 0 } : importMusicPaths(result.filePaths);
+});
+ipcMain.handle('music:choose-folder', async () => {
+  const result = await dialog.showOpenDialog({ properties: ['openDirectory'] });
+  if (result.canceled || !result.filePaths[0]) return { added: 0, skipped: 0 };
+  const paths = scanMusicFolder(result.filePaths[0]);
+  const resultCount = importMusicPaths(paths);
+  return { ...resultCount, truncated: paths.length >= MUSIC_FOLDER_SCAN_LIMIT };
+});
+ipcMain.handle('music:command', (_event, command: MusicCommand) => handleMusicCommand(command));
+ipcMain.on('music:runtime', (event, payload: { currentTime?: number; duration?: number; playing?: boolean; error?: boolean }) => {
+  // Only the hidden-capable main renderer owns the single HTMLAudioElement.
+  if (!mainWindow || event.sender !== mainWindow.webContents) return;
+  if (payload?.error === true) {
+    musicState = { ...musicState, isPlaying: false };
+    log('Music playback failed; the current track remains selected and paused');
+    publishMusicState();
+    return;
+  }
+  const currentTime = Number(payload?.currentTime);
+  const duration = Number(payload?.duration);
+  if (Number.isFinite(currentTime)) musicState.currentTime = Math.max(0, currentTime);
+  if (Number.isFinite(duration) && duration >= 0) musicState.duration = duration;
+  if (typeof payload?.playing === 'boolean') musicState.isPlaying = payload.playing;
+  if (Date.now() - musicLastPersistAt >= 10_000) persistMusicState();
+  publishMusicState();
+});
 ipcMain.handle('desktop-displays:list', () => listDesktopDisplays());
 ipcMain.handle('desktop-displays:usb-status', () => getUsbDisplayStatus());
 ipcMain.handle('desktop-displays:usb-open', (_event, displayId: string) => openUsbDisplayWindow(String(displayId ?? '')));
-ipcMain.handle('desktop-displays:usb-close', () => { closeUsbDisplayWindow(); return getUsbDisplayStatus(); });
+ipcMain.handle('desktop-displays:usb-close', () => { usbDisplayRestorePending = false; closeUsbDisplayWindow(); return getUsbDisplayStatus(); });
 ipcMain.handle('desktop-displays:usb-choose-media', (_event, kind: 'image' | 'video' | 'audio') => chooseUsbDisplayMedia(kind === 'video' ? 'video' : kind === 'audio' ? 'audio' : 'image'));
 ipcMain.handle('desktop-displays:usb-read-image', (_event, path: string) => { try { return readUsbDisplayImage(path); } catch (error) { return { ok: false, message: error instanceof Error ? error.message : String(error) }; } });
 ipcMain.handle('desktop-displays:usb-video-url', (_event, path: string) => { try { return getUsbDisplayVideoUrl(path); } catch (error) { return { ok: false, message: error instanceof Error ? error.message : String(error) }; } });
@@ -1220,7 +1571,7 @@ ipcMain.handle('app:choose-background', async () => {
 });
 ipcMain.handle('app:open-path', async (_event, target: string) => shell.openPath(target));
 ipcMain.handle('app:open-url', async (_event, url: string) => { if (/^https?:\/\//i.test(url)) await shell.openExternal(url); });
-ipcMain.handle('window:show-main', () => { if (!mainWindow || mainWindow.isDestroyed()) createMainWindow(); mainWindow?.show(); mainWindow?.focus(); });
+ipcMain.handle('window:show-main', () => revealMainWindow());
 ipcMain.handle('window:minimize', (event) => BrowserWindow.fromWebContents(event.sender)?.minimize());
 ipcMain.handle('window:close', (event) => BrowserWindow.fromWebContents(event.sender)?.close());
 ipcMain.handle('window:toggle-maximize', (event) => {

@@ -14,7 +14,7 @@ test('HUD modules are individually configurable and persisted in AppSettings', (
 });
 
 test('HUD receives weather data and presents compact weather, AQI and humidity', () => {
-  assert.match(app, /<WidgetView snapshot=\{snapshot\} settings=\{settings\} history=\{history\} weather=\{weather\} detailOnly=\{isWidgetDetail\}\/>/);
+  assert.match(app, /<WidgetView snapshot=\{snapshot\} settings=\{settings\} history=\{history\} weather=\{weather\} detailOnly=\{isWidgetDetail\} musicState=\{music\.state\} musicCommand=\{music\.command\}\/>/);
   assert.match(app, /weatherGlyph\(weather\?\.weatherCode\)/);
   assert.match(app, /aqiPresentation\.textColor/);
   assert.match(app, /<b>AQI<\/b>/);

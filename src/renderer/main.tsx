@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import App from './App';
 import WidgetCalendarWindow from './widget-calendar';
 import './styles.css';
+import './music-player.css';
 
 const params = new URLSearchParams(window.location.search);
 const isCalendarWindow = params.get('widget-calendar') === '1';

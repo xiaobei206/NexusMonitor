@@ -1,6 +1,6 @@
 # NexusMonitor 统一开发日志（跨版本唯一主记录）
 
-**当前源码版本：2.1.8**  
+**当前开发分支源码版本：2.2.0（尚未发布）**  
 **记录规则：** 每个正式版本都追加到本文件；下一版不得新建第二份版本日志。按版本号和日期顺序记录功能、根因、修复、失败尝试、验证范围及未完成事项。历史测试结果不能冒充当前版本测试结果。
 
 ## 版本总览与跨版本教训
@@ -18,6 +18,38 @@
 - **2.1.0（上一正式版本）**：将版本一致性逻辑抽成 `scripts/validate-release-version.cjs`，由发布入口与回归测试共享；容忍 C# `version` 属性空格、引号及大小写变体，但仍比较实际版本值。正式发布入口改为 `NexusMonitor-2.1.0-BUILD-RELEASE.cjs`，避免 PowerShell 5.1 的脚本解码和 ExecutionPolicy 问题。版本核验 14 项、版本回归 3 项、HUD 详情窗/定位回归 18 项报告通过；完整 Windows Electron/Renderer/.NET/NSIS 和首次点击实机验收未宣称通过。
 
 - **2.1.1**：在用户完成 2.1.0 Windows 全套发布构建后，针对实机发现的详情大卡片首次左键展开空白、整体字号偏小和悬浮窗时间缺少秒数进行正式版本迭代。详情窗显示门槛改为 Electron `ready-to-show` 与 Renderer React commit 后双 `requestAnimationFrame` 握手双条件；详情卡片字体覆盖严格限定 `.widget-shell.detail-only`；共享悬浮窗时钟格式改为 `HH:mm:ss`。同时修正 2.1.0 中发布校验器错误拼接 release 入口文件名的问题。版本字段统一升级到 2.1.1，正式交付完整源码 ZIP，不再交付停留在旧版本号下的 FIX 补丁。当前容器的相关回归测试通过；2.1.1 Windows 全套重构建和三项实机复验尚待用户完成。
+
+
+## 2.2.0（开发中，2026-11-07）
+
+### 功能实现
+
+- 主窗口关闭改为隐藏到系统托盘：任务栏主窗口图标消失，托盘双击/菜单恢复，托盘“退出 NexusMonitor”才结束进程。主 Renderer 不卸载，以保持唯一音频引擎和既有常驻渲染功能。
+- USB 5 寸输出按已保存 `usbDisplayDisplayId` 在应用启动阶段恢复，早于 HardwareService 启动；显示器尚未枚举时保留待恢复状态，拓扑变化再尝试；不猜测其他显示器。首次使用须由用户手动确认五寸屏目标。
+- 新增统一本地 MP3 播放服务与歌单数据文件：文件/文件夹导入（每次最多 5000 首）、歌曲路径/歌单持久化、启动恢复歌曲/进度/音量/播放模式但强制暂停；删除库记录不删除用户文件。
+- 新增主界面音乐库页与全页面共享底部 Dock、竖向 HUD 天气块上方迷你播放器，以及 USB 五寸输出非视频模式的迷你控制层。Widget/USB 窗口只发送控制命令并订阅状态，不创建第二个音频引擎。
+- 支持歌单创建、改名、删除、添加/移除歌曲、歌单内上下排序；支持播放/暂停、上一首/下一首、进度、应用独立音量、随机、列表循环和单曲循环。
+- 壁纸静态/GIF 模式原有背景音在选择音乐库歌曲后让位，避免并行播放；视频输出保持独立。
+- 竖向 HUD 仅在天气块上方插入播放器，时间仍留在底部；天气和其它监控块不重排。
+
+### 2.2.0 后续核对修正
+
+- 移除 USB 显示器设置页对“第一个非主显示器”的自动回退和自动保存。目标 ID 未枚举时要求用户明确选择，不覆盖原保存 ID，防止将其他外接屏误认为五寸屏。
+- 主界面播放器 Dock 在所有主应用页面持续显示；仅独立 USB 视频输出不显示音乐控制。更新对应源码回归测试。
+- 原有测试中一条针对旧 Dock 隐藏行为的断言已修正为检查独立 USB 视频输出边界；没有删除测试覆盖。
+
+### 版本同步
+
+应用版本升至 2.2.0，并同步 package / lockfile / VERSION / .NET 项目与 API / snapshot ServiceInfo / Renderer / 版本专属 build entry。
+
+### 验证状态
+
+- 所有开发修改直接提交到 GitHub 分支 `feature/2.2.0-music-and-window-lifecycle`；未在本地另开源码副本。
+- GitHub Actions Windows CI Run #23：**成功**，功能代码 HEAD `e45c93bd4e8e2faf17270fdbcda382a8f66e9086`；[查看运行记录](https://github.com/xiaobei206/NexusMonitor/actions/runs/42334294679)。
+- 文档/清单同步后的 Run #24：**成功**，HEAD `d6a6f6ab9ac996f0d74d688d155d07b14a2ada6c`；[查看运行记录](https://github.com/xiaobei206/NexusMonitor/actions/runs/42334605208)。版本门禁、188/188 主进程测试、Renderer/Vite、PawnIO、.NET Release 与 Storage 测试全部成功。
+- 14 项版本一致性门禁通过；`npm.cmd run test:main` 188/188；Renderer TypeScript / Vite 构建通过；PawnIO 官方资源校验通过；.NET 10 Release 构建 0 warning / 0 error；`npm.cmd run test:storage` 通过。
+- NSIS 安装包与正式 Release 未执行；PR 仍为 Draft、未合并 main、未发布正式版本。
+- 实际 Windows PC / ESP32-P4 五寸屏 / COM3 Turing / 多屏负坐标与 DPI / MP3 实际播放：仍待实机验收；不得由 Hosted CI 代替。
 
 ## 必须记住的反复踩坑与工程规则
 

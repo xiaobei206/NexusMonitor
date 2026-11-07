@@ -1,8 +1,27 @@
 import { contextBridge, ipcRenderer } from 'electron';
-import type { ServiceStatus } from '../shared/types';
+import type { MusicCommand, ServiceStatus } from '../shared/types';
 
 const api = {
   getSettings: () => ipcRenderer.invoke('app:get-settings'),
+  getMusicState: () => ipcRenderer.invoke('music:get-state'),
+  showMusicLibrary: () => ipcRenderer.invoke('music:open-library'),
+  onOpenMusicLibrary: (callback: () => void) => {
+    const listener = () => callback();
+    ipcRenderer.on('music:open-library', listener); return () => ipcRenderer.removeListener('music:open-library', listener);
+  },
+  chooseMusicFiles: () => ipcRenderer.invoke('music:choose-files'),
+  chooseMusicFolder: () => ipcRenderer.invoke('music:choose-folder'),
+  getMusicTrackUrl: (trackId: string) => ipcRenderer.invoke('music:track-url', trackId),
+  musicCommand: (command: MusicCommand) => ipcRenderer.invoke('music:command', command),
+  reportMusicRuntime: (payload: { currentTime?: number; duration?: number; playing?: boolean; error?: boolean }) => ipcRenderer.send('music:runtime', payload),
+  onMusicState: (callback: (state: import('../shared/types').MusicState) => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, state: import('../shared/types').MusicState) => callback(state);
+    ipcRenderer.on('music:state', listener); return () => ipcRenderer.removeListener('music:state', listener);
+  },
+  onMusicEngineCommand: (callback: (command: { type: 'seek'; seconds: number; resume?: boolean }) => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, command: { type: 'seek'; seconds: number }) => callback(command);
+    ipcRenderer.on('music:engine-command', listener); return () => ipcRenderer.removeListener('music:engine-command', listener);
+  },
   getWeatherKeyStatus: (source: string) => ipcRenderer.invoke('app:weather-key-status', source),
   saveWeatherApiKey: (source: string, key: string) => ipcRenderer.invoke('app:save-weather-api-key', { source, key }),
   saveSettings: (settings: Record<string, unknown>) => ipcRenderer.invoke('app:save-settings', settings),

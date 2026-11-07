@@ -1,4 +1,4 @@
-本文记录 2.1.8 当前代码保留的 HUD 行为；其中部分机制最初于 2.0.4 引入。发生冲突时以当前主进程源码和回归测试为准。全屏让位是 best-effort，不保证所有独占全屏、DirectFlip 或多屏驱动场景。
+本文记录 2.2.0 开发分支当前代码保留的 HUD 行为；其中部分机制最初于 2.0.4 引入。发生冲突时以当前主进程源码和回归测试为准。全屏让位是 best-effort，不保证所有独占全屏、DirectFlip 或多屏驱动场景。
 
 
 ## 右键菜单
@@ -24,3 +24,7 @@
 Windows PowerShell helper 通过 Win32 `GetForegroundWindow`、`GetWindowRect`、`MonitorFromWindow` 和 `GetMonitorInfo` 读取前台窗口矩形及其显示器，再与 HUD HWND 所在显示器比较。若前台窗口覆盖同一显示器，临时关闭 HUD topmost；退出时恢复 `widgetAlwaysOnTop`。不以进程名识别 YouTube、Bilibili 或 Steam，避免误判同屏普通窗口。
 
 检测间隔约 800ms。无边框全屏通常可以按窗口矩形识别；独占全屏、DirectFlip、驱动覆盖层及不同 DPI 多显示器仍需在目标 Windows 11 电脑上实测，因此不承诺所有独占全屏游戏都 100% 让位。
+
+## 2.2.0 竖向 HUD 迷你播放器
+
+竖向悬浮窗在现有天气块之前插入一个紧凑 MP3 播放器；时间/日历仍在原来的最底部位置。CPU/GPU/内存/磁盘/网络/功耗、天气块本身及时间模块不重排、不重构、不改样式和交互。播放器只在主紧凑竖向 HUD 显示，不出现在横向 HUD 或 detail-only 详情窗。播放状态来自主进程统一 Music Service；按钮点击只执行对应命令，歌曲信息区域点击才展开迷你控制卡片。真实窗口尺寸、弹出方向、点击/拖拽冲突需在用户 Windows 机器实测。

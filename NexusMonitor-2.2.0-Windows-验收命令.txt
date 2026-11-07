@@ -1,0 +1,50 @@
+NexusMonitor 2.2.0 — Windows 本机验收清单
+当前状态：开发分支；必须先取得 GitHub PR CI 绿灯。此文件不是“已验收”证明。
+
+一、自动化命令（PowerShell，仓库根目录）
+npm.cmd ci --include=dev --no-audit --no-fund
+node .\scripts\validate-release-version.cjs
+npm.cmd run test:main
+npm.cmd run build:renderer
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\fetch-mchbar-module.ps1
+dotnet build .\HardwareService\HardwareService.csproj -c Release
+npm.cmd run test:storage
+
+二、托盘 / 主窗口
+[ ] 点击主窗口关闭：主窗口隐藏，任务栏图标消失，Tray 图标仍在。
+[ ] 双击 Tray：主窗口显示并重新出现在任务栏。
+[ ] Tray 菜单“打开主面板”可恢复；“退出 NexusMonitor”结束所有窗口/服务。
+[ ] 主窗口隐藏期间音乐持续播放，重新显示时不重复启动第二个音频引擎。
+
+三、音乐播放器
+[ ] 多选 MP3 导入、文件夹导入和重复文件跳过。
+[ ] 创建/重命名/删除歌单；添加歌曲；从歌单移除不会删除音乐库记录；从音乐库移除不会删除原文件。
+[ ] 歌单内上下调整曲序；搜索；播放全部和指定歌曲。
+[ ] 播放/暂停、上一首/下一首、进度、音量、随机、单曲循环、列表循环。
+[ ] 启动恢复上次歌曲/进度/歌单/模式，但不自动播放。
+[ ] 缺失文件提示准确；切歌失败不会阻断其它歌曲。
+[ ] 系统音量不被播放器滑块改变。
+
+四、HUD
+[ ] 竖向 HUD：播放器仅插在原天气模块上方。
+[ ] 天气模块和底部时间/日历不移动；CPU/GPU/内存/磁盘/网络/功耗原顺序与样式不变。
+[ ] 播放控制按钮只执行控制；点击歌曲信息打开弹卡；点卡片外关闭。
+[ ] 横向 HUD、detail-only 展开详情窗没有多余播放器。
+
+五、五寸 USB 输出
+[ ] 已保存目标显示器 ID，应用启动后在 HardwareService 初始化前打开上次模式。
+[ ] 故意延迟 USB 显示器枚举，验证拓扑变化后只恢复保存的目标 ID。
+[ ] 拔出目标显示器后输出窗关闭；重新插入同一屏后恢复。
+[ ] monitor / static / GIF / weather-clock 显示迷你播放器；video 不显示。
+[ ] static/GIF 旧背景音乐与音乐库播放互斥，不双响。
+[ ] 负坐标、混合 DPI、方向和分辨率变化不发生错屏/越界。
+[ ] 检查天气、时钟、硬件监控页面原显示内容无回归。
+
+六、设备与长时间运行
+[ ] COM3 Turing 协议/帧刷新/拔插重连正常；关闭原厂 UsbMonitor.exe 避免双写。
+[ ] 5 寸屏 2 小时以上运行、电脑睡眠恢复和重新登录正常。
+[ ] 托盘后台常驻、CPU/内存占用和日志增长可接受。
+
+验收人：________________    日期：________________
+实机环境/显示器型号：________________________________
+问题与日志摘要：______________________________________

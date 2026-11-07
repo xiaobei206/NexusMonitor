@@ -5,15 +5,14 @@ const path = require('node:path');
 const root = path.resolve(__dirname, '..');
 const read = name => fs.readFileSync(path.join(root, name), 'utf8');
 
-test('closing the visible main dashboard preserves its renderer while the HUD remains visible', () => {
+test('closing the main dashboard always hides it to the tray without destroying its renderer', () => {
   const main = read('src/main/index.ts');
   const createMain = main.match(/function createMainWindow\(\) \{[\s\S]*?\n\}/)?.[0] ?? '';
   assert.ok(createMain, 'main BrowserWindow initializer must exist');
   assert.match(createMain, /backgroundThrottling:\s*false/);
-  assert.match(createMain, /const keepTuringRuntime = Boolean\(widgetWindow && !widgetWindow\.isDestroyed\(\) && widgetWindow\.isVisible\(\)\)/);
-  assert.match(createMain, /currentSettings\.minimizeToTray === true \|\| keepTuringRuntime/);
-  assert.match(createMain, /event\.preventDefault\(\);\s*mainWindow\?\.hide\(\)/);
+  assert.match(createMain, /mainWindow\.on\('close',[\s\S]*?event\.preventDefault\(\)[\s\S]*?setSkipTaskbar\(true\)[\s\S]*?mainWindow\?\.hide\(\)/);
   assert.doesNotMatch(createMain, /mainWindow\?\.destroy\(\)/);
+  assert.doesNotMatch(createMain, /keepTuringRuntime|minimizeToTray/);
 });
 
 test('Turing sender remains mounted in the hidden main renderer and does not require the Turing settings page to be active', () => {
