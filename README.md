@@ -87,6 +87,6 @@ For an Intel Alder Lake system where IGCL exposes GPU clocks/power but not tempe
 ## Repository history and operating records
 
 - The canonical cross-version development record is `NexusMonitor-DEVELOPMENT-LOG-CN.md`.
-- Current-version handoff and verified build status are in `NexusMonitor-2.1.8-HANDOFF-CN.md` and `NexusMonitor-2.1.8-BUILD-REPORT.md`.
+- Current-version handoff and build / CI boundaries are in `NexusMonitor-2.2.1-HANDOFF-CN.md` and `NexusMonitor-2.2.1-BUILD-REPORT.md`. The report is provisional until PR #2 merges and main builds the installer.
 - Each GitHub Actions run retains its complete build/test log; see the linked 2.1.8 run above. Per-user application runtime logs and settings remain local under `%APPDATA%\\NexusMonitor` and are intentionally not committed.
 - Versioned engineering references and the historical patch archive are under `docs/`.
