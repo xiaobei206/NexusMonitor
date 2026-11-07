@@ -235,3 +235,18 @@ test('local LRC lyrics are loaded only from a same-name sidecar and rendered aga
   assert.match(player, /本地 LRC/);
   assert.match(player, /不会联网搜索或上传/);
 });
+
+test('sleep timer is app-wide, keeps a stable callback, and pauses the single audio host at expiry', () => {
+  const app = read('src/renderer/App.tsx');
+  const player = read('src/renderer/music-player.tsx');
+  assert.match(app, /const \[musicSleepTimerEndsAt, setMusicSleepTimerEndsAt\]/);
+  assert.match(app, /const clearMusicSleepTimer = useCallback\(\(\) => setMusicSleepTimerEndsAt\(null\), \[\]\)/);
+  assert.match(app, /sleepTimerEndsAt=\{musicSleepTimerEndsAt\}/);
+  assert.match(app, /onSleepTimerComplete=\{clearMusicSleepTimer\}/);
+  assert.match(player, /function MusicSleepTimer/);
+  assert.match(player, /\[15, 30, 45, 60, 90\]/);
+  assert.match(player, /sleepTimerEndsAt - Date\.now\(\)/);
+  assert.match(player, /audio\.pause\(\)/);
+  assert.match(player, /playing: false/);
+  assert.match(player, /取消/);
+});
