@@ -4,8 +4,14 @@ import {
   Music2, Play, Pause, SkipBack, SkipForward, ListMusic, FolderOpen, Plus,
   Trash2, Shuffle, Repeat, Volume2, Search, X, ListPlus, Disc3, ArrowUp, ArrowDown,
 } from 'lucide-react';
-import type { MusicCommand, MusicState, MusicTrack } from '../shared/types';
+import type { AppSettings, MusicCommand, MusicState, MusicTrack } from '../shared/types';
 
+export type MusicOutputStatus = {
+  state: 'default' | 'active' | 'unsupported' | 'unavailable';
+  requestedDeviceId: string;
+  actualDeviceId: string;
+  message: string;
+};
 type MusicHook = { state: MusicState | null; command: (command: MusicCommand) => void };
 
 export function useMusicState(): MusicHook {
@@ -43,7 +49,11 @@ function TrackArtwork({ trackId, className, fallback }: { trackId: string | null
 const repeatLabel = (repeat: MusicState['repeat']) => repeat === 'one' ? '单曲循环' : repeat === 'all' ? '列表循环' : '不循环';
 const stopWidgetDrag = (event: ReactPointerEvent) => event.stopPropagation();
 
-export function MusicPlaybackRuntime({ state }: { state: MusicState | null }) {
+export function MusicPlaybackRuntime({ state, outputDeviceId = 'default', onOutputStatus }: {
+  state: MusicState | null;
+  outputDeviceId?: string;
+  onOutputStatus?: (status: MusicOutputStatus) => void;
+}) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const lastReportAt = useRef(0);
 
@@ -89,6 +99,36 @@ export function MusicPlaybackRuntime({ state }: { state: MusicState | null }) {
     if (!audio || !state) return;
     audio.volume = Math.max(0, Math.min(1, state.volume));
   }, [state?.volume]);
+
+  useEffect(() => {
+    const audio = audioRef.current as (HTMLAudioElement & { setSinkId?: (deviceId: string) => Promise<void>; sinkId?: string }) | null;
+    if (!audio) return;
+    const requestedDeviceId = outputDeviceId || 'default';
+    if (typeof audio.setSinkId !== 'function') {
+      onOutputStatus?.({
+        state: 'unsupported', requestedDeviceId, actualDeviceId: audio.sinkId || 'default',
+        message: '当前 Electron 音频元素不支持 setSinkId，暂时只能使用系统默认输出设备',
+      });
+      return;
+    }
+    let alive = true;
+    void audio.setSinkId(requestedDeviceId).then(() => {
+      if (!alive) return;
+      const actualDeviceId = audio.sinkId || requestedDeviceId;
+      onOutputStatus?.({
+        state: requestedDeviceId === 'default' ? 'default' : 'active',
+        requestedDeviceId, actualDeviceId,
+        message: requestedDeviceId === 'default' ? '正在使用系统默认输出设备' : '已切换到所选 Windows 音频输出设备',
+      });
+    }).catch(error => {
+      if (!alive) return;
+      onOutputStatus?.({
+        state: 'unavailable', requestedDeviceId, actualDeviceId: audio.sinkId || 'default',
+        message: `输出设备切换失败：${error instanceof Error ? error.message : String(error)}`,
+      });
+    });
+    return () => { alive = false; };
+  }, [outputDeviceId, onOutputStatus]);
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -141,6 +181,124 @@ export function MusicPlaybackRuntime({ state }: { state: MusicState | null }) {
   }, [state?.isPlaying, state?.currentTrackId]);
 
   return <audio ref={audioRef} preload="metadata" className="nm-audio-engine" aria-hidden="true"/>;
+}
+
+type MediaDevicesWithOutputPicker = MediaDevices & {
+  selectAudioOutput?: (options?: { deviceId?: string }) => Promise<MediaDeviceInfo>;
+};
+type SinkableAudioContext = AudioContext & { setSinkId?: (deviceId: string) => Promise<void> };
+
+function MusicOutputDevicePicker({ settings, updateSettings, status }: {
+  settings: AppSettings;
+  updateSettings: (patch: Partial<AppSettings>) => void;
+  status: MusicOutputStatus | null;
+}) {
+  const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState('');
+  const selectedId = settings.musicOutputDeviceId || 'default';
+  const selectedLabel = selectedId === 'default' ? '系统默认输出设备' : settings.musicOutputDeviceLabel || '已保存的输出设备';
+
+  const refresh = useCallback(async () => {
+    const media = navigator.mediaDevices;
+    if (!media?.enumerateDevices) {
+      setMessage('当前环境无法枚举音频输出设备');
+      return;
+    }
+    try {
+      const found = await media.enumerateDevices();
+      setDevices(found.filter(device => device.kind === 'audiooutput' && device.deviceId !== 'default'));
+    } catch (error) {
+      setMessage(`读取音频设备失败：${error instanceof Error ? error.message : String(error)}`);
+    }
+  }, []);
+
+  useEffect(() => {
+    void refresh();
+    const media = navigator.mediaDevices;
+    if (!media) return;
+    media.addEventListener('devicechange', refresh);
+    return () => media.removeEventListener('devicechange', refresh);
+  }, [refresh]);
+
+  const chooseFromWindows = async () => {
+    const media = navigator.mediaDevices as MediaDevicesWithOutputPicker | undefined;
+    if (!media?.selectAudioOutput) {
+      setMessage('此 Chromium 未提供系统输出设备选择弹窗；可尝试下方已枚举设备列表');
+      return;
+    }
+    setBusy(true);
+    try {
+      const device = await media.selectAudioOutput(selectedId === 'default' ? undefined : { deviceId: selectedId });
+      updateSettings({ musicOutputDeviceId: device.deviceId, musicOutputDeviceLabel: device.label || '所选 Windows 音频设备' });
+      setMessage('已保存输出设备，正在应用到音乐播放器');
+      await refresh();
+    } catch (error) {
+      setMessage(`未能选择输出设备：${error instanceof Error ? error.message : String(error)}`);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const playTestTone = async () => {
+    setBusy(true);
+    let context: SinkableAudioContext | null = null;
+    try {
+      context = new AudioContext({ latencyHint: 'interactive' }) as SinkableAudioContext;
+      if (typeof context.setSinkId !== 'function') {
+        setMessage('当前 Chromium 不支持 AudioContext.setSinkId，无法把测试音可靠路由到所选设备');
+        await context.close();
+        return;
+      }
+      await context.setSinkId(selectedId);
+      const oscillator = context.createOscillator();
+      const gain = context.createGain();
+      oscillator.type = 'sine';
+      oscillator.frequency.value = 440;
+      gain.gain.value = 0.08;
+      oscillator.connect(gain);
+      gain.connect(context.destination);
+      await new Promise<void>(resolve => {
+        oscillator.onended = () => resolve();
+        oscillator.start();
+        oscillator.stop(context!.currentTime + 0.35);
+      });
+      await context.close();
+      setMessage('已向所选设备发送 440 Hz 测试音');
+    } catch (error) {
+      if (context && context.state !== 'closed') await context.close().catch(() => undefined);
+      setMessage(`测试音失败：${error instanceof Error ? error.message : String(error)}`);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return <section className="nm-output-device-panel">
+    <div className="nm-output-device-heading">
+      <div><b>音频输出设备</b><small>独立于 Windows 系统默认音频；可以把音乐单独送到五寸屏喇叭</small></div>
+      <span className={`nm-output-device-state ${status?.state === 'active' || status?.state === 'default' ? 'active' : status?.state === 'unavailable' ? 'error' : ''}`}>
+        {status?.state === 'active' ? '已切换' : status?.state === 'default' ? '默认设备' : status?.state === 'unsupported' ? '不支持路由' : status?.state === 'unavailable' ? '设备不可用' : '等待应用'}
+      </span>
+    </div>
+    <div className="nm-output-device-controls">
+      <label><span>当前目标</span>
+        <select value={selectedId} onChange={event => {
+          const deviceId = event.target.value;
+          const device = devices.find(item => item.deviceId === deviceId);
+          updateSettings({ musicOutputDeviceId: deviceId, musicOutputDeviceLabel: device?.label || (deviceId === 'default' ? '系统默认输出设备' : '已选择音频设备') });
+        }}>
+          <option value="default">系统默认输出设备</option>
+          {selectedId !== 'default' && !devices.some(item => item.deviceId === selectedId) && <option value={selectedId}>{selectedLabel}（当前未枚举）</option>}
+          {devices.map((device, index) => <option key={device.deviceId} value={device.deviceId}>{device.label || `音频输出设备 ${index + 1}`}</option>)}
+        </select>
+      </label>
+      <button type="button" className="btn-secondary" disabled={busy} onClick={() => void chooseFromWindows()}>选择 Windows 设备</button>
+      <button type="button" className="btn-secondary" disabled={busy} onClick={() => void refresh()}>刷新</button>
+      <button type="button" className="btn-secondary" disabled={busy} onClick={() => void playTestTone()}>测试音</button>
+    </div>
+    <p>{status?.message || message || `已选择：${selectedLabel}`}</p>
+    {status?.state === 'unavailable' && <p className="nm-output-device-warning">当前请求设备未能应用，实际输出仍是：{status.actualDeviceId === 'default' ? '系统默认设备' : status.actualDeviceId}。不会自动更改已保存的目标设备。</p>}
+  </section>;
 }
 
 export function MusicMiniPlayer({ state, onCommand }: { state: MusicState | null; onCommand: (command: MusicCommand) => void }) {
@@ -233,8 +391,13 @@ export function MusicPlayerDock({ state, onCommand, onOpen }: {
   </div>;
 }
 
-export function MusicLibraryPage({ state, onCommand, notify }: {
-  state: MusicState | null; onCommand: (command: MusicCommand) => void; notify: (message: string) => void;
+export function MusicLibraryPage({ state, onCommand, notify, settings, updateSettings, outputStatus }: {
+  state: MusicState | null;
+  onCommand: (command: MusicCommand) => void;
+  notify: (message: string) => void;
+  settings: AppSettings;
+  updateSettings: (patch: Partial<AppSettings>) => void;
+  outputStatus: MusicOutputStatus | null;
 }) {
   const [query, setQuery] = useState('');
   const [targetPlaylist, setTargetPlaylist] = useState('');
@@ -277,6 +440,7 @@ export function MusicLibraryPage({ state, onCommand, notify }: {
         <button type="button" className="btn-primary" onClick={() => void importFiles()}><Plus size={15}/>添加音频</button>
       </div>
     </div>
+    <MusicOutputDevicePicker settings={settings} updateSettings={updateSettings} status={outputStatus}/>
     <div className="nm-library-layout">
       <aside className="nm-playlist-sidebar">
         <div className="nm-playlist-title"><b>音乐库</b><button type="button" title="新建歌单" onClick={createPlaylist}><Plus size={16}/></button></div>
