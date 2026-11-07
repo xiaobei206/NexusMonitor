@@ -67,7 +67,18 @@ Main process: library / playlist / persistence / IPC / device inventory
 - 独占模式不等于 bit-perfect。只有当实际信号链、重采样、效果处理、共享混音路径和设备格式均得到验证时才可以显示相应能力声明。
 - Auto DJ、智能播放列表、Audio DNA / 相似歌曲推荐是后续可选项，不能阻塞基础播放器。
 
-## 5. 首批已落地实现（以当前分支源码为准）\n\n- `src/main/music-metadata.ts` 提供无外部运行时依赖的 best-effort 标签读取：ID3、FLAC comments / STREAMINFO / picture、WAV INFO / fmt / data、Ogg Vorbis / Opus comments、M4A atom。封面写入应用数据 `music-artwork`，由 track ID IPC 返回 URL。\n- 曲库允许导入 MP3、WAV、FLAC、OGG、OGA、Opus、M4A、M4B、AAC；播放器显示实际文件扩展格式，搜索覆盖标题 / 艺术家 / 专辑 / 流派。**导入白名单不等于播放解码验收**；当前单音频 HTMLAudioElement 仍依赖 Electron Chromium codec 实际支持。WMA / ALAC / AIFF / APE / WavPack / TTA / Musepack / DSF / DFF 暂不纳入支持承诺。\n- 静态 / GIF 壁纸的独立音频元素和背景音乐选择控件已移除，所有音乐统一经 Music Service。\n- 第六模式 `music-only` 已加入设置类型 / 选择 UI / 窗口 close / startup restore：不创建可见 USB 输出 BrowserWindow，保留 Windows 桌面壁纸，Music Service 保持在主 Renderer。\n- 当前代码尚未通过此分支 CI，以上是代码已写入而非构建 / 运行验收状态。\n\n## 6. 工程规则
+## 5. 首批已落地实现（以当前分支源码为准）
+
+- `src/main/music-metadata.ts` 提供无外部运行时依赖的 best-effort 标签读取：ID3v1/v2、FLAC comments / STREAMINFO / picture、WAV INFO / fmt / data、Ogg Vorbis / Opus comments、M4A atoms。标签损坏不能阻止音频文件导入。封面写入应用数据 `music-artwork`，Renderer 通过 track ID IPC 获取 URL。
+- 曲库可导入 MP3、WAV、FLAC、OGG、OGA、Opus、M4A、M4B、AAC；新导入文件会读取标题 / 艺术家 / 专辑 / 流派 / 年份 / 曲目号 / 部分格式参数。**扩展名白名单只表示允许导入，不等于所有具体编码已实测可播放。** WMA / AIFF / APE / WavPack / TTA / Musepack / DSF / DFF 尚未列入支持范围。
+- 曲库界面已经有歌曲、专辑、艺术家、流派、文件夹和歌单导航，分组使用真实标签与路径；搜索可按标题、艺术家、专辑、流派过滤。分组卡片可以展示曲目内嵌封面。
+- 独立 Windows 音频 endpoint 控件已接入：设备枚举 / 变化刷新、设备选择弹窗（Chromium 提供时）、保存 device ID / label、`HTMLMediaElement.setSinkId`、实际路由状态及 440 Hz 测试音。该实现走 Chromium 音频路由，不是 WASAPI Exclusive 原生后端；设备不可用不会悄悄改为系统默认设备。
+- 静态 / GIF 壁纸独立音频控件、旧音频 URL IPC 和第二个 HTMLAudioElement 已移除；统一使用 Music Service。
+- 第六模式 `music-only` 已加入设置类型 / 选择 UI / 窗口生命周期 / startup restore：不创建或显示 USB 输出 BrowserWindow，保留 Windows 原生桌面壁纸，Music Service 仍由主 Renderer 持有。视频模式不挂音乐迷你播放器。
+- 自动化验证：GitHub Actions Windows CI Run #44 **成功**，版本门禁 14/14、Node 测试 195/195、Renderer TypeScript / Vite production build、PawnIO 官方资源校验、.NET Release build（0 Warning / 0 Error）和 Storage Tests 全通过。<https://github.com/xiaobei206/NexusMonitor/actions/runs/42344000038>
+- 当前阶段仍未实现：WASAPI Exclusive、bit-perfect 验证、EQ / ReplayGain / gapless / crossfade / 同步歌词 / waveform / spectrum；每种编码的真实音频文件播放矩阵、输出设备热拔插、五寸屏扬声器和六模式目标机实测仍需继续。
+
+## 6. 工程规则
 
 1. **文档先于大规模修改。** 每个新会话先读 `START-HERE-NEXT-GPT.md`、`AGENTS.md`、本交接文档与本文；先检查远端 branch HEAD、`VERSION`、PR / Actions 状态。
 2. 每一阶段形成可编译、可回归的提交；不要只堆一大批未经验证的代码。不要使用 FIX / FIX1 版本名。
