@@ -375,3 +375,18 @@ test('native WASAPI pause stops the audio client before a later Start call', () 
   assert.match(player, /bufferedBytes: native\.bufferedBytes/);
   assert.match(player, /underruns: native\.underruns/);
 });
+
+test('2.2.0 music library records are enriched once and persisted without resetting playlist state', () => {
+  const main = read('src/main/index.ts');
+  assert.match(main, /const needsMetadataRefresh =/);
+  assert.match(main, /!Object\.prototype\.hasOwnProperty\.call\(item, 'channels'\)/);
+  assert.match(main, /!Object\.prototype\.hasOwnProperty\.call\(item, 'replayGainTrackDb'\)/);
+  assert.match(main, /const metadata = needsMetadataRefresh \? readMusicMetadata\(target\) : null/);
+  assert.match(main, /const title = metadata\?\.title && \(!savedTitle \|\| savedTitle === fileTitle\)/);
+  assert.match(main, /savedArtist === '本地音乐' \|\| savedArtist === '未知艺术家'/);
+  assert.match(main, /metadata\?\.artwork/);
+  assert.match(main, /persistMusicState\(\)/);
+  assert.match(main, /Enriched \$\{upgradedLegacyTracks\} legacy music track\(s\)/);
+  assert.match(main, /activePlaylistId: playlistId, currentTrackId/);
+  assert.match(main, /currentTime: Number\.isFinite\(Number\(raw\.currentTime\)\)/);
+});
