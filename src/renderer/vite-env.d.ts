@@ -10,6 +10,7 @@ interface Window {
     chooseMusicFolder(): Promise<{added:number;skipped:number;truncated?:boolean}>;
     getMusicTrackUrl(trackId:string): Promise<string | null>;
     getMusicArtworkUrl(trackId:string): Promise<string | null>;
+    getMusicLyrics(trackId:string): Promise<import('../shared/types').MusicLyricLine[]>;
     musicCommand(command:import('../shared/types').MusicCommand):Promise<import('../shared/types').MusicState>;
     reportMusicRuntime(payload:{currentTime?:number;duration?:number;playing?:boolean;error?:boolean;errorMessage?:string}):void;
     onMusicState(callback:(state:import('../shared/types').MusicState)=>void):()=>void;
