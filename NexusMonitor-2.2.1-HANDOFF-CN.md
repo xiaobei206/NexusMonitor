@@ -21,7 +21,8 @@
 - **输出设备：** 独立 Windows 音频 endpoint 列表 / 系统选择器 / 保存 ID 和 label / setSinkId 路由 / 440 Hz 测试音 / unavailable/unsupported 状态。EQ 打开时通过 Web Audio AudioContext sink 路由。**此处不是 WASAPI Exclusive；尚未在目标机确认五寸屏扬声器实际出声。**
 - **副屏六模式：** 原五种可视模式保留；新增 `music-only`，隐藏 USB 输出 BrowserWindow，Windows 桌面壁纸原样可见，Music Service 继续运行。视频模式不显示音乐控制。
 - **处理与附加功能：** 十段 EQ（31 Hz–16 kHz，±12 dB，默认平直）；ReplayGain Track/Album（含 Peak 安全限制，无 Peak 时不正增益）；同名本地 LRC 同步歌词；15/30/45/60/90 分钟睡眠定时，到时暂停；播放器显示解码 / 文件错误状态。
-- **最近完整成功的 Windows CI：** Run #109，HEAD `3152aa5a16b4ff52d0bf026fcd5e1d962cf19f4c`。14/14 版本门禁、Node **210/210**、Renderer TypeScript + Vite production build、PawnIO 官方资源校验、.NET Release build（0 Warning / 0 Error）、Storage Tests 全通过。<https://github.com/xiaobei206/NexusMonitor/actions/runs/42349148127>
+- EQ 预设：平直、摇滚、流行、人声、古典、爵士、电子、低音增强、高音增强；手动改频段自动切换为自定义，默认仍为平直 0 dB。
+- **最近完整成功的 Windows CI：** Run #114，HEAD `f1019858e17e2c82192e08a2c94709793ce6d1e7`。14/14 版本门禁、Node **211/211**、Renderer TypeScript + Vite production build、PawnIO 官方资源校验、.NET Release build（0 Warning / 0 Error）、Storage Tests 全部通过。<https://github.com/xiaobei206/NexusMonitor/actions/runs/42349435741>
 - Run #109 覆盖当前 PR tip。PR CI 不运行 NSIS / Release 发布，因此当前仍无 2.2.1 安装包和 GitHub Release。
 - **未完成：** 原生 WASAPI Exclusive backend / format negotiation / bit-perfect 验证；Gapless / Crossfade 双 Deck；每种声称格式真实文件播放矩阵；目标机端点切换 / 热拔插 / 五寸屏喇叭验收；六模式实机验收；正式 2.2.1 NSIS 安装包 / Release。
 - **不可混淆：** 导入扩展名不等于实际解码；Chromium setSinkId 不等于 WASAPI Exclusive；Hosted CI 不能代替用户 Windows 目标设备验收。
