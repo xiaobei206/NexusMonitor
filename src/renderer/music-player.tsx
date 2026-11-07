@@ -20,6 +20,7 @@ export type MusicWasapiStatus = {
   sampleRate?: number;
   bufferedBytes?: number;
   underruns?: number;
+  droppedFrames?: number;
   bitPerfect: false;
   bitPerfectCandidate?: boolean;
 };
@@ -425,6 +426,7 @@ export function MusicPlaybackRuntime({ state, outputDeviceId = 'default', eqBand
             sampleRate: native.sampleRate,
             bufferedBytes: native.bufferedBytes,
             underruns: native.underruns,
+            droppedFrames: native.droppedFrames,
             bitPerfect: false,
           });
           return;
@@ -439,6 +441,7 @@ export function MusicPlaybackRuntime({ state, outputDeviceId = 'default', eqBand
           sampleRate: native.sampleRate,
           bufferedBytes: native.bufferedBytes,
           underruns: native.underruns,
+          droppedFrames: native.droppedFrames,
           bitPerfect: false,
         });
       } catch (error) {
@@ -887,6 +890,7 @@ export function MusicWasapiControls({ state, settings, updateSettings, status }:
       实际协商：{status.deviceName} · {status.format?.toUpperCase()} · {status.sampleRate?.toLocaleString()} Hz
       {status.bitPerfectCandidate ? ' · 源格式与设备能力匹配候选' : ' · 源格式信息或设备能力不满足无损直通候选条件'}
       {typeof status.underruns === 'number' ? ` · 欠载 ${status.underruns} 次` : ''}
+      {typeof status.droppedFrames === 'number' && status.droppedFrames > 0 ? ` · 丢弃 ${status.droppedFrames} 帧` : ''}
       {typeof status.bufferedBytes === 'number' ? ` · 缓冲 ${Math.round(status.bufferedBytes / 1024)} KiB` : ''}
       <br/>当前路径为 Renderer Float32 PCM → WASAPI；bit-perfect：否。
     </p>}
