@@ -219,11 +219,13 @@ export function MusicPlaybackRuntime({ state, outputDeviceId = 'default', eqBand
 
   useEffect(() => {
     const hasBoostOrCut = bands.some(value => value !== 0);
-    if (!hasBoostOrCut && !audioContextRef.current) return;
+    // Do not create/resume an AudioContext merely because EQ was saved.
+    // Build the graph on active playback, or update it when playback is already using it.
+    if (!audioContextRef.current && !(state?.isPlaying && hasBoostOrCut)) return;
     let alive = true;
     const applyBands = async () => {
       try {
-        if (hasBoostOrCut) await ensureAudioGraph();
+        if (!audioContextRef.current && state?.isPlaying && hasBoostOrCut) await ensureAudioGraph();
         const context = audioContextRef.current;
         if (!context) return;
         eqFiltersRef.current.forEach((filter, index) => {
@@ -239,7 +241,7 @@ export function MusicPlaybackRuntime({ state, outputDeviceId = 'default', eqBand
     };
     void applyBands();
     return () => { alive = false; };
-  }, [bandKey, bands, ensureAudioGraph, applyOutputSink]);
+  }, [bandKey, bands, ensureAudioGraph, applyOutputSink, state?.isPlaying]);
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -274,6 +276,7 @@ export function MusicPlaybackRuntime({ state, outputDeviceId = 'default', eqBand
         if (shouldPlay) {
           const startPlayback = async () => {
             try {
+              if (bands.some(value => value !== 0) && !audioContextRef.current) await ensureAudioGraph();
               if (audioContextRef.current?.state === 'suspended') await audioContextRef.current.resume();
               await audio.play();
             } catch (error) {
@@ -297,6 +300,7 @@ export function MusicPlaybackRuntime({ state, outputDeviceId = 'default', eqBand
     if (state.isPlaying) {
       const startPlayback = async () => {
         try {
+          if (bands.some(value => value !== 0) && !audioContextRef.current) await ensureAudioGraph();
           if (audioContextRef.current?.state === 'suspended') await audioContextRef.current.resume();
           await audio.play();
         } catch (error) {
@@ -307,7 +311,7 @@ export function MusicPlaybackRuntime({ state, outputDeviceId = 'default', eqBand
     } else {
       audio.pause();
     }
-  }, [state?.isPlaying, state?.currentTrackId]);
+  }, [state?.isPlaying, state?.currentTrackId, bandKey, ensureAudioGraph]);
 
   useEffect(() => () => {
     const context = audioContextRef.current;
