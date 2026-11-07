@@ -65,7 +65,7 @@ let lastWeather: unknown = null;
 let currentSettings: Record<string, unknown> = {};
 let musicState: MusicState = {
   tracks: [], playlists: [], activePlaylistId: null, currentTrackId: null,
-  currentTime: 0, duration: 0, volume: 0.7, isPlaying: false, shuffle: false, repeat: 'off',
+  currentTime: 0, duration: 0, volume: 0.7, isPlaying: false, errorMessage: null, shuffle: false, repeat: 'off',
 };
 let musicLastPersistAt = 0;
 const MUSIC_AUDIO_EXTENSIONS = new Set(['.mp3', '.wav', '.flac', '.ogg', '.oga', '.opus', '.m4a', '.m4b', '.aac']);
@@ -287,11 +287,11 @@ function loadMusicLibrary() {
       tracks, playlists, activePlaylistId: playlistId, currentTrackId,
       currentTime: Number.isFinite(Number(raw.currentTime)) ? Math.max(0, Number(raw.currentTime)) : 0,
       duration: 0, volume: Number.isFinite(rawVolume) ? Math.max(0, Math.min(1, rawVolume)) : 0.7,
-      isPlaying: false, shuffle: raw.shuffle === true, repeat,
+      isPlaying: false, errorMessage: null, shuffle: raw.shuffle === true, repeat,
     };
     musicLastPersistAt = Date.now();
   } catch {
-    musicState = { tracks: [], playlists: [], activePlaylistId: null, currentTrackId: null, currentTime: 0, duration: 0, volume: 0.7, isPlaying: false, shuffle: false, repeat: 'off' };
+    musicState = { tracks: [], playlists: [], activePlaylistId: null, currentTrackId: null, currentTime: 0, duration: 0, volume: 0.7, isPlaying: false, errorMessage: null, shuffle: false, repeat: 'off' };
   }
 }
 function publicMusicState(): MusicState {
@@ -398,6 +398,9 @@ function advanceMusicTrack(ended: boolean) {
   if (nextTrackId === ids[currentIndex] && mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('music:engine-command', { type: 'seek', seconds: 0, resume: true });
 }
 function handleMusicCommand(command: MusicCommand) {
+  if (['play', 'toggle', 'next', 'previous', 'play-track', 'seek'].includes(command.type)) {
+    musicState = { ...musicState, errorMessage: null };
+  }
   switch (command.type) {
     case 'play': case 'toggle':
       if (musicState.isPlaying && command.type === 'toggle') musicState = { ...musicState, isPlaying: false };
@@ -1561,12 +1564,12 @@ ipcMain.handle('music:choose-folder', async () => {
   return { ...resultCount, truncated: paths.length >= MUSIC_FOLDER_SCAN_LIMIT };
 });
 ipcMain.handle('music:command', (_event, command: MusicCommand) => handleMusicCommand(command));
-ipcMain.on('music:runtime', (event, payload: { currentTime?: number; duration?: number; playing?: boolean; error?: boolean }) => {
+ipcMain.on('music:runtime', (event, payload: { currentTime?: number; duration?: number; playing?: boolean; error?: boolean; errorMessage?: string }) => {
   // Only the hidden-capable main renderer owns the single HTMLAudioElement.
   if (!mainWindow || event.sender !== mainWindow.webContents) return;
   if (payload?.error === true) {
-    musicState = { ...musicState, isPlaying: false };
-    log('Music playback failed; the current track remains selected and paused');
+    musicState = { ...musicState, isPlaying: false, errorMessage: payload.errorMessage?.trim() || '音频播放失败，请检查文件格式或文件是否完整' };
+    log(`Music playback failed: ${musicState.errorMessage}`);
     publishMusicState();
     return;
   }
