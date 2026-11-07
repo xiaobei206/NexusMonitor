@@ -42,6 +42,7 @@ const defaultSettings: AppSettings = {
 };
 const legacyTuringOrientation: Record<number, 100 | 101 | 102 | 103> = { 100: 100, 101: 102, 102: 101, 103: 103 };
 function normalizeLoadedSettings(raw: Record<string, unknown>): { settings: AppSettings; migrate: boolean } {
+  const rawMusicEqBands: unknown[] = Array.isArray(raw.musicEqBands) ? raw.musicEqBands : [];
   const version = Number(raw.turingOrientationVersion ?? 1);
   const rawOrientation = Number(raw.turingOrientation);
   const protocolOrientation = [100, 101, 102, 103].includes(rawOrientation) ? rawOrientation as 100 | 101 | 102 | 103 : 103;
@@ -54,7 +55,7 @@ function normalizeLoadedSettings(raw: Record<string, unknown>): { settings: AppS
     settings: {
       ...defaultSettings,
       ...raw,
-      musicEqBands: Array.isArray(raw.musicEqBands) ? Array.from({ length: 10 }, (_, index) => { const value = Number(raw.musicEqBands[index]); return Number.isFinite(value) ? Math.max(-12, Math.min(12, value)) : 0; }) : [...defaultSettings.musicEqBands],
+      musicEqBands: Array.from({ length: 10 }, (_, index) => { const value = Number(rawMusicEqBands[index] ?? 0); return Number.isFinite(value) ? Math.max(-12, Math.min(12, value)) : 0; }),
       // Settings files survive upgrades. Treat malformed or old values as absent
       // instead of letting one null array crash the entire React root on startup.
       selectedNetworks: Array.isArray(raw.selectedNetworks) ? raw.selectedNetworks.filter((id): id is string => typeof id === 'string') : [...defaultSettings.selectedNetworks],
