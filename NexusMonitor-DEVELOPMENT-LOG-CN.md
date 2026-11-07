@@ -506,3 +506,16 @@ Property 'volume' does not exist on type 'AudioHTMLAttributes<HTMLAudioElement>'
 
 - 正式版本递增至 2.2.2；同步 VERSION、package / lockfile、HardwareService assembly/API/snapshot、Renderer 版本字段、版本化 build/release 入口和版本校验门禁。
 - 本节的 Hosted Windows CI / 安装包结果在本轮构建完成后追加。用户目标机的真实 P4 扬声器输出、Windows 系统其它应用音频隔离、热插拔与长时间稳定性不能由 Hosted CI 推断。
+
+
+### 2.2.2 最终 Windows CI 与正式发布收口（2026-11-07）
+
+- 个人仓库默认开发方式确认为直接在 `main` 工作，不再创建功能分支或 PR。
+- 应用代码提交：`99e76745ae978ae3e0dd8dc9eaefa6785dadb022`；`VERSION=2.2.2`。
+- 第一次 Run #177 发现 TypeScript 模板字面量转义错误（TS1127/TS1134），修正为普通字符串拼接后继续。
+- Run #178 又暴露 3 个旧源码回归合同与格式写法不一致、以及 App.tsx 版本同步覆盖按钮修改的问题；恢复项目惯用源码格式、调整测试 matcher，并再次修正实际按钮文案。
+- **最终 Run #179 全部成功：** [Windows CI](https://github.com/xiaobei206/NexusMonitor/actions/runs/42357228488)。版本门禁 14/14；Node 主进程 234/234（0 failed / 0 cancelled / 0 skipped）；Renderer TypeScript + Vite；Windows N-API WASAPI native addon；PawnIO 官方资源 SHA 验证；.NET Release；Hardware / Storage Tests；NSIS x64；SHA-256；GitHub Release 与 workflow artifact 均成功。
+- 正式 Release：[v2.2.2](https://github.com/xiaobei206/NexusMonitor/releases/tag/v2.2.2)。安装包 `NexusMonitor-2.2.2-Setup.exe`，160,011,997 bytes；SHA-256 `4622fae70bc5a0b9770ab90c40c8de964b6f5f0f0f442b33fc829e54d4b2bc03`。无代码签名证书，安装包未签名。
+- 非 bit-perfect 约束不变：Renderer stereo Float32 -> native mono downmix 时明确发生 channel conversion；当前整个 WASAPI 路径继续标记 bitPerfect=false。
+- P4 Mono UAC Direct v62 的实际扬声器出声、系统其它应用音频隔离、端点拔插、默认设备变化、独占期间系统声音与长时间 underrun 仍需用户 Windows 目标机实测。真实文件 codec / seek 矩阵与六模式 / 桌面壁纸 / 睡眠唤醒 / COM3 长时间运行也不能由 Hosted CI 推断。
+

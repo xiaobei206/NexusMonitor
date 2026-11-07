@@ -2,28 +2,30 @@
 
 Before editing, read [START-HERE-NEXT-GPT.md](START-HERE-NEXT-GPT.md), then the current handoff and the unique cross-version development log.
 
-- Current `main`, `VERSION`, source, tests, and latest Actions are authoritative. Re-query them for every new task.
-- Make narrow, source-backed changes and preserve unrelated existing behavior.
-- Application behavior changes require a formal version increment and synchronization of every field checked by `scripts/validate-release-version.cjs`; never use FIX-style version names.
-- Add/update regression tests; report only tests actually run. Hosted CI is not proof of physical hardware acceptance.
+- Current `main`, `VERSION`, source, tests, latest Actions and Release are authoritative. Re-query them for every new task.
+- This is a personal repository. Work directly on `main`; do not create feature branches or pull requests unless the user explicitly asks.
+- Current released baseline is NexusMonitor 2.2.2. Any next application behavior change starts at 2.2.3; synchronize every field checked by `scripts/validate-release-version.cjs`. Never use FIX-style version names or overwrite a published release.
+- Keep changes narrow, source-backed and regression-tested. Report only tests actually run. Hosted CI is not proof of physical hardware acceptance.
 - Follow `.github/workflows/windows-ci.yml`. On Windows PowerShell use `npm.cmd` / `npx.cmd`.
-- Keep the canonical development log, current handoff/build report, SHA-256 manifest, and ZIP contents accurate.
-- Never commit personal settings or runtime logs from `%APPDATA%\NexusMonitor`.
+- Keep the canonical development log, current handoff/build report, SHA-256 manifest and ZIP contents accurate.
+- Never commit personal settings, music-library data, absolute user paths or runtime logs from `%APPDATA%\NexusMonitor`.
 
-- Music playback is a single main-Renderer audio engine; HUD and secondary-display windows are control surfaces only. Preserve the video player as a separate mode and do not create a second audio element in a child window.
-- On the vertical HUD, the music mini-player is inserted immediately above the existing weather block. Keep every existing metric, weather layout, bottom clock/calendar and horizontal HUD unchanged unless the user separately authorizes a change.
-- Closing the main window hides it to the tray and must not destroy the persistent renderer or stop music. USB display restoration must use the saved display ID and never guess a different target.
+## Music / display invariants
 
+- Music playback is a single main-Renderer audio engine; HUD and secondary-display windows are control surfaces only.
+- Preserve the independent video player. Video mode has no music mini-player.
+- On the vertical HUD, the music mini-player is immediately above the existing weather block. Keep other metrics, weather layout, bottom clock/calendar and horizontal HUD unchanged unless separately requested.
+- Closing the main window hides it to the tray and must not destroy the persistent Renderer or stop music. USB display restoration must use the saved display ID and never guess a different target.
+- The sixth USB mode `music-only` hides the USB output window so the Windows desktop wallpaper remains visible while Music Service continues. Its action button is the short label `应用模式`; other output modes retain `启动副屏`.
+- Static/GIF wallpaper modes must not create a second audio engine.
 
-## Current 2.2.2 development rules
+## WASAPI Exclusive invariants (2.2.2)
 
-- The current development baseline is `main` / 2.2.2. This is a personal repository: work directly on `main`; do not create feature branches or pull requests unless the user explicitly asks.
-- Nora is the main library/UI reference; NewAmp is the audio capability reference; NexusMonitor owns the single Music Service. Do not embed or launch either as an external player.
-- Keep one audio playback host in the persistent main Renderer. HUD, Dock, and USB output are controls only. USB output visibility/mode must never start or stop the Music Service.
-- The sixth USB display mode, `music-only`, hides the USB output window so Windows wallpaper remains visible while the shared player continues. Its action button should stay concise: `应用模式`. Static/GIF modes must not retain a second wallpaper audio element; video remains independent and has no music mini-player UI.
-- WASAPI exclusive format probing must test mono and stereo PCM using both `WAVEFORMATEX` and `WAVEFORMATEXTENSIBLE`. Prefer stereo when available; use mono only when no compatible stereo candidate is reported. The native output channel count, block alignment, bytes-per-frame, speaker mask and PCM conversion must all use the negotiated channel count.
-- Incoming Renderer transport remains stereo Float32. A mono-only endpoint receives a mono average of left and right before native PCM packing. Channel conversion is not bit-perfect; never describe it as such.
-- If no format is accepted, report probe counts, classic/extensible matches, Windows shared mix-format information and HRESULT. Do not say the hardware is categorically unsupported based on a narrow probe.
-- Do not claim a codec is supported merely because its extension is accepted. Test actual decode, seek, metadata/duration behavior, and failure handling; record unsupported advanced formats explicitly.
-- The 2.2.2 WASAPI path is Chromium/WebAudio decode -> Float32 PCM -> native WASAPI Exclusive. It is explicitly not bit-perfect. Gapless/crossfade dual-deck playback and native decoder-to-device bit-perfect output are not delivered.
-- Hosted CI proves the hosted Windows build/tests only. Physical speaker output, endpoint isolation/hot-plug, actual codec fixtures, all six display modes, mixed DPI, sleep/wake and long-run stability remain target-PC acceptance items.
+- Probe both mono and stereo PCM, and query both classic `WAVEFORMATEX` and `WAVEFORMATEXTENSIBLE` forms.
+- Prefer a compatible stereo candidate. Select mono only when no compatible stereo combination is reported.
+- The negotiated channel count must flow consistently through endpoint format, speaker mask, block alignment, bytes-per-frame, native ring-buffer sizing, PCM packing and UI status.
+- Renderer input remains stereo Float32. A mono endpoint receives the average of L/R at the native edge. Channel downmix is not bit-perfect.
+- Probe failure must preserve useful diagnostics: candidate counts, classic/extensible matches, Windows shared mix format and HRESULT. Do not declare a device categorically unsupported from a narrow probe.
+- Current path remains Chromium/WebAudio decode -> Float32 PCM -> native WASAPI Exclusive; never claim bit-perfect. Gapless/Crossfade dual-deck and native decoder-to-device output are not included in 2.2.2.
+- Do not claim a codec is supported merely because its extension is accepted. Actual decode/seek/metadata/error handling requires real-file testing.
+- Hosted CI proves the hosted Windows build/tests only. Physical P4 speaker output, endpoint isolation/hot-plug, actual codec fixtures, all six display modes, mixed DPI, sleep/wake and long-run stability remain target-PC acceptance items.

@@ -1,4 +1,4 @@
-# NexusMonitor 2.2.2 — Electron Edition (development on main)
+# NexusMonitor 2.2.2 — Electron Edition (released)
 
 > **新对话 / 新开发者接手：先读 [START-HERE-NEXT-GPT.md](START-HERE-NEXT-GPT.md) 和根目录 [AGENTS.md](AGENTS.md)。** 入口文档列出阅读顺序、源码目录地图、验证命令与硬件验收边界。
 
@@ -75,13 +75,15 @@ NexusMonitor source in this package is provided for the user's development/testi
 
 ## Current source handoff
 
-The current development baseline is **main / 2.2.2**. Personal-project development proceeds directly on `main`; do not create feature branches or PRs unless explicitly requested.
+The current released baseline is **main / 2.2.2**. The personal repository is developed directly on `main`; do not create feature branches or pull requests unless explicitly requested.
 
-Version 2.2.2 focuses on broader WASAPI Exclusive compatibility: probing classic `WAVEFORMATEX` and `WAVEFORMATEXTENSIBLE`, testing mono and stereo PCM, preferring stereo where available, and supporting mono-only endpoints by downmixing Renderer stereo Float32 PCM at the native output boundary. The USB `music-only` action button is shortened to `应用模式`.
+Version 2.2.2 broadens WASAPI Exclusive compatibility by probing mono and stereo PCM through both classic `WAVEFORMATEX` and `WAVEFORMATEXTENSIBLE`, preferring stereo and downmixing Renderer stereo Float32 to mono only for mono-only endpoints. The music-only USB output action is shortened to `应用模式`.
 
-Read `START-HERE-NEXT-GPT.md`, `AGENTS.md`, `NexusMonitor-2.2.2-HANDOFF-CN.md`, and `NexusMonitor-2.2.2-BUILD-REPORT.md` for current implementation, CI and hardware acceptance boundaries.
+Windows CI Run #179 succeeded on app commit `99e76745ae978ae3e0dd8dc9eaefa6785dadb022`: 14/14 version gates, 234/234 Node tests, Renderer TypeScript / Vite production build, native WASAPI addon, PawnIO verification, .NET Release, Storage tests, NSIS packaging, SHA-256 and GitHub Release publication. [Run #179](https://github.com/xiaobei206/NexusMonitor/actions/runs/42357228488).
 
-**Hosted CI is pending for this commit.** Do not treat the 2.2.1 Windows CI or installer hash as validation of 2.2.2. Physical P4 speaker output, endpoint isolation/hot-plug, long-run underrun and the six USB display modes still require target-PC acceptance.
+Official release: [NexusMonitor 2.2.2](https://github.com/xiaobei206/NexusMonitor/releases/tag/v2.2.2). Installer: [NexusMonitor-2.2.2-Setup.exe](https://github.com/xiaobei206/NexusMonitor/releases/download/v2.2.2/NexusMonitor-2.2.2-Setup.exe) (160,011,997 bytes). SHA-256: `4622fae70bc5a0b9770ab90c40c8de964b6f5f0f0f442b33fc829e54d4b2bc03`. The release includes the checksum sidecar. The installer is not code-signed because no signing certificate is configured.
+
+Target-PC acceptance remains open for the P4 speaker's actual output, isolation from other Windows apps, hot-plug/default-device behavior, exclusive-mode system sounds, long-run underruns, real codec playback fixtures, six USB display modes, music-only desktop visibility, sleep/wake, mixed DPI and Turing COM3 stability. WASAPI remains explicitly non-bit-perfect; Gapless / Crossfade dual-deck is not included.
 
 ## Intel Alder Lake Iris Xe GT temperature experiment
 
