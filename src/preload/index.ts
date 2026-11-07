@@ -14,7 +14,7 @@ const api = {
   getMusicTrackUrl: (trackId: string) => ipcRenderer.invoke('music:track-url', trackId),
   getMusicArtworkUrl: (trackId: string) => ipcRenderer.invoke('music:artwork-url', trackId),
   musicCommand: (command: MusicCommand) => ipcRenderer.invoke('music:command', command),
-  reportMusicRuntime: (payload: { currentTime?: number; duration?: number; playing?: boolean; error?: boolean }) => ipcRenderer.send('music:runtime', payload),
+  reportMusicRuntime: (payload: { currentTime?: number; duration?: number; playing?: boolean; error?: boolean; errorMessage?: string }) => ipcRenderer.send('music:runtime', payload),
   onMusicState: (callback: (state: import('../shared/types').MusicState) => void) => {
     const listener = (_event: Electron.IpcRendererEvent, state: import('../shared/types').MusicState) => callback(state);
     ipcRenderer.on('music:state', listener); return () => ipcRenderer.removeListener('music:state', listener);
