@@ -8,6 +8,8 @@ interface Window {
     onOpenMusicLibrary(callback:()=>void):()=>void;
     chooseMusicFiles(): Promise<{added:number;skipped:number}>;
     chooseMusicFolder(): Promise<{added:number;skipped:number;truncated?:boolean}>;
+    importMusicPlaylist(): Promise<{ok:boolean;added:number;skipped:number;playlistId?:string;name?:string;message?:string}>;
+    exportMusicPlaylist(playlistId:string): Promise<{ok:boolean;count?:number;path?:string;message?:string;canceled?:boolean}>;
     getMusicTrackUrl(trackId:string): Promise<string | null>;
     getMusicArtworkUrl(trackId:string): Promise<string | null>;
     getMusicLyrics(trackId:string): Promise<import('../shared/types').MusicLyricLine[]>;
