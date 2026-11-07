@@ -58,8 +58,9 @@ std::string WideToUtf8(const wchar_t* value) {
   if (value == nullptr || *value == L'\0') return {};
   const int size = WideCharToMultiByte(CP_UTF8, 0, value, -1, nullptr, 0, nullptr, nullptr);
   if (size <= 1) return {};
-  std::string result(static_cast<size_t>(size - 1), '\0');
+  std::string result(static_cast<size_t>(size), '\0');
   WideCharToMultiByte(CP_UTF8, 0, value, -1, result.data(), size, nullptr, nullptr);
+  result.resize(static_cast<size_t>(size - 1));
   return result;
 }
 
@@ -355,7 +356,10 @@ void AudioWorker(Engine* engine) {
   }
   REFERENCE_TIME period = minimumPeriod > 0 ? minimumPeriod : defaultPeriod;
   if (period <= 0) period = 100000;
-  REFERENCE_TIME duration = period * 4;
+  // WASAPI event-driven exclusive streams require buffer duration and
+  // periodicity to match. If the endpoint needs alignment, the retry below
+  // uses the exact aligned frame count returned by GetBufferSize().
+  REFERENCE_TIME duration = period;
   WAVEFORMATEXTENSIBLE wave = MakeWaveFormat(engine->sampleRate, engine->format);
   const DWORD flags = AUDCLNT_STREAMFLAGS_EVENTCALLBACK | AUDCLNT_STREAMFLAGS_NOPERSIST;
   hr = audioClient->Initialize(AUDCLNT_SHAREMODE_EXCLUSIVE, flags, duration, period,
@@ -469,7 +473,6 @@ void AudioWorker(Engine* engine) {
 }
 
 void CloseEngine() {
-  engine:
   g_engine.closing.store(true, std::memory_order_release);
   if (g_engine.controlEvent) SetEvent(g_engine.controlEvent);
   if (g_engine.worker.joinable()) g_engine.worker.join();
