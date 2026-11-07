@@ -422,6 +422,8 @@ void AudioWorker(Engine* engine) {
           break;
         }
         engine->running.store(false, std::memory_order_release);
+        // Discard pre-pause PCM so resume starts at the renderer's current position.
+        engine->ring.Clear();
       }
       WaitForSingleObject(engine->controlEvent, 100);
       continue;
