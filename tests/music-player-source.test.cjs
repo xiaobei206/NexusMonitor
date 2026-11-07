@@ -368,7 +368,7 @@ test('exclusive mode cleanup restores the ordinary output path and serializes au
   const graphEnd = player.indexOf('const applyOutputSink = useCallback', graphStart);
   const graph = player.slice(graphStart, graphEnd);
   assert.match(graph, /outputDeviceIdRef\.current \|\| 'default'/);
-  assert.match(graph, /new AudioContext\(\{ latencyHint: 'playback', sinkId: requestedDeviceId \}/);
+  assert.match(graph, /new AudioContext\(\{ latencyHint: 'playback', sinkId: requestedDeviceId \} as AudioContextOptions/);
   assert.match(graph, /await context\.setSinkId\(requestedDeviceId\)/);
   assert.ok(graph.indexOf('await context.setSinkId(requestedDeviceId)') < graph.indexOf('context.createMediaElementSource(audio)'),
     'selected output must be bound before the audio element is attached to Web Audio');
