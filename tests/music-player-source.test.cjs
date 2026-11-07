@@ -250,3 +250,24 @@ test('sleep timer is app-wide, keeps a stable callback, and pauses the single au
   assert.match(player, /playing: false/);
   assert.match(player, /取消/);
 });
+
+test('M3U playlists import local paths into a new ordered playlist and export standard M3U8', () => {
+  const main = read('src/main/index.ts');
+  const preload = read('src/preload/index.ts');
+  const types = read('src/renderer/vite-env.d.ts');
+  const player = read('src/renderer/music-player.tsx');
+  const playlist = read('src/main/music-playlist.ts');
+  assert.match(main, /function importMusicPlaylist/);
+  assert.match(main, /importMusicPaths\(candidatePaths, false\)/);
+  assert.match(main, /parseM3u\(readFileSync\(filePath, 'utf8'\)\)/);
+  assert.match(main, /serializeM3u\(tracks\)/);
+  assert.match(main, /music:import-playlist/);
+  assert.match(main, /music:export-playlist/);
+  assert.match(preload, /importMusicPlaylist/);
+  assert.match(preload, /exportMusicPlaylist/);
+  assert.match(types, /importMusicPlaylist\(\)/);
+  assert.match(types, /exportMusicPlaylist\(playlistId:string\)/);
+  assert.match(player, /导入 M3U/);
+  assert.match(player, /导出 M3U8/);
+  assert.match(playlist, /Playlists are intentionally local-only/);
+});
