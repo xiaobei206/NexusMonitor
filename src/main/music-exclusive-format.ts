@@ -15,7 +15,7 @@ const FORMAT_ORDER: ExclusivePcmFormat[] = ['f32','s32','s24','s16'];
 const LOSSLESS_EXTENSIONS = new Set(['.flac','.wav']);
 export function classifyExclusiveSource(track: Pick<MusicTrack,'path'|'format'|'sampleRateHz'|'bitDepth'|'channels'>): ExclusiveSourceFormat {
   const extension=(track.format||track.path.slice(track.path.lastIndexOf('.')+1)).toLowerCase();
-  const normalized=extension.startsWith('.')?extension:\`.\${extension}\`;
+  const normalized=extension.startsWith('.')?extension:'.'+extension;
   return {path:track.path,format:normalized.slice(1).toUpperCase(),
     sampleRateHz:typeof track.sampleRateHz==='number'&&Number.isFinite(track.sampleRateHz)&&track.sampleRateHz>0?track.sampleRateHz:null,
     bitDepth:typeof track.bitDepth==='number'&&Number.isFinite(track.bitDepth)&&track.bitDepth>0?track.bitDepth:null,
