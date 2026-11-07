@@ -301,7 +301,9 @@ function importMusicPaths(paths: string[]) {
   for (const rawPath of paths) {
     try {
       const target = resolve(String(rawPath));
-      if (!MUSIC_AUDIO_EXTENSIONS.has(extname(target).toLowerCase()) || !existsSync(target) || !statSync(target).isFile() || statSync(target).size <= 0 || existing.has(target.toLowerCase())) { skipped++; continue; }
+      if (!MUSIC_AUDIO_EXTENSIONS.has(extname(target).toLowerCase()) || !existsSync(target) || existing.has(target.toLowerCase())) { skipped++; continue; }
+      const fileInfo = statSync(target);
+      if (!fileInfo.isFile() || fileInfo.size <= 0) { skipped++; continue; }
       const track: MusicTrack = {
         id: randomUUID(), path: target, title: basename(target, extname(target)),
         artist: '本地音乐', album: null, addedAt: new Date().toISOString(),
@@ -356,7 +358,11 @@ function advanceMusicTrack(ended: boolean) {
   }
   if (nextIndex >= ids.length) {
     if (musicState.repeat === 'all') nextIndex = 0;
-    else { musicState = { ...musicState, isPlaying: false, currentTime: 0 }; return; }
+    else {
+      musicState = { ...musicState, isPlaying: false, currentTime: 0 };
+      if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('music:engine-command', { type: 'seek', seconds: 0 });
+      return;
+    }
   }
   const nextTrackId = ids[nextIndex];
   musicState = { ...musicState, currentTrackId: nextTrackId, currentTime: 0, duration: 0, isPlaying: true };
@@ -429,7 +435,7 @@ function handleMusicCommand(command: MusicCommand) {
       const name = command.name.trim().slice(0, 80);
       if (name) {
         const playlist: MusicPlaylist = { id: randomUUID(), name, trackIds: [], createdAt: new Date().toISOString() };
-        musicState = { ...musicState, playlists: [...musicState.playlists, playlist], activePlaylistId: playlist.id, isPlaying: false };
+        musicState = { ...musicState, playlists: [...musicState.playlists, playlist], activePlaylistId: playlist.id, currentTrackId: null, currentTime: 0, duration: 0, isPlaying: false };
       }
       break;
     }
