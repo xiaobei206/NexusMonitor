@@ -885,7 +885,7 @@ export function MusicWasapiControls({ state, settings, updateSettings, status }:
     </p>
     {status?.state === 'active' && <p className="nm-wasapi-format">
       实际协商：{status.deviceName} · {status.format?.toUpperCase()} · {status.sampleRate?.toLocaleString()} Hz
-      {status.bitPerfectCandidate ? ' · 源格式与设备能力匹配' : ' · 需要格式转换'}
+      {status.bitPerfectCandidate ? ' · 源格式与设备能力匹配候选' : ' · 源格式信息或设备能力不满足无损直通候选条件'}
       {typeof status.underruns === 'number' ? ` · 欠载 ${status.underruns} 次` : ''}
       {typeof status.bufferedBytes === 'number' ? ` · 缓冲 ${Math.round(status.bufferedBytes / 1024)} KiB` : ''}
       <br/>当前路径为 Renderer Float32 PCM → WASAPI；bit-perfect：否。
