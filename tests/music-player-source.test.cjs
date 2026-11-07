@@ -361,3 +361,10 @@ test('exclusive mode cleanup restores the ordinary output path and serializes au
   assert.match(player, /if \(exclusiveActiveRef\.current\)/);
   assert.match(player, /await applyOutputSink\(\)/);
 });
+
+test('native WASAPI pause stops the audio client before a later Start call', () => {
+  const cpp = read('native/wasapi-output/binding.cpp');
+  assert.match(cpp, /if \(!engine->startRequested\.load\(std::memory_order_acquire\)\) \{[\s\S]{0,300}if \(engine->running\.load\(std::memory_order_acquire\)\) \{[\s\S]{0,160}audioClient->Stop\(\)/);
+  assert.match(cpp, /if \(!engine->running\.load\(std::memory_order_acquire\)\) \{[\s\S]{0,120}audioClient->Start\(\)/);
+  assert.match(cpp, /runtimeError = HresultMessage\("IAudioClient::Stop", hr\)/);
+});
