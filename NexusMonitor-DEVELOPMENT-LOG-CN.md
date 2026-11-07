@@ -443,3 +443,10 @@ Property 'volume' does not exist on type 'AudioHTMLAttributes<HTMLAudioElement>'
 - Run #104 之后新增睡眠计时器 / M3U controls CSS 收尾提交 `b3f95d984118f74974f46dc62acde93d69a21908`，须继续运行最终 Windows CI。Run #104 是 PR CI，未构建 / 发布 2.2.1 installer。
 - 当前未完成：WASAPI Exclusive native backend、bit-perfect negotiation、Gapless / Crossfade、逐格式实音解码矩阵、目标 PC 输出 endpoint / 五寸屏喇叭和六模式验收。Chromium setSinkId 不能替代 WASAPI Exclusive；Hosted CI 不能证明实机扬声器出声。
 
+### 2.2.1 最终 CI 确认（2026-11-07）
+
+- 最终 PR tip `3152aa5a16b4ff52d0bf026fcd5e1d962cf19f4c` 的 GitHub Actions Windows CI Run #109 **成功**：版本门禁 14/14、Node tests 210/210、Renderer TypeScript / Vite production build、PawnIO resource verification、.NET Release build 0 Warning / 0 Error、Storage Tests 全部成功。<https://github.com/xiaobei206/NexusMonitor/actions/runs/42349148127>
+- 此结果覆盖 2.2.1 曲库、音频输出 routing、EQ / ReplayGain、LRC、sleep timer、M3U/M3U8、USB 六模式及最新 CSS / 文档提交。
+- PR #2 仍开放，未合并；PR CI 不发布 NSIS installer / GitHub Release。真实 Windows 音频 endpoint、五寸屏扬声器、每种编码播放、USB 设备行为仍需目标机测试。
+- 后续开发重点：NewAmp 双 Deck Gapless / Crossfade 设计与 WASAPI Exclusive 原生 backend 评估；不要直接把当前 Chromium setSinkId 说成独占输出或 bit-perfect。
+
