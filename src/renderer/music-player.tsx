@@ -86,6 +86,7 @@ export function MusicPlaybackRuntime({ state, outputDeviceId = 'default', eqBand
 }) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
+  const audioGraphPromiseRef = useRef<Promise<AudioContext> | null>(null);
   const mediaSourceRef = useRef<MediaElementAudioSourceNode | null>(null);
   const eqFiltersRef = useRef<BiquadFilterNode[]>([]);
   const replayGainNodeRef = useRef<GainNode | null>(null);
@@ -114,9 +115,13 @@ export function MusicPlaybackRuntime({ state, outputDeviceId = 'default', eqBand
   const ensureAudioGraph = useCallback(async () => {
     const audio = audioRef.current;
     if (!audio) throw new Error('播放宿主尚未就绪');
-    let context = audioContextRef.current;
-    if (!context) {
-      context = new AudioContext({ latencyHint: 'playback' });
+    if (audioContextRef.current) {
+      if (audioContextRef.current.state === 'suspended') await audioContextRef.current.resume();
+      return audioContextRef.current;
+    }
+    if (audioGraphPromiseRef.current) return audioGraphPromiseRef.current;
+    const initialization = (async () => {
+      const context = new AudioContext({ latencyHint: 'playback' });
       try {
         const workletUrl = new URL('./music-pcm-tap.worklet.js', import.meta.url);
         await context.audioWorklet.addModule(workletUrl);
@@ -135,9 +140,9 @@ export function MusicPlaybackRuntime({ state, outputDeviceId = 'default', eqBand
         };
         const source = context.createMediaElementSource(audio);
         const filters = MUSIC_EQ_FREQUENCIES.map(frequency => {
-          const filter = context!.createBiquadFilter();
+          const filter = context.createBiquadFilter();
           filter.type = 'peaking';
-          filter.frequency.value = Math.min(frequency, context!.sampleRate / 2);
+          filter.frequency.value = Math.min(frequency, context.sampleRate / 2);
           filter.Q.value = 1.4;
           filter.gain.value = 0;
           return filter;
@@ -154,13 +159,20 @@ export function MusicPlaybackRuntime({ state, outputDeviceId = 'default', eqBand
         eqFiltersRef.current = filters;
         replayGainNodeRef.current = replayGain;
         pcmTapRef.current = pcmTap;
+        if (context.state === 'suspended') await context.resume();
+        return context;
       } catch (error) {
         await context.close().catch(() => undefined);
         throw error;
       }
+    })();
+    audioGraphPromiseRef.current = initialization;
+    try {
+      return await initialization;
+    } catch (error) {
+      audioGraphPromiseRef.current = null;
+      throw error;
     }
-    if (context.state === 'suspended') await context.resume();
-    return context;
   }, []);
 
   const applyOutputSink = useCallback(async () => {
