@@ -515,6 +515,7 @@ export function MusicLibraryPage({ state, onCommand, notify, settings, updateSet
       </div>
     </div>
     <MusicOutputDevicePicker settings={settings} updateSettings={updateSettings} status={outputStatus}/>
+    {state?.errorMessage && <div className="nm-playback-error" role="status"><b>播放失败</b><span>{state.errorMessage}</span></div>}
     <div className="nm-library-layout">
       <aside className="nm-playlist-sidebar">
         <div className="nm-playlist-title"><b>浏览曲库</b><button type="button" title="新建歌单" onClick={createPlaylist}><Plus size={16}/></button></div>
