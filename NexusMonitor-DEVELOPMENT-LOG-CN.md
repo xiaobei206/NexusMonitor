@@ -45,7 +45,8 @@
 ### 验证状态
 
 - 所有开发修改直接提交到 GitHub 分支 `feature/2.2.0-music-and-window-lifecycle`；未在本地另开源码副本。
-- GitHub Actions Windows CI Run #23：**成功**，HEAD `e45c93bd4e8e2faf17270fdbcda382a8f66e9086`；[查看运行记录](https://github.com/xiaobei206/NexusMonitor/actions/runs/42334294679)。
+- GitHub Actions Windows CI Run #23：**成功**，功能代码 HEAD `e45c93bd4e8e2faf17270fdbcda382a8f66e9086`；[查看运行记录](https://github.com/xiaobei206/NexusMonitor/actions/runs/42334294679)。
+- 文档/清单同步后的 Run #24：**成功**，HEAD `d6a6f6ab9ac996f0d74d688d155d07b14a2ada6c`；[查看运行记录](https://github.com/xiaobei206/NexusMonitor/actions/runs/42334605208)。版本门禁、188/188 主进程测试、Renderer/Vite、PawnIO、.NET Release 与 Storage 测试全部成功。
 - 14 项版本一致性门禁通过；`npm.cmd run test:main` 188/188；Renderer TypeScript / Vite 构建通过；PawnIO 官方资源校验通过；.NET 10 Release 构建 0 warning / 0 error；`npm.cmd run test:storage` 通过。
 - NSIS 安装包与正式 Release 未执行；PR 仍为 Draft、未合并 main、未发布正式版本。
 - 实际 Windows PC / ESP32-P4 五寸屏 / COM3 Turing / 多屏负坐标与 DPI / MP3 实际播放：仍待实机验收；不得由 Hosted CI 代替。
