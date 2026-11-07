@@ -8,24 +8,24 @@
 - 当前开发分支：`feature/2.2.1-music-platform`，由上述 main 基线创建。
 - 目标版本：2.2.1。
 - 开发策略：文档先行，随后分批接入曲库元数据 / 常用格式导入 / 第六显示模式；每个阶段都要经 Windows CI 验证。
-- 当前已完成首批源代码接入（详见下方进度）；尚未创建 PR / 未运行 2.2.1 Windows CI / 未通过目标机实测。每次接手都必须重新读取当前 branch HEAD 和 Actions。
+- 当前 PR #2 已存在且仍开放；2.2.1 已有多轮源代码实现与 Windows CI。最近完整成功 CI 为 Run #104，检查 HEAD `c8d24d28d353834cc04059eb2637a46ef8d94e78`；当前分支在此后另有一笔纯 Renderer CSS 收尾提交 `b3f95d984118f74974f46dc62acde93d69a21908`，因此接手者必须确认该最新 HEAD 的 CI 是否完成。
 - 当前 2.2.0 问题事实：`src/main/index.ts` 的音乐扩展集合只含 `.mp3`；主播放器 UI / 导入提示也硬编码 MP3；旧静态 / GIF 壁纸另有音频元素与音乐路径；USB 输出模式当前只有五个；曲库没有完整标签 / 封面 / 音频设备数据模型。
 - 2.2.0 main 的测试基线曾报告主测试 188/188，Renderer/Vite 构建、PawnIO、.NET、Storage Tests 全通过；这是历史基线，不是本分支新代码的测试结果。
 
 ## 当前实现进度（2026-11-07；每次接手重新核实）
 
-- 稳定基线：`main` 2.2.0，提交 `bc0d29f19fbb98f7ea994fbe30dc68dfb35a38c9`。当前开发分支：`feature/2.2.1-music-platform`，目标版本 `2.2.1`。
-- 文档基座已建立：当前入口、交接、设计、统一开发日志都在仓库；新会话首先读 `START-HERE-NEXT-GPT.md`、本文和音乐平台设计文档。
-- 元数据模块：`src/main/music-metadata.ts` 可 best-effort 读取 ID3v1/v2、FLAC Vorbis comments / STREAMINFO / artwork、WAV INFO / fmt、Ogg Vorbis / Opus comments 和 M4A atoms。当前有合成 MP3 / FLAC / WAV fixtures；内嵌封面存入应用 data 目录。
-- 曲库导入：白名单扩展至 MP3 / WAV / FLAC / OGG / OGA / Opus / M4A / M4B / AAC。**这是导入过滤范围，不等于已实测每种编码的 Chromium 解码能力。** WMA / ALAC / AIFF / APE / WavPack / TTA / Musepack / DSF / DFF 仍未纳入支持承诺。
-- 曲库界面：歌曲、专辑、艺术家、流派、文件夹、自定义歌单入口已实现；按标签 / 文件路径分组；封面卡片读取嵌入封面。支持在当前视图搜索。
-- 播放器 UI：去除 MP3-only 提示和硬编码格式列；所有音乐仍由长期存活的主 Renderer 唯一播放宿主播放。Dock、HUD、USB 输出只发送命令 / 显示状态。
-- 静态 / GIF：旧背景音乐控件、旧音频 URL IPC 和第二个 HTMLAudioElement 已移除；全部改用统一 Music Service，避免双响。
-- 第六模式 `music-only`：选择后关闭 USB 输出 BrowserWindow；程序启动恢复时也保持窗口隐藏，Windows 原生桌面壁纸可见，主 Renderer 的 Music Service 仍继续运行。视频模式仍独立。
-- 输出设备：音乐库已加入 Windows 输出设备选择、设备枚举 / 变化刷新、保存 device ID/label、`HTMLMediaElement.setSinkId` 路由状态、设备选择弹窗与 440 Hz 测试音。当前不支持时提示 unsupported，设备消失时保留用户选择并提示 unavailable。**尚未在用户真实电脑确认五寸屏扬声器实际出声。**
-- 当前 Windows CI：Run #44 **成功**，HEAD `fafbe3e24c9e5127de6608bb72c9cacd3a65aaea`。14/14 版本门禁、195/195 Node 测试、Renderer TypeScript + Vite 生产构建、PawnIO 官方资源校验、.NET Release（0 Warning / 0 Error）、Storage Tests 全部通过。<https://github.com/xiaobei206/NexusMonitor/actions/runs/42344000038>
-- 当前 PR #2：<https://github.com/xiaobei206/NexusMonitor/pull/2>。本次记录后还会有新提交；每次接手必须重新读取 PR HEAD 与最新 Actions，不能把上述 HEAD 当作永远的最新版本。
-- 未完成：WASAPI Exclusive 原生后端 / 实际采样率与位深协商、bit-perfect 验证、EQ / ReplayGain / gapless / crossfade / 同步歌词 / 波形与频谱、每种宣称支持的格式真实文件播放矩阵、安装包发布与目标 PC 实机验收。未通过实机测试前不能声称这些能力已完成。
+- 稳定基线：`main` 2.2.0，提交 `bc0d29f19fbb98f7ea994fbe30dc68dfb35a38c9`。当前分支 `feature/2.2.1-music-platform`，PR #2，目标版本 2.2.1。
+- **多格式与元数据：** 新增 `src/main/music-metadata.ts`；best-effort 读取 ID3v1/v2、FLAC comments / STREAMINFO / picture、WAV INFO / fmt、Ogg Vorbis / Opus comments、M4A atoms 和 ReplayGain 标签。导入白名单为 MP3 / WAV / FLAC / OGG / OGA / Opus / M4A / M4B / AAC；封面存入 app data。导入许可不等于编码已逐一实测解码。
+- **曲库：** 歌曲、专辑、艺术家、流派、文件夹、自定义歌单导航；标签 / 路径分组；内嵌封面、标签检索；本地 M3U/M3U8 导入 / 导出，导入仅接收本地路径。
+- **统一播放：** 静态/GIF 的旧背景音 UI、IPC 与第二个 audio 元素已移除。主 Renderer 保持唯一播放宿主；Dock / HUD / USB 输出只控制或显示状态。
+- **输出设备：** 独立 Windows 音频 endpoint 列表 / 系统选择器 / 保存 ID 和 label / setSinkId 路由 / 440 Hz 测试音 / unavailable/unsupported 状态。EQ 打开时通过 Web Audio AudioContext sink 路由。**此处不是 WASAPI Exclusive；尚未在目标机确认五寸屏扬声器实际出声。**
+- **副屏六模式：** 原五种可视模式保留；新增 `music-only`，隐藏 USB 输出 BrowserWindow，Windows 桌面壁纸原样可见，Music Service 继续运行。视频模式不显示音乐控制。
+- **处理与附加功能：** 十段 EQ（31 Hz–16 kHz，±12 dB，默认平直）；ReplayGain Track/Album（含 Peak 安全限制，无 Peak 时不正增益）；同名本地 LRC 同步歌词；15/30/45/60/90 分钟睡眠定时，到时暂停；播放器显示解码 / 文件错误状态。
+- **最近完整成功的 Windows CI：** Run #104，HEAD `c8d24d28d353834cc04059eb2637a46ef8d94e78`。14/14 版本门禁、Node 210/210、Renderer TypeScript + Vite production build、PawnIO 官方资源校验、.NET Release build（0 Warning / 0 Error）、Storage Tests 全通过。<https://github.com/xiaobei206/NexusMonitor/actions/runs/42348842265>
+- 当前 tip 后续唯一改动为睡眠定时 / M3U controls CSS（`b3f95d984118f74974f46dc62acde93d69a21908`）；该最新 HEAD 需要由接手者重新核实 Actions。Run #104 是 PR CI，不发布 installer / GitHub Release。
+- **未完成：** 原生 WASAPI Exclusive backend / format negotiation / bit-perfect 验证；Gapless / Crossfade 双 Deck；每种声称格式真实文件播放矩阵；目标机端点切换 / 热拔插 / 五寸屏喇叭验收；六模式实机验收；正式 2.2.1 NSIS 安装包 / Release。
+- **不可混淆：** 导入扩展名不等于实际解码；Chromium setSinkId 不等于 WASAPI Exclusive；Hosted CI 不能代替用户 Windows 目标设备验收。
+
 
 ## 本轮目标
 
