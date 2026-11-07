@@ -13,6 +13,7 @@ const api = {
   chooseMusicFolder: () => ipcRenderer.invoke('music:choose-folder'),
   getMusicTrackUrl: (trackId: string) => ipcRenderer.invoke('music:track-url', trackId),
   getMusicArtworkUrl: (trackId: string) => ipcRenderer.invoke('music:artwork-url', trackId),
+  getMusicLyrics: (trackId: string) => ipcRenderer.invoke('music:get-lyrics', trackId),
   musicCommand: (command: MusicCommand) => ipcRenderer.invoke('music:command', command),
   reportMusicRuntime: (payload: { currentTime?: number; duration?: number; playing?: boolean; error?: boolean; errorMessage?: string }) => ipcRenderer.send('music:runtime', payload),
   onMusicState: (callback: (state: import('../shared/types').MusicState) => void) => {
