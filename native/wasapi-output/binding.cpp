@@ -620,32 +620,22 @@ napi_value Open(napi_env env, napi_callback_info info) {
   g_engine.closing.store(false);
   g_engine.startRequested.store(false);
   g_engine.running.store(false);
-  g_engine.worker = std::thread(AudioWorker, &g_engine);
-  {
-    std::unique_lock<std::mutex> lock(g_engine.mutex);
-    if (!g_engine.readyCondition.wait_for(lock, std::chrono::seconds(10),
-                                         [] { return g_engine.openReady; })) {
-      lock.unlock();
-      CloseEngine();
-      Throw(env, "Timed out while opening WASAPI exclusive endpoint.");
-      return nullptr;
-    }
-    if (!g_engine.openError.empty()) {
-      const std::string failure = g_engine.openError;
-      lock.unlock();
-      CloseEngine();
-      Throw(env, failure);
-      return nullptr;
-    }
+  try {
+    g_engine.worker = std::thread(AudioWorker, &g_engine);
+  } catch (const std::exception& error) {
+    CloseEngine();
+    Throw(env, std::string("Could not start WASAPI worker: ") + error.what());
+    return nullptr;
   }
+  // Opening the endpoint happens on the dedicated COM worker. Return
+  // immediately so Electron's main process never waits on device activation.
   napi_value result;
   napi_create_object(env, &result);
-  SetString(env, result, "deviceName", g_engine.deviceName);
+  SetBoolean(env, result, "pending", true);
   SetString(env, result, "format", FormatName(format));
   SetNumber(env, result, "sampleRate", rate);
   SetNumber(env, result, "channels", 2);
   SetNumber(env, result, "bytesPerFrame", g_engine.bytesPerFrame);
-  SetBoolean(env, result, "exclusive", true);
   return result;
 }
 
@@ -729,7 +719,20 @@ napi_value Clear(napi_env env, napi_callback_info info) {
 napi_value Stats(napi_env env, napi_callback_info info) {
   napi_value result;
   napi_create_object(env, &result);
+  std::string openError, deviceName;
+  bool ready = false;
+  {
+    std::lock_guard<std::mutex> lock(g_engine.mutex);
+    ready = g_engine.openReady;
+    openError = g_engine.openError;
+    deviceName = g_engine.deviceName;
+  }
   SetBoolean(env, result, "open", g_engine.worker.joinable());
+  SetBoolean(env, result, "ready", ready);
+  SetString(env, result, "openError", openError);
+  SetString(env, result, "deviceName", deviceName);
+  SetString(env, result, "format", FormatName(g_engine.format));
+  SetNumber(env, result, "sampleRate", g_engine.sampleRate);
   SetBoolean(env, result, "running", g_engine.running.load(std::memory_order_acquire));
   SetNumber(env, result, "bufferedBytes", static_cast<double>(g_engine.ring.Available()));
   SetNumber(env, result, "underruns", static_cast<double>(g_engine.underruns.load()));
