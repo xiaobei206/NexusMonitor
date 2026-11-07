@@ -86,3 +86,8 @@
 .nm-library-group-card b{font-size:12px}
 .nm-library-group-card small{font-size:10px;color:var(--muted)}
 .nm-library-group-card em{flex:0 0 auto;color:var(--muted);font:10px var(--font-mono,monospace);font-style:normal}
+
+.nm-player-error{color:#e28a84!important}
+.nm-playback-error{display:flex;align-items:flex-start;gap:10px;padding:11px 14px;border:1px solid color-mix(in srgb,#e28a84 45%,var(--line));border-radius:9px;background:color-mix(in srgb,#e28a84 8%,var(--panel));color:#e28a84;font-size:12px;line-height:1.5}
+.nm-playback-error b{flex:0 0 auto}
+.nm-playback-error span{min-width:0;overflow-wrap:anywhere}
