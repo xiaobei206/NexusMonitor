@@ -413,7 +413,16 @@ void AudioWorker(Engine* engine) {
   SetOpenResult(engine, {}, deviceName);
   while (!engine->closing.load(std::memory_order_acquire)) {
     if (!engine->startRequested.load(std::memory_order_acquire)) {
-      engine->running.store(false, std::memory_order_release);
+      if (engine->running.load(std::memory_order_acquire)) {
+        hr = audioClient->Stop();
+        if (FAILED(hr)) {
+          std::lock_guard<std::mutex> lock(engine->mutex);
+          engine->runtimeError = HresultMessage("IAudioClient::Stop", hr);
+          engine->running.store(false, std::memory_order_release);
+          break;
+        }
+        engine->running.store(false, std::memory_order_release);
+      }
       WaitForSingleObject(engine->controlEvent, 100);
       continue;
     }
