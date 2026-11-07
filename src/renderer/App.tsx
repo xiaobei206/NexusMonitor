@@ -774,7 +774,7 @@ function MainApp() {
         {page==='settings'&&<SettingsPage settings={settings} updateSettings={updateSettings} notify={notify}/>}
         <footer className="content-footer"><span>© 2026 NEXUSMONITOR · DESKTOP TELEMETRY</span><span>LOCAL-FIRST · NO ACCOUNT · NO CLOUD SYNC</span></footer>
       </div>
-      {!(page === 'usb-display' && settings.usbDisplayMode === 'video') && <MusicPlayerDock state={music.state} onCommand={music.command} onOpen={() => setPage('music')}/>}
+      <MusicPlayerDock state={music.state} onCommand={music.command} onOpen={() => setPage('music')}/>
     </main>
     {toast&&<div className="toast"><Check size={15}/>{toast}</div>}
   </div>;
