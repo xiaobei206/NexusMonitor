@@ -927,6 +927,13 @@ function listPlugins() {
   });
 }
 
+function revealMainWindow() {
+  if (!mainWindow || mainWindow.isDestroyed()) createMainWindow();
+  if (!mainWindow || mainWindow.isDestroyed()) return;
+  mainWindow.setSkipTaskbar(false);
+  mainWindow.show();
+  mainWindow.focus();
+}
 function createTray() {
   if (tray) return;
   const iconPath = join(app.getAppPath(), 'build', 'tray.png');
@@ -934,19 +941,19 @@ function createTray() {
   tray = new Tray(icon);
   tray.setToolTip('NexusMonitor');
   tray.setContextMenu(Menu.buildFromTemplate([
-    { label: '打开主面板', click: () => { if (!mainWindow) createMainWindow(); mainWindow?.show(); mainWindow?.focus(); } },
+    { label: '打开主面板', click: () => revealMainWindow() },
     { label: '显示悬浮导航', click: () => toggleWidget(true) },
     { type: 'separator' },
     { label: '退出 NexusMonitor', click: () => { quitting = true; app.quit(); } },
   ]));
-  tray.on('double-click', () => { if (!mainWindow) createMainWindow(); mainWindow?.show(); mainWindow?.focus(); });
+  tray.on('double-click', () => revealMainWindow());
 }
 function showMainWindowAfterFirstPaint() {
   if (!mainWindow || mainWindow.isDestroyed() || !mainWindowNativeReady || !mainWindowRendererReady) return;
-  if (!app.getLoginItemSettings().wasOpenedAtLogin) mainWindow.show();
+  if (!app.getLoginItemSettings().wasOpenedAtLogin) { mainWindow.setSkipTaskbar(false); mainWindow.show(); }
 }
 function createMainWindow() {
-  if (mainWindow && !mainWindow.isDestroyed()) { mainWindow.show(); return; }
+  if (mainWindow && !mainWindow.isDestroyed()) { mainWindow.setSkipTaskbar(false); mainWindow.show(); return; }
   mainWindowNativeReady = false;
   mainWindowRendererReady = false;
   const area = screen.getPrimaryDisplay().workArea;
@@ -981,9 +988,12 @@ function createMainWindow() {
     // Turing frame rendering is owned by this long-lived renderer. If the HUD
     // remains on screen, closing the visible dashboard must hide (not destroy)
     // this renderer so USB frames and weather-clock time continue to refresh.
-    const keepTuringRuntime = Boolean(widgetWindow && !widgetWindow.isDestroyed() && widgetWindow.isVisible());
-    if (!quitting && (currentSettings.minimizeToTray === true || keepTuringRuntime)) {
+    if (!quitting) {
       event.preventDefault();
+      // Hide rather than destroy: the tray, HUD and single shared audio engine
+      // remain alive. Electron removes a hidden window from the taskbar; the
+      // explicit flag also covers Windows taskbar recreation after display changes.
+      mainWindow?.setSkipTaskbar(true);
       mainWindow?.hide();
     }
   });
@@ -1377,27 +1387,23 @@ const hasSingleInstanceLock = app.requestSingleInstanceLock();
 if (!hasSingleInstanceLock) {
   app.quit();
 } else {
-  app.on('second-instance', () => {
-    if (!mainWindow || mainWindow.isDestroyed()) {
-      if (app.isReady()) createMainWindow();
-      return;
-    }
-    if (mainWindow.isMinimized()) mainWindow.restore();
-    mainWindow.show();
-    mainWindow.focus();
-  });
+  app.on('second-instance', () => revealMainWindow());
 
   app.whenReady().then(async () => {
     loadSettings();
+    loadMusicLibrary();
+    usbDisplayRestorePending = Boolean(String(currentSettings.usbDisplayDisplayId ?? '').trim());
     const notifyDisplayTopologyChanged = () => {
       const displays = listDesktopDisplays();
       if (usbDisplayWindow && usbDisplayTargetId && !displays.some(display => display.id === usbDisplayTargetId)) {
-        log(`USB display target ${usbDisplayTargetId} was removed; closing output window`);
+        log(`USB display target ${usbDisplayTargetId} was removed; waiting to restore it when reconnected`);
+        usbDisplayRestorePending = Boolean(String(currentSettings.usbDisplayDisplayId ?? '').trim());
         closeUsbDisplayWindow();
       } else if (usbDisplayWindow && usbDisplayTargetId) {
         const target = screen.getAllDisplays().find(display => String(display.id) === usbDisplayTargetId);
         if (target && !usbDisplayWindow.isDestroyed()) applyUsbDisplayWindowBounds(usbDisplayWindow, target);
       }
+      if (usbDisplayRestorePending) restoreConfiguredUsbDisplay();
       if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('desktop-displays:changed', displays);
       publishUsbDisplayStatus();
     };
@@ -1409,6 +1415,10 @@ if (!hasSingleInstanceLock) {
     // The floating HUD is a first-class part of the desktop app: show it on
     // every application launch, independently of the main dashboard window.
     toggleWidget(true);
+    // Restore only the display explicitly saved by the user. Never guess which
+    // external monitor is the 5-inch panel, and do not wait for hardware service.
+    restoreConfiguredUsbDisplay();
+    publishMusicState();
     await startService();
     const ready = await waitForService();
     if (!ready && lastServiceStatus.phase === 'starting') {
@@ -1419,7 +1429,7 @@ if (!hasSingleInstanceLock) {
     await refreshWeather();
     pollTimer = setInterval(() => void pollSnapshot(), Math.max(750, Number(currentSettings.refreshMs ?? 1000)));
     weatherTimer = setInterval(() => void refreshWeather(), 15 * 60 * 1000);
-    app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createMainWindow(); else mainWindow?.show(); });
+    app.on('activate', () => revealMainWindow());
   });
 }
 
@@ -1437,13 +1447,50 @@ app.on('before-quit', () => {
   }
   stopService('app-quit');
 });
-app.on('window-all-closed', () => { if (process.platform !== 'darwin' && currentSettings.minimizeToTray !== true) app.quit(); });
+app.on('window-all-closed', () => { /* The system tray owns application lifetime; exit is explicit in its menu. */ });
 
 ipcMain.handle('app:get-settings', () => getPublicSettings());
+ipcMain.handle('music:get-state', () => publicMusicState());
+ipcMain.handle('music:track-url', (_event, trackId: string) => {
+  const track = musicState.tracks.find(item => item.id === String(trackId));
+  return track && existsSync(track.path) ? pathToFileURL(track.path).href : null;
+});
+ipcMain.handle('music:choose-files', async () => {
+  const result = await dialog.showOpenDialog({
+    properties: ['openFile', 'multiSelections'],
+    filters: [{ name: 'MP3 音频', extensions: ['mp3'] }],
+  });
+  return result.canceled ? { added: 0, skipped: 0 } : importMusicPaths(result.filePaths);
+});
+ipcMain.handle('music:choose-folder', async () => {
+  const result = await dialog.showOpenDialog({ properties: ['openDirectory'] });
+  if (result.canceled || !result.filePaths[0]) return { added: 0, skipped: 0 };
+  const paths = scanMusicFolder(result.filePaths[0]);
+  const resultCount = importMusicPaths(paths);
+  return { ...resultCount, truncated: paths.length >= MUSIC_FOLDER_SCAN_LIMIT };
+});
+ipcMain.handle('music:command', (_event, command: MusicCommand) => handleMusicCommand(command));
+ipcMain.on('music:runtime', (event, payload: { currentTime?: number; duration?: number; playing?: boolean; error?: boolean }) => {
+  // Only the hidden-capable main renderer owns the single HTMLAudioElement.
+  if (!mainWindow || event.sender !== mainWindow.webContents) return;
+  if (payload?.error === true) {
+    musicState = { ...musicState, isPlaying: false };
+    log('Music playback failed; the current track remains selected and paused');
+    publishMusicState();
+    return;
+  }
+  const currentTime = Number(payload?.currentTime);
+  const duration = Number(payload?.duration);
+  if (Number.isFinite(currentTime)) musicState.currentTime = Math.max(0, currentTime);
+  if (Number.isFinite(duration) && duration >= 0) musicState.duration = duration;
+  if (typeof payload?.playing === 'boolean') musicState.isPlaying = payload.playing;
+  if (Date.now() - musicLastPersistAt >= 10_000) persistMusicState();
+  publishMusicState();
+});
 ipcMain.handle('desktop-displays:list', () => listDesktopDisplays());
 ipcMain.handle('desktop-displays:usb-status', () => getUsbDisplayStatus());
 ipcMain.handle('desktop-displays:usb-open', (_event, displayId: string) => openUsbDisplayWindow(String(displayId ?? '')));
-ipcMain.handle('desktop-displays:usb-close', () => { closeUsbDisplayWindow(); return getUsbDisplayStatus(); });
+ipcMain.handle('desktop-displays:usb-close', () => { usbDisplayRestorePending = false; closeUsbDisplayWindow(); return getUsbDisplayStatus(); });
 ipcMain.handle('desktop-displays:usb-choose-media', (_event, kind: 'image' | 'video' | 'audio') => chooseUsbDisplayMedia(kind === 'video' ? 'video' : kind === 'audio' ? 'audio' : 'image'));
 ipcMain.handle('desktop-displays:usb-read-image', (_event, path: string) => { try { return readUsbDisplayImage(path); } catch (error) { return { ok: false, message: error instanceof Error ? error.message : String(error) }; } });
 ipcMain.handle('desktop-displays:usb-video-url', (_event, path: string) => { try { return getUsbDisplayVideoUrl(path); } catch (error) { return { ok: false, message: error instanceof Error ? error.message : String(error) }; } });
@@ -1465,7 +1512,7 @@ ipcMain.handle('app:choose-background', async () => {
 });
 ipcMain.handle('app:open-path', async (_event, target: string) => shell.openPath(target));
 ipcMain.handle('app:open-url', async (_event, url: string) => { if (/^https?:\/\//i.test(url)) await shell.openExternal(url); });
-ipcMain.handle('window:show-main', () => { if (!mainWindow || mainWindow.isDestroyed()) createMainWindow(); mainWindow?.show(); mainWindow?.focus(); });
+ipcMain.handle('window:show-main', () => revealMainWindow());
 ipcMain.handle('window:minimize', (event) => BrowserWindow.fromWebContents(event.sender)?.minimize());
 ipcMain.handle('window:close', (event) => BrowserWindow.fromWebContents(event.sender)?.close());
 ipcMain.handle('window:toggle-maximize', (event) => {
