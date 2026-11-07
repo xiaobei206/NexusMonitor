@@ -182,7 +182,8 @@ test('EQ stays flat by default, clamps persisted bands, and initializes processi
   const app = read('src/renderer/App.tsx');
   const player = read('src/renderer/music-player.tsx');
   assert.match(app, /musicEqBands: \[0,0,0,0,0,0,0,0,0,0\]/);
-  assert.match(app, /musicEqBands: Array\.isArray\(raw\.musicEqBands\)/);
+  assert.match(app, /rawMusicEqBands: unknown\\[\\] = Array\\.isArray\\(raw\\.musicEqBands\\)/);
+  assert.match(app, /musicEqBands: Array\\.from\\(\\{ length: 10 \\}/);
   assert.match(app, /Math\.max\(-12, Math\.min\(12, value\)\)/);
   assert.match(player, /const hasBoostOrCut = bands\.some\(value => value !== 0\)/);
   assert.match(player, /if \(!audioContextRef\.current && !\(state\?\.isPlaying && hasBoostOrCut\)\) return/);
