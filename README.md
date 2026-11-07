@@ -75,9 +75,9 @@ NexusMonitor source in this package is provided for the user's development/testi
 
 ## Current source handoff
 
-The stable `main` baseline is version 2.2.0. The 2.2.1 music platform refactor is in `feature/2.2.1-music-platform`, PR #2 (still open). Start with `START-HERE-NEXT-GPT.md`, then read `NexusMonitor-2.2.1-HANDOFF-CN.md`, `docs/MUSIC-PLATFORM-2.2.1-CN.md`, and `NexusMonitor-DEVELOPMENT-LOG-CN.md`. Always re-check the branch HEAD and Actions.
+The stable `main` baseline remains version 2.2.0. The 2.2.1 music platform refactor is in `feature/2.2.1-music-platform`, PR #2 (open, not merged). Start with `START-HERE-NEXT-GPT.md`, then read `NexusMonitor-2.2.1-HANDOFF-CN.md`, `docs/MUSIC-PLATFORM-2.2.1-CN.md`, and `NexusMonitor-DEVELOPMENT-LOG-CN.md`. Always re-check the branch HEAD and Actions.
 
-The latest full successful CI is [Run #104](https://github.com/xiaobei206/NexusMonitor/actions/runs/42348842265): 14/14 version gates, 210/210 Node tests, Renderer TypeScript / Vite build, PawnIO validation, .NET Release (0 warnings / 0 errors), and Storage Tests. It checked application HEAD `c8d24d28d353834cc04059eb2637a46ef8d94e78`. Current branch tip `b3f95d984118f74974f46dc62acde93d69a21908` adds final sleep-timer / playlist control CSS and requires a fresh CI run. PR CI does not publish the 2.2.1 installer. Actual codec decoding, output endpoint routing, USB display and speaker acceptance remain unverified on the target PC.
+The latest full successful CI is [Run #109](https://github.com/xiaobei206/NexusMonitor/actions/runs/42349148127) on current PR tip `3152aa5a16b4ff52d0bf026fcd5e1d962cf19f4c): 14/14 version gates, 210/210 Node tests, Renderer TypeScript / Vite production build, PawnIO validation, .NET Release (0 warnings / 0 errors), and Storage Tests. PR CI does not publish the 2.2.1 installer. Physical output routing / codec / USB display / speaker acceptance remains pending on the target Windows PC.
 
 
 ## Intel Alder Lake Iris Xe GT temperature experiment
