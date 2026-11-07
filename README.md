@@ -28,10 +28,10 @@ The Electron 45 stable channel was current at the project date, and its release 
 - Theme studio: Obsidian, Paper / Engineering, Titanium, personal photo background; accent color, opacity, density, module visibility and drag reordering
 - Device selection: multiple network adapters and physical disks; the Turing screen can automatically follow the C: physical disk and busiest active non-tunnel NIC, or pin either manually
 - Turing 3.5-inch USB display page: single-page 480×320 hardware-left / Wujiang-weather-right layout, COM discovery, Revision A handshake, manual brightness, scheduled day/night backlight control and 16×8 differential frame patches
-- USB 5-inch Windows extended-display page: display selection, independent fullscreen output window, hardware monitoring, static/GIF wallpaper, weather clock and local video modes; true USB-panel backlight control is intentionally deferred pending firmware command confirmation
+- USB 5-inch Windows extended-display page: display selection, independent output window, hardware monitoring, static/GIF wallpaper, weather clock, local video and desktop-wallpaper + background-music modes; true USB-panel backlight control is intentionally deferred pending firmware command confirmation
 - Wujiang/Suzhou weather and US AQI from Open-Meteo, with six upcoming hourly records and six future daily records for the Turing weather-clock screen
 - Local shortcut list and manifest-based plugin inventory
-- Unified local MP3 player: main library page, editable playlists, queue controls, app-only volume, shuffle/repeat and a single shared playback engine across the main UI, vertical HUD and non-video USB output modes
+- Unified local Music Service: single main-Renderer playback host, shared controls across the main UI / HUD / non-video USB modes; the 2.2.1 branch adds common audio import formats, best-effort embedded metadata / artwork and the sixth desktop-wallpaper + background-music mode (codec playback and output routing remain under validation)
 - Vertical HUD mini-player inserted above the existing weather block without reordering the weather, clock or hardware metrics
 - Main window closes to the system tray; the hidden main renderer stays alive for playback and Turing display refresh
 - Saved USB 5-inch display target reopens on startup before HardwareService startup; delayed display enumeration is retried without guessing a different monitor
