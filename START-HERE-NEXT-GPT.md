@@ -1,40 +1,27 @@
 # NexusMonitor — 新接手 GPT 请先看这里
 
-**当前正式版本：2.2.4；唯一工作基线：GitHub `main`。下一轮正式行为改动从 2.2.5 开始。**
+**当前主线源码版本：2.2.5；唯一工作基线：GitHub `main`。请首先核对本轮 Windows CI / Release 结果。**
 
-- 正式 Release：[NexusMonitor 2.2.4](https://github.com/xiaobei206/NexusMonitor/releases/tag/v2.2.4)
-- 最终 Windows CI：[Run #192](https://github.com/xiaobei206/NexusMonitor/actions/runs/42361308963) — success
-- 应用代码提交：`c7894ee83f8dfee529ecab330561b10d25db5664`
-- 测试：版本一致性 14/14；Node 主进程测试 238/238，0 failed；Renderer TypeScript/Vite、Windows N-API WASAPI、PawnIO SHA、.NET Release、Hardware/Storage Tests、NSIS、installer SHA-256 与 Release 上传全部通过。
-- 安装包：[NexusMonitor-2.2.4-Setup.exe](https://github.com/xiaobei206/NexusMonitor/releases/download/v2.2.4/NexusMonitor-2.2.4-Setup.exe)，160,014,176 bytes。
-- SHA-256：`1a82ea9cd511455c2d3c87fb0cbcf2b22eccaf7e19892f3906cb11bef0c835a7`
+- 上一正式发布基线：[NexusMonitor 2.2.4](https://github.com/xiaobei206/NexusMonitor/releases/tag/v2.2.4)
+- 本轮交接：[NexusMonitor-2.2.5-HANDOFF-CN.md](NexusMonitor-2.2.5-HANDOFF-CN.md)
+- 本轮构建报告：[NexusMonitor-2.2.5-BUILD-REPORT.md](NexusMonitor-2.2.5-BUILD-REPORT.md)
+- 唯一跨版本记录：[NexusMonitor-DEVELOPMENT-LOG-CN.md](NexusMonitor-DEVELOPMENT-LOG-CN.md)
+- 架构与硬性约束：[AGENTS.md](AGENTS.md)
+- 下一轮正式行为变更应从 2.2.6 开始（须先确认 2.2.5 发布已完成）。
 
-## 用户报告的故障与修复
+## 本轮目标与代码落点
 
-用户反馈 2.2.3：先选 `P4 Mono UAC Direct v62`，普通播放正常；开启 WASAPI 独占后声音秒切 Windows 默认声卡。关闭独占、暂停/重新播放都无法回到 P4，只有退出并重启应用才恢复。
+- `src/renderer/styles.css`：提高全局常用字号；竖向 HUD 关键文本与短屏压缩规则。
+- `src/renderer/music-player.css`：音乐库、曲目、播放器弹层、输出设备设置的可读性。
+- `src/main/index.ts` 与 `src/main/widget-docking.ts`：竖向 HUD 首选高度 340×1200；实际尺寸受显示器工作区限制。
+- 回归测试：`tests/ui-readability.test.cjs`、`tests/widget-vertical-layout.test.cjs`、`tests/widget-docking.test.cjs`。
 
-`ensureAudioGraph()` 原来先创建默认 `AudioContext`，后续 effect 才应用 `musicOutputDeviceId`。独占开启时 `exclusiveActiveRef` 可能先变成 true，导致 `applyOutputSink()` 提前返回；Web Audio graph 因此保留默认 sink。音源接入 `MediaElementAudioSourceNode` 后，仅设置原 audio element 的 sink 不足以修复 graph 的输出。
+## P4 / WASAPI
 
-2.2.4 在创建 AudioContext 时指定目标 `sinkId`，在 `createMediaElementSource(audio)` 之前再次绑定并校验实际 `context.sinkId`。如果非默认 sink 无法绑定，关闭尚未接管音源的 Context 并报错退出，避免音乐静默回退到系统默认声卡。源码回归测试检查绑定顺序。
+用户在目标电脑确认：选择 `P4 Mono UAC Direct v62` 时，WASAPI 独占开启后无声；关闭独占立即恢复普通输出。用户现阶段接受普通模式，本轮不再冒险改 WASAPI native backend。独占仍为可选项；不可宣称已修复，亦不能仅凭当前观察断言设备在所有配置下都不支持独占。
 
-## 相关文件
+## 版本与构建
 
-- `src/renderer/music-player.tsx`：AudioContext 输出路由、WASAPI 切换/恢复。
-- `tests/music-player-source.test.cjs`：输出 sink 顺序与独占恢复回归。
-- `NexusMonitor-2.2.4-HANDOFF-CN.md`：本轮交接与实机验收。
-- `NexusMonitor-2.2.4-BUILD-REPORT.md`：CI、安装包与 hash。
-- `NexusMonitor-DEVELOPMENT-LOG-CN.md`：唯一跨版本开发日志。
-
-## 目标 PC 验收仍待用户确认
-
-1. 重启后选 P4，普通播放正常。
-2. 开启 WASAPI 独占，音乐仍从 P4 出声，不切到 Windows 默认声卡。
-3. 关闭独占后仍保持 P4；暂停/继续、切歌也保持 P4。
-4. 如果目标 sink 不支持/拒绝绑定，独占应明确失败且普通播放不应切声卡。
-5. 测试设备拔插、默认设备改变和长时间播放。
-
-Hosted CI 证明自动化和 Windows 编译通过，不等于已经证明 P4 实体扬声器输出正常。
-
-## 工程规则
-
-用户偏好直接在 `main` 开发，无功能分支/PR。下一轮正式行为改动递增至 2.2.5，必须同步版本门禁、交接和构建报告。
+- VERSION、package / lockfile、HardwareService、Renderer 和 `NexusMonitor-2.2.5-BUILD-RELEASE.cjs` 应全部同步为 2.2.5。
+- 本轮 workflow 结束后，将真实测试结果和安装包 SHA-256 写回构建报告；禁止沿用 2.2.4 的 238/238 结果。
+- Hosted Windows CI 不等于目标机真实 UI 或 P4 扬声器验收。

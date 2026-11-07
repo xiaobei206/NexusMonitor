@@ -1,4 +1,4 @@
-# NexusMonitor 2.2.4 — Electron Edition (released)
+# NexusMonitor 2.2.5 — Electron Edition (mainline update; Windows CI pending)
 
 > **新对话 / 新开发者接手：先读 [START-HERE-NEXT-GPT.md](START-HERE-NEXT-GPT.md) 和根目录 [AGENTS.md](AGENTS.md)。** 入口文档列出阅读顺序、源码目录地图、验证命令与硬件验收边界。
 
@@ -73,9 +73,17 @@ See [Chinese setup guide](docs/SETUP_CN.md), [USB display notes](docs/USB_DISPLA
 NexusMonitor source in this package is provided for the user's development/testing. Third-party components keep their own licenses: Electron (MIT), React (MIT), Lucide (ISC), LibreHardwareMonitorLib (MPL-2.0). Review the included package licenses before redistribution.
 
 
-## Current## Current source handoff
+## Current source handoff
 
-The current released baseline is **main / 2.2.4**. This personal repository is developed directly on `main`; no feature branches or PRs unless explicitly requested.
+The current source line is **main / 2.2.5**; v2.2.4 remains the last completed release until the current commit's Windows CI publishes the new version. This personal repository is developed directly on `main`; no feature branches or PRs unless explicitly requested.
+
+- Current handoff: [NexusMonitor-2.2.5-HANDOFF-CN.md](NexusMonitor-2.2.5-HANDOFF-CN.md)
+- Current build report: [NexusMonitor-2.2.5-BUILD-REPORT.md](NexusMonitor-2.2.5-BUILD-REPORT.md)
+- Canonical development log: [NexusMonitor-DEVELOPMENT-LOG-CN.md](NexusMonitor-DEVELOPMENT-LOG-CN.md)
+- This iteration increases shared typography sizes, improves music-library/output-device readability, raises vertical HUD's preferred height to 1200px (clamped by display work area), and adds compact behaviour for short displays.
+- P4 Mono UAC Direct v62 currently outputs no sound with WASAPI Exclusive enabled on the target PC; turning Exclusive off immediately restores ordinary playback. The user accepts ordinary output for now; this iteration does not make risky changes to the native exclusive-output path.
+
+### Historical 2.2.4 release baseline
 
 2.2.4 fixes a target-PC routing regression: the selected non-default output could be lost when creating the Web Audio graph, because the graph used the default AudioContext sink before the later output-selection effect and the exclusive-mode flag could cause that effect to return early. The graph now binds and verifies the selected AudioContext sink before connecting the single `MediaElementAudioSourceNode`. If the non-default sink cannot be bound, initialization fails before the source is attached, avoiding a silent switch to the Windows default device.
 

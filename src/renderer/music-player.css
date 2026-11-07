@@ -169,3 +169,39 @@
   overflow-wrap: anywhere;
 }
 .nm-lyrics-plain p { margin: 0 0 8px; }
+
+
+/* 2.2.5 readability pass: full-page music library and device settings. */
+.nm-library-heading p{font-size:15px;line-height:1.5}
+.nm-library-heading>div:first-child>span,.nm-track-toolbar>div:first-child>span{font-size:12px}
+.nm-playlist-title{font-size:15px}
+.nm-playlist-sidebar>button span{font-size:14px}
+.nm-playlist-sidebar>button small{font-size:12px}
+.nm-playlist-divider{font-size:12px}
+.nm-playlist-management button{font-size:13px}
+.nm-track-toolbar h2{font-size:24px}
+.nm-track-toolbar small{font-size:13px}
+.nm-track-search input{font-size:14px}
+.nm-add-playlist-row{font-size:14px}
+.nm-add-playlist-row span{font-size:12px}
+.nm-track-list-head{font-size:12px}
+.nm-track-name b{font-size:14px}
+.nm-track-name small,.nm-track-format{font-size:12px}
+.nm-library-empty b{font-size:16px}
+.nm-library-empty span{font-size:13px;line-height:1.65}
+.nm-dock-track b{font-size:14px}
+.nm-dock-track small{font-size:12px}
+.nm-dock-count{font-size:13px}
+.nm-player-copy b{font-size:14px}
+.nm-player-copy small{font-size:12px}
+.nm-player-popover header span{font-size:11px}
+.nm-player-popover header small{font-size:12px}
+.nm-player-popover footer{font-size:12px}
+.nm-player-popover footer button{font-size:12px}
+.nm-output-device-heading b{font-size:15px}
+.nm-output-device-heading small{font-size:13px;line-height:1.55}
+.nm-output-device-state{font-size:12px}
+.nm-output-device-controls label{font-size:13px}
+.nm-output-device-panel>p{font-size:13px;line-height:1.6}
+.usb-shared-music-note b{font-size:14px}
+.usb-shared-music-note small{font-size:13px;line-height:1.6}

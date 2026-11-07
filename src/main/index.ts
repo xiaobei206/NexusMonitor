@@ -1515,7 +1515,7 @@ function toggleWidget(force?: boolean) {
   // ordinary labels to wrap aggressively. Use a wider, readable default and
   // clamp both orientations to the actual monitor work area.
   const layout = fitWindowToWorkArea(area, vertical
-    ? { width: 340, height: 900, minWidth: 340, minHeight: 700, margin: 18, horizontalAnchor: 'right', verticalAnchor: 'top' }
+    ? { width: 340, height: 1200, minWidth: 340, minHeight: 700, margin: 18, horizontalAnchor: 'right', verticalAnchor: 'top' }
     : { width: 980, height: 112, minWidth: 760, minHeight: 96, margin: 18, horizontalAnchor: 'right', verticalAnchor: 'top' });
   // Settings are loaded from JSON and intentionally kept as unknown-valued data
   // in the main process. Validate the persisted display entry before using it.

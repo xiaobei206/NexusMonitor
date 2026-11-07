@@ -556,3 +556,22 @@ Property 'volume' does not exist on type 'AudioHTMLAttributes<HTMLAudioElement>'
 - 正式 Release：[v2.2.4](https://github.com/xiaobei206/NexusMonitor/releases/tag/v2.2.4)。安装包 160,014,176 bytes；SHA-256 `1a82ea9cd511455c2d3c87fb0cbcf2b22eccaf7e19892f3906cb11bef0c835a7`。
 - 本轮根因：AudioContext 在后续 effect 之前先以默认 sink 创建并连接音源，独占状态可能使 `applyOutputSink()` 提前返回。修复将目标 sink 设置和验证前置到 `createMediaElementSource(audio)` 之前；无法绑定非默认 sink 时拒绝接管音源而不是静默切到 Windows 默认声卡。
 - P4 Mono UAC Direct v62 的真实扬声器输出尚未由用户确认；输出设备保持、WASAPI 开启/关闭、暂停/继续、切歌和热插拔仍须在目标 PC 上验收。CI 不等于物理音频验收。
+
+
+## 2.2.5 — 全局字级与竖向 HUD 启动尺寸（2026-11-07，CI 待完成）
+
+### 用户反馈与决策
+- 用户实测 P4 Mono UAC Direct v62：开启 WASAPI 独占后无声，取消独占后立即恢复普通输出。用户现阶段对普通模式满意，并接受暂不继续深挖。本轮不改原生独占输出实现，也不声称该端点已被正式判定为不支持。
+- 多页面存在偏小字体，音乐库、曲目元数据、播放器弹层和输出面板中多处原先写死 10–12px。
+- 竖向 HUD 在 340×900 首选窗口下加入迷你播放器后，需要手动拉高或滚动才能查看完整内容。
+
+### 实施内容
+- 提高共享字号基础层，并单独放大音乐库、曲目列表、输出设备页和播放器弹层的次要文本。
+- 竖向 HUD 首选高度由 900px 提高到 1200px，仍由 Electron 屏幕工作区约束最终 bounds；方向切换使用相同的首选高度。
+- HUD 视口不超过 920px 时，压缩间距并隐藏低优先级多日预报，优先显示实时数据、C: 容量、上传/下载、当前天气、小时预报和时钟。
+- 增加 UI 字号、首选尺寸与短屏布局的自动化源码断言。
+
+### 验证边界
+- 本节的 2.2.5 Windows CI 结果须在 workflow 完成后追加；不能沿用 v2.2.4 的测试结果。
+- 实际 P4 独占模式无声已由用户确认，普通模式恢复正常；本版本不修改独占链路。
+- 目标电脑的 HUD 首屏布局、音乐页可读性和 P4 普通模式仍需按交接文档复测。

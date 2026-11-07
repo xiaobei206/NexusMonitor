@@ -121,7 +121,7 @@ export function resizeWidgetForOrientation(
   const availableWidth = Math.max(1, Math.floor(area.width - safeMargin * 2));
   const availableHeight = Math.max(1, Math.floor(area.height - safeMargin * 2));
   const preferredWidth = orientation === 'vertical' ? 340 : 980;
-  const preferredHeight = orientation === 'vertical' ? 900 : 112;
+  const preferredHeight = orientation === 'vertical' ? 1200 : 112;
   const width = Math.max(1, Math.min(preferredWidth, availableWidth));
   const height = Math.max(1, Math.min(preferredHeight, availableHeight));
   const rightGap = area.x + area.width - (current.x + current.width);

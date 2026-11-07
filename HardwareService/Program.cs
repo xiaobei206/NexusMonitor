@@ -23,7 +23,7 @@ builder.Services.AddSingleton<WeatherService>();
 builder.Services.AddSingleton<TuringDisplayService>();
 var app=builder.Build();
 app.Use(async (ctx,next)=>{ctx.Response.Headers.Append("X-Content-Type-Options","nosniff");await next();});
-app.MapGet("/api/health",()=>Results.Ok(new{ok=true,service="NexusMonitor Hardware Service",version="2.2.4"}));
+app.MapGet("/api/health",()=>Results.Ok(new{ok=true,service="NexusMonitor Hardware Service",version="2.2.5"}));
 app.MapGet("/api/snapshot",(HardwareMonitor hw,NetworkMonitor net,StorageMonitor storage)=>Results.Ok(hw.Snapshot(net,storage)));
 app.MapGet("/api/storage/status",(StorageMonitor storage)=>Results.Ok(storage.GetStatus()));
 app.MapGet("/api/devices",(NetworkMonitor net,StorageMonitor storage,HardwareMonitor hw)=>Results.Ok(new{networks=net.Read(),snapshot=hw.Snapshot(net,storage)}));

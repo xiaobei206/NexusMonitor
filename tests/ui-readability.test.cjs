@@ -5,6 +5,9 @@ const { join } = require('node:path');
 
 const css = readFileSync(join(__dirname, '..', 'src', 'renderer', 'styles.css'), 'utf8');
 const app = readFileSync(join(__dirname, '..', 'src', 'renderer', 'App.tsx'), 'utf8');
+const musicCss = readFileSync(join(__dirname, '..', 'src', 'renderer', 'music-player.css'), 'utf8');
+const main = readFileSync(join(__dirname, '..', 'src', 'main', 'index.ts'), 'utf8');
+const docking = readFileSync(join(__dirname, '..', 'src', 'main', 'widget-docking.ts'), 'utf8');
 const rootLine = css.split(/\r?\n/).find(line => line.startsWith(':root{')) ?? '';
 
 function token(name) {
@@ -13,16 +16,16 @@ function token(name) {
 }
 
 test('normal reading tokens are no smaller than the approved minimums', () => {
-  assert.equal(token('text-xs'), 11);
-  assert.equal(token('text-micro'), 12);
-  assert.equal(token('text-meta'), 13);
-  assert.equal(token('text-label'), 14);
-  assert.equal(token('text-control'), 15);
-  assert.equal(token('text-body'), 16);
+  assert.equal(token('text-xs'), 12);
+  assert.equal(token('text-micro'), 13);
+  assert.equal(token('text-meta'), 14);
+  assert.equal(token('text-label'), 15);
+  assert.equal(token('text-control'), 16);
+  assert.equal(token('text-body'), 17);
 });
 
 test('navigation and page headings use the larger readability scale', () => {
-  assert.equal(token('text-nav'), 16);
+  assert.equal(token('text-nav'), 17);
   assert.equal(token('text-page'), 34);
 });
 
@@ -67,4 +70,18 @@ test('compact HUD clock includes seconds in both horizontal and vertical layouts
   assert.match(app, /const timeText = localNow\.toLocaleTimeString\('zh-CN', \{[^}]*second: '2-digit'[^}]*hour12: false\s*\}\)/);
   assert.match(app, /<div className="widget-clock"><b>\{timeText\}<\/b>/);
   assert.match(app, /<div className="widget-vertical-clock"><b>\{timeText\}<\/b>/);
+});
+
+
+test('music library and output settings use readable text sizes', () => {
+  assert.match(musicCss, /\.nm-track-name b\{font-size:14px/);
+  assert.match(musicCss, /\.nm-track-name small,\.nm-track-format\{font-size:12px/);
+  assert.match(musicCss, /\.nm-output-device-controls label\{font-size:13px/);
+  assert.match(musicCss, /\.nm-library-empty span\{font-size:13px/);
+});
+
+test('vertical HUD grows to 1200px when the display work area permits and adapts on short screens', () => {
+  assert.match(main, /width: 340, height: 1200, minWidth: 340, minHeight: 700/);
+  assert.match(docking, /preferredHeight = orientation === 'vertical' \? 1200 : 112/);
+  assert.match(css, /@media\(max-height:920px\)[\s\S]*?\.widget-shell\.vertical \.widget-vertical-daily\{display:none\}/);
 });

@@ -4,7 +4,7 @@ Before editing, read [START-HERE-NEXT-GPT.md](START-HERE-NEXT-GPT.md), then the 
 
 - Current `main`, `VERSION`, source, tests, latest Actions and Release are authoritative. Re-query them for every new task.
 - This is a personal repository. Work directly on `main`; do not create feature branches or pull requests unless the user explicitly asks.
-- Current released baseline is NexusMonitor 2.2.4. Any next application behavior change starts at 2.2.5; synchronize every field checked by `scripts/validate-release-version.cjs`. Never use FIX-style version names or overwrite a published release.
+- Current source line is NexusMonitor 2.2.5, developed directly from the 2.2.4 release baseline. After 2.2.5 is published, the next application behavior change starts at 2.2.6; synchronize every field checked by `scripts/validate-release-version.cjs`. Never use FIX-style version names or overwrite a published release.
 - Keep changes narrow, source-backed and regression-tested. Report only tests actually run. Hosted CI is not proof of physical hardware acceptance.
 - Follow `.github/workflows/windows-ci.yml`. On Windows PowerShell use `npm.cmd` / `npx.cmd`.
 - Keep the canonical development log, current handoff/build report, SHA-256 manifest and ZIP contents accurate.
@@ -29,3 +29,9 @@ Before editing, read [START-HERE-NEXT-GPT.md](START-HERE-NEXT-GPT.md), then the 
 - Current path remains Chromium/WebAudio decode -> Float32 PCM -> native WASAPI Exclusive; never claim bit-perfect. The selected AudioContext sink must be bound and verified before `createMediaElementSource(audio)` attaches the shared audio element. If a non-default sink cannot be bound, do not connect the source graph or silently use Windows default output. Gapless/Crossfade dual-deck and native decoder-to-device output are not included in 2.2.4.
 - Do not claim a codec is supported merely because its extension is accepted. Actual decode/seek/metadata/error handling requires real-file testing.
 - Hosted CI proves the hosted Windows build/tests only. Physical P4 speaker output and route persistence after WASAPI on/off, endpoint isolation/hot-plug, actual codec fixtures, all six display modes, mixed DPI, sleep/wake and long-run stability remain target-PC acceptance items.
+
+
+## 2.2.5 readability / vertical HUD
+- Shared UI typography tokens were increased; keep full-page music library and output-device settings readable with the overrides in `src/renderer/music-player.css`.
+- Vertical HUD prefers 340×1200 and is clamped to the display work area. On short HUD viewports (≤920px), secondary daily-forecast detail may be hidden to preserve live metrics and current weather.
+- P4 Mono UAC Direct v62 currently has no audible output when WASAPI Exclusive is enabled on the target PC; turning Exclusive off immediately restores ordinary playback. The user accepts ordinary mode for now. Do not perform risky native backend changes without a new request or concrete diagnostics.
