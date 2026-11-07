@@ -92,6 +92,7 @@ export interface MusicTrack {
   durationSeconds?: number | null;
   sampleRateHz?: number | null;
   bitDepth?: number | null;
+  channels?: number | null;
   replayGainTrackDb?: number | null;
   replayGainAlbumDb?: number | null;
   replayGainTrackPeak?: number | null;
