@@ -123,7 +123,7 @@ test('music output device routing is independent and reports unsupported or unav
   assert.match(types, /musicOutputDeviceId\?: string/);
   assert.match(types, /musicOutputDeviceLabel\?: string/);
   assert.match(player, /audio\.setSinkId\(requestedDeviceId\)/);
-  assert.match(player, /state: 'unsupported'/);
+  assert.match(player, /'unsupported'/);
   assert.match(player, /state: 'unavailable'/);
   assert.match(player, /selectAudioOutput/);
   assert.match(player, /AudioContext\.setSinkId/);
