@@ -297,3 +297,26 @@ test('WASAPI negotiation accepts only probed device formats and strictly reports
   assert.match(main, /target\.channels \|\|= channels/);
   assert.match(types, /channels\?: number \| null/);
 });
+
+test('native WASAPI backend is built on Windows, packaged outside ASAR, and only opens probed exclusive formats', () => {
+  const pkg = JSON.parse(read('package.json'));
+  const workflow = read('.github/workflows/windows-ci.yml');
+  const gyp = read('native/wasapi-output/binding.gyp');
+  const cpp = read('native/wasapi-output/binding.cpp');
+  const buildScript = read('scripts/build-wasapi-addon.cjs');
+  assert.match(pkg.scripts['build:wasapi'], /build-wasapi-addon\.cjs/);
+  assert.match(pkg.scripts['package:win'], /build:wasapi/);
+  assert.ok(pkg.build.extraResources.some(item => item.from.endsWith('nexus_wasapi.node')));
+  assert.match(workflow, /Build native WASAPI output module[\s\S]{0,180}npm\.cmd run build:wasapi/);
+  assert.match(gyp, /NAPI_VERSION=8/);
+  assert.match(gyp, /win_delay_load_hook/);
+  assert.match(cpp, /AUDCLNT_SHAREMODE_EXCLUSIVE/);
+  assert.match(cpp, /AUDCLNT_STREAMFLAGS_EVENTCALLBACK/);
+  assert.match(cpp, /IsFormatSupported\(AUDCLNT_SHAREMODE_EXCLUSIVE/);
+  assert.match(cpp, /IAudioRenderClient/);
+  assert.match(cpp, /class ByteRing/);
+  assert.match(cpp, /std::atomic<uint64_t> readPosition_/);
+  assert.match(cpp, /GetCurrentPadding/);
+  assert.match(cpp, /napi_get_buffer_info/);
+  assert.match(buildScript, /node-gyp@11\.2\.0/);
+});
