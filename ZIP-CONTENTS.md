@@ -95,7 +95,7 @@ Control files `ZIP-CONTENTS.md` and the source manifest are included in the ZIP;
 | `scripts/validate-release-version.cjs` | 2910 |
 | `src/main/api-error.ts` | 1397 |
 | `src/main/fullscreen-detection.ts` | 1148 |
-| `src/main/index.ts` | 87715 |
+| `src/main/index.ts` | 87803 |
 | `src/main/logger.ts` | 2425 |
 | `src/main/service-backoff.ts` | 486 |
 | `src/main/snapshot-coordinator.ts` | 2436 |
@@ -133,7 +133,7 @@ Control files `ZIP-CONTENTS.md` and the source manifest are included in the ZIP;
 | `tests/gpu-clock-source.test.cjs` | 1369 |
 | `tests/hardware-inventory-config.test.cjs` | 1100 |
 | `tests/logger.test.cjs` | 1565 |
-| `tests/music-player-source.test.cjs` | 4134 |
+| `tests/music-player-source.test.cjs` | 4124 |
 | `tests/network-monitor-source.test.cjs` | 1306 |
 | `tests/network-scale-ui.test.cjs` | 908 |
 | `tests/power-summary.test.cjs` | 3469 |
@@ -144,7 +144,7 @@ Control files `ZIP-CONTENTS.md` and the source manifest are included in the ZIP;
 | `tests/storage-capacity-ui.test.cjs` | 2628 |
 | `tests/turing-auto-brightness.test.cjs` | 2489 |
 | `tests/turing-autoconnect.test.cjs` | 1785 |
-| `tests/turing-background-lifecycle.test.cjs` | 1583 |
+| `tests/turing-background-lifecycle.test.cjs` | 1478 |
 | `tests/turing-background-refresh.test.cjs` | 1585 |
 | `tests/turing-dashboard-layout.test.cjs` | 2895 |
 | `tests/turing-network-selection.test.cjs` | 1681 |
@@ -158,7 +158,7 @@ Control files `ZIP-CONTENTS.md` and the source manifest are included in the ZIP;
 | `tests/weather-provider-source.test.cjs` | 2266 |
 | `tests/weather-scene.test.cjs` | 4651 |
 | `tests/widget-calendar.test.cjs` | 3735 |
-| `tests/widget-customization.test.cjs` | 2086 |
+| `tests/widget-customization.test.cjs` | 2146 |
 | `tests/widget-detail-window.test.cjs` | 6180 |
 | `tests/widget-docking.test.cjs` | 8163 |
 | `tests/widget-edge-source.test.cjs` | 2825 |
