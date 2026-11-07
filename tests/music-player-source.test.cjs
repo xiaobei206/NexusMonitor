@@ -68,3 +68,16 @@ test('music state restores selection and position but never resumes playback aut
   assert.match(loader, /isPlaying: false/);
   assert.doesNotMatch(loader, /isPlaying:\s*raw\./);
 });
+
+test('USB display selection never replaces a missing saved target with an arbitrary external display', () => {
+  const app = read('src/renderer/App.tsx');
+  const start = app.indexOf('function UsbDisplayPage(');
+  const end = app.indexOf('\nfunction ', start + 10);
+  const page = app.slice(start, end);
+  assert.match(page, /const persistedDisplay=displays\.find/);
+  assert.match(page, /const selectedDisplay=persistedDisplay;/);
+  assert.doesNotMatch(page, /fallbackDisplay/);
+  assert.doesNotMatch(page, /if\(!saved&&external\)updateSettings/);
+  assert.match(page, /请选择五寸屏对应的显示器/);
+  assert.match(page, /程序不会自动切换到其他屏幕/);
+});
