@@ -1,10 +1,10 @@
 # NexusMonitor — 新接手 GPT 请先看这里
 
-以 GitHub 当前 `main` 源码为准。本文件里的旧提交 SHA 仅是历史验证记录；每次新对话必须重新读取最新 HEAD、`VERSION`、依赖版本和 Actions 状态。
+以当前任务对应的 GitHub 开发分支源码为准。2.2.0 当前开发分支为 `feature/2.2.0-music-and-window-lifecycle`，工作入口是 PR #1；`main` 是稳定基线，不要把开发分支误切回 main。每次新对话必须重新读取 PR HEAD、`VERSION`、依赖版本和最新 Actions 状态。
 
 ## 接手顺序
 
-1. 检查仓库 https://github.com/xiaobei206/NexusMonitor、分支 `main`、最新提交 SHA 与最新 GitHub Actions。
+1. 检查仓库 https://github.com/xiaobei206/NexusMonitor；若继续 2.2.0，先检查 PR #1 与分支 `feature/2.2.0-music-and-window-lifecycle` 的最新 HEAD / Actions；不要直接在 main 上开发。
 2. 依次阅读：本文件 → `NexusMonitor-2.2.0-HANDOFF-CN.md` → `NexusMonitor-DEVELOPMENT-LOG-CN.md` → `README.md` → `NexusMonitor-2.2.0-BUILD-REPORT.md`。
 3. 再读 `docs/VERSIONING_CN.md`、`VERSION`、`package.json`、`package-lock.json`、`scripts/validate-release-version.cjs`、当前版本的 `NexusMonitor-*-BUILD-RELEASE.cjs` 和 `.github/workflows/windows-ci.yml`。
 4. 按本轮任务阅读专题文档，再对照源码与 `tests/`。文档和源码冲突时，以当前源码、测试为准，并修正文档。
@@ -12,12 +12,12 @@
 
 ## 已有基线（接手时重新核对）
 
-- 当前开发分支版本为 2.2.0，尚未合并 `main` / 尚未正式发布；回到 `main` 时需重新确认当前正式版本。最终以当前 checkout 的 `VERSION` 和 GitHub HEAD 为准。
+- 当前开发分支版本为 2.2.0，PR #1 为 Draft，尚未合并 `main` / 尚未正式发布。Run #23 对应 HEAD `e45c93bd4e8e2faf17270fdbcda382a8f66e9086` 的 CI 已成功；每次接手仍须读取最新 HEAD 与 Actions。最终以当前分支 `VERSION` 和 GitHub HEAD 为准。
 - 技术栈：Electron 45.2.1、React 19、TypeScript 7、Vite 8、.NET 10 HardwareService、LibreHardwareMonitorLib。
 - 应用源码 / v2.1.8 Release 验证提交：`6ff189829829b1b16802b276f5ad4784674b4d46`；[成功 CI 42239092025](https://github.com/xiaobei206/NexusMonitor/actions/runs/42239092025)。
 - 之前的文档同步提交 `09b6739cd1aa876e9e410b149651fcb385393439` 的 CI 也已成功：[42242756560](https://github.com/xiaobei206/NexusMonitor/actions/runs/42242756560)。
 - [v2.1.8 Release](https://github.com/xiaobei206/NexusMonitor/releases/tag/v2.1.8)。
-- **仍待真实 Windows 硬件验收：** COM3 Turing 屏刷新/拔插重连；ESP32-P4 五寸副屏在实际多屏、负坐标和 DPI 下的边界；冷启动、HUD 展开与长期运行。云端 CI 不能代替这些测试。
+- **仍待真实 Windows 硬件验收：** COM3 Turing 屏刷新/拔插重连；ESP32-P4 五寸副屏在实际多屏、负坐标和 DPI 下的边界；冷启动、HUD 展开与长期运行；MP3 实际输出、托盘隐藏期间持续播放与播放边界。云端 CI 不能代替这些测试。
 
 ## 文件结构地图
 
