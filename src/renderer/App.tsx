@@ -653,6 +653,8 @@ function MainApp() {
     return () => { alive = false; };
   }, [applySnapshotResult]);
 
+  useEffect(() => window.nexus.onOpenMusicLibrary(() => setPage('music')), []);
+
   useEffect(() => {
     return window.nexus.onSettingsUpdated(raw => {
       if (!raw || typeof raw !== 'object') return;
