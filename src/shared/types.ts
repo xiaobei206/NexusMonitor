@@ -78,6 +78,7 @@ export interface SnapshotResult {
 }
 
 
+export interface MusicLyricLine { timeSeconds: number; text: string; }
 export type MusicRepeatMode = 'off' | 'all' | 'one';
 export interface MusicTrack {
   id: string;
