@@ -344,7 +344,7 @@ function advanceMusicTrack(ended: boolean) {
   if (!ids.length) { musicState = { ...musicState, currentTrackId: null, currentTime: 0, duration: 0, isPlaying: false }; return; }
   if (ended && musicState.repeat === 'one' && musicState.currentTrackId) {
     musicState = { ...musicState, currentTime: 0, isPlaying: true };
-    if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('music:engine-command', { type: 'seek', seconds: 0 });
+    if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('music:engine-command', { type: 'seek', seconds: 0, resume: true });
     return;
   }
   const currentIndex = ids.indexOf(musicState.currentTrackId ?? '');
@@ -360,7 +360,7 @@ function advanceMusicTrack(ended: boolean) {
   }
   const nextTrackId = ids[nextIndex];
   musicState = { ...musicState, currentTrackId: nextTrackId, currentTime: 0, duration: 0, isPlaying: true };
-  if (nextTrackId === ids[currentIndex] && mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('music:engine-command', { type: 'seek', seconds: 0 });
+  if (nextTrackId === ids[currentIndex] && mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('music:engine-command', { type: 'seek', seconds: 0, resume: true });
 }
 function handleMusicCommand(command: MusicCommand) {
   switch (command.type) {
@@ -413,7 +413,7 @@ function handleMusicCommand(command: MusicCommand) {
       if (musicState.tracks.some(track => track.id === command.trackId && existsSync(track.path))) {
         const alreadySelected = musicState.currentTrackId === command.trackId;
         musicState = { ...musicState, currentTrackId: command.trackId, currentTime: 0, duration: 0, isPlaying: true };
-        if (alreadySelected && mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('music:engine-command', { type: 'seek', seconds: 0 });
+        if (alreadySelected && mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('music:engine-command', { type: 'seek', seconds: 0, resume: true });
       }
       break;
     case 'select-playlist': {
@@ -454,6 +454,35 @@ function handleMusicCommand(command: MusicCommand) {
       const tracks = musicState.tracks.filter(item => item.id !== command.trackId);
       const playlists = musicState.playlists.map(item => ({ ...item, trackIds: item.trackIds.filter(id => id !== command.trackId) }));
       musicState = { ...musicState, tracks, playlists, currentTrackId: musicState.currentTrackId === command.trackId ? null : musicState.currentTrackId, currentTime: musicState.currentTrackId === command.trackId ? 0 : musicState.currentTime, isPlaying: musicState.currentTrackId === command.trackId ? false : musicState.isPlaying };
+      break;
+    }
+    case 'remove-from-playlist': {
+      const playlist = musicState.playlists.find(item => item.id === command.playlistId);
+      if (playlist) {
+        const trackIds = playlist.trackIds.filter(id => id !== command.trackId);
+        const removedCurrent = musicState.activePlaylistId === command.playlistId && musicState.currentTrackId === command.trackId;
+        musicState = {
+          ...musicState,
+          playlists: musicState.playlists.map(item => item.id === command.playlistId ? { ...item, trackIds } : item),
+          currentTrackId: removedCurrent ? trackIds[0] ?? null : musicState.currentTrackId,
+          currentTime: removedCurrent ? 0 : musicState.currentTime,
+          duration: removedCurrent ? 0 : musicState.duration,
+          isPlaying: removedCurrent ? false : musicState.isPlaying,
+        };
+      }
+      break;
+    }
+    case 'move-track': {
+      const playlist = musicState.playlists.find(item => item.id === command.playlistId);
+      if (playlist) {
+        const index = playlist.trackIds.indexOf(command.trackId);
+        const target = index + (command.direction === 'up' ? -1 : 1);
+        if (index >= 0 && target >= 0 && target < playlist.trackIds.length) {
+          const trackIds = [...playlist.trackIds];
+          [trackIds[index], trackIds[target]] = [trackIds[target], trackIds[index]];
+          musicState = { ...musicState, playlists: musicState.playlists.map(item => item.id === command.playlistId ? { ...item, trackIds } : item) };
+        }
+      }
       break;
     }
   }
