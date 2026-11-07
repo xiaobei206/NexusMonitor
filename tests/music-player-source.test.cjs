@@ -141,5 +141,5 @@ test('music library exposes separate album artist genre and folder group views',
   assert.match(player, /function getMusicLibraryGroup/);
   assert.match(player, /TrackArtwork trackId=\{group\.firstTrackId\}/);
   assert.match(player, /nm-library-groups/);
-  assert.match(player, /getMusicLibraryGroup\(track, view\)\.id === selectedGroupId/);
+  assert.match(player, /getMusicLibraryGroup\(track, view\)\.id !== selectedGroupId/);
 });
