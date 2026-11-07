@@ -71,11 +71,21 @@ export function MusicPlaybackRuntime({ state, outputDeviceId = 'default', onOutp
       });
     };
     const onEnded = () => { void window.nexus.musicCommand({ type: 'ended' }); };
-    const onError = () => window.nexus.reportMusicRuntime({ error: true, playing: false });
+    const onError = () => {
+      const code = audio.error?.code;
+      const errorMessage = code === 3
+        ? '音频解码失败：文件可能损坏，或该编码不受当前播放器支持'
+        : code === 4
+          ? '当前 Electron Chromium 不支持此音频编码，或文件格式无法识别'
+          : code === 2
+            ? '读取音频文件失败，请检查文件是否可访问'
+            : '音频播放中断，请重试或检查文件';
+      window.nexus.reportMusicRuntime({ error: true, playing: false, errorMessage });
+    };
     const offEngine = window.nexus.onMusicEngineCommand(command => {
       if (command.type === 'seek' && Number.isFinite(command.seconds) && audio.duration > 0) {
         audio.currentTime = Math.max(0, Math.min(audio.duration, command.seconds));
-        if (command.resume) void audio.play().catch(() => window.nexus.reportMusicRuntime({ error: true, playing: false }));
+        if (command.resume) void audio.play().catch(error => window.nexus.reportMusicRuntime({ error: true, playing: false, errorMessage: error instanceof Error ? `播放启动失败：${error.message}` : '播放启动失败' }));
         report();
       }
     });
@@ -149,7 +159,7 @@ export function MusicPlaybackRuntime({ state, outputDeviceId = 'default', onOutp
     void window.nexus.getMusicTrackUrl(trackId).then(url => {
       if (cancelled) return;
       if (!url) {
-        window.nexus.reportMusicRuntime({ error: true, playing: false });
+        window.nexus.reportMusicRuntime({ error: true, playing: false, errorMessage: '音乐文件不存在或已无法访问' });
         return;
       }
       audio.src = url;
@@ -160,7 +170,7 @@ export function MusicPlaybackRuntime({ state, outputDeviceId = 'default', onOutp
         if (Number.isFinite(restoreTime) && restoreTime > 0 && audio.duration > 0) {
           audio.currentTime = Math.min(restoreTime, Math.max(0, audio.duration - 0.1));
         }
-        if (shouldPlay) void audio.play().catch(() => window.nexus.reportMusicRuntime({ error: true, playing: false }));
+        if (shouldPlay) void audio.play().catch(error => window.nexus.reportMusicRuntime({ error: true, playing: false, errorMessage: error instanceof Error ? `播放启动失败：${error.message}` : '播放启动失败' }));
       };
       audio.addEventListener('loadedmetadata', restorePosition, { once: true });
       if (audio.readyState >= 1) restorePosition();
@@ -330,7 +340,7 @@ export function MusicMiniPlayer({ state, onCommand }: { state: MusicState | null
         <TrackArtwork trackId={track?.id ?? null} className="nm-player-art" fallback={<Music2 size={18}/>} />
         <span className="nm-player-copy">
           <b>{track?.title ?? '尚未选择歌曲'}</b>
-          <small>{track?.missing ? '文件已移动或删除' : track?.artist ?? '添加本地音频开始播放'}</small>
+          <small className={state?.errorMessage ? 'nm-player-error' : ''}>{state?.errorMessage ?? (track?.missing ? '文件已移动或删除' : track?.artist ?? '添加本地音频开始播放')}</small>
         </span>
         <ListMusic size={16} className="nm-player-list-indicator"/>
       </button>
@@ -372,7 +382,7 @@ export function MusicPlayerDock({ state, onCommand, onOpen }: {
   return <div className="nm-music-dock">
     <button type="button" className="nm-dock-track" onClick={onOpen}>
       <TrackArtwork trackId={track?.id ?? null} className="nm-dock-art" fallback={<Disc3 size={20}/>} />
-      <span><b>{track?.title ?? '尚未选择歌曲'}</b><small>{track?.artist ?? '打开音乐库导入音频'}</small></span>
+      <span><b>{track?.title ?? '尚未选择歌曲'}</b><small className={state?.errorMessage ? 'nm-player-error' : ''}>{state?.errorMessage ?? (track?.artist ?? '打开音乐库导入音频')}</small></span>
     </button>
     <div className="nm-dock-center">
       <div className="nm-dock-controls">
