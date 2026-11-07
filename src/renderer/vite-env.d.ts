@@ -4,6 +4,8 @@ interface Window {
   nexus: {
     getSettings(): Promise<any>;
     getMusicState(): Promise<import('../shared/types').MusicState>;
+    showMusicLibrary(): Promise<boolean>;
+    onOpenMusicLibrary(callback:()=>void):()=>void;
     chooseMusicFiles(): Promise<{added:number;skipped:number}>;
     chooseMusicFolder(): Promise<{added:number;skipped:number}>;
     getMusicTrackUrl(trackId:string): Promise<string | null>;
