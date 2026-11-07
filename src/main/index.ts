@@ -1489,6 +1489,15 @@ app.on('window-all-closed', () => { /* The system tray owns application lifetime
 
 ipcMain.handle('app:get-settings', () => getPublicSettings());
 ipcMain.handle('music:get-state', () => publicMusicState());
+ipcMain.handle('music:open-library', () => {
+  revealMainWindow();
+  const target = mainWindow;
+  if (!target || target.isDestroyed()) return false;
+  const showLibrary = () => { if (!target.isDestroyed()) target.webContents.send('music:open-library'); };
+  if (target.webContents.isLoading()) target.webContents.once('did-finish-load', showLibrary);
+  else showLibrary();
+  return true;
+});
 ipcMain.handle('music:track-url', (_event, trackId: string) => {
   const track = musicState.tracks.find(item => item.id === String(trackId));
   return track && existsSync(track.path) ? pathToFileURL(track.path).href : null;
