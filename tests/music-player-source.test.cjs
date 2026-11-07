@@ -158,3 +158,22 @@ test('codec and playback failures reach the shared MusicState and remain visible
   assert.match(player, /nm-player-error/);
   assert.match(player, /nm-playback-error/);
 });
+
+test('ten-band EQ persists ten clamped bands and wires one Web Audio filter chain into the main player', () => {
+  const types = read('src/shared/types.ts');
+  const app = read('src/renderer/App.tsx');
+  const player = read('src/renderer/music-player.tsx');
+  assert.match(types, /musicEqBands\?: number\[\]/);
+  assert.match(app, /musicEqBands: \[0,0,0,0,0,0,0,0,0,0\]/);
+  assert.match(app, /eqBands=\{settings\.musicEqBands/);
+  assert.match(player, /MUSIC_EQ_FREQUENCIES = \[31, 62, 125, 250, 500, 1000, 2000, 4000, 8000, 16000\]/);
+  assert.match(player, /createMediaElementSource\(audio\)/);
+  assert.match(player, /createBiquadFilter\(\)/);
+  assert.match(player, /filter\.type = 'peaking'/);
+  assert.match(player, /filter\.gain\.setTargetAtTime/);
+  assert.match(player, /context\.setSinkId\(requestedDeviceId\)/);
+  assert.match(player, /function MusicEqualizer/);
+  assert.match(player, /min="-12" max="12"/);
+  assert.match(player, /重置为平直/);
+  assert.match(player, /不是 WASAPI 独占或 bit-perfect 输出/);
+});
