@@ -31,7 +31,7 @@ The Electron 45 stable channel was current at the project date, and its release 
 - USB 5-inch Windows extended-display page: display selection, independent output window, hardware monitoring, static/GIF wallpaper, weather clock, local video and desktop-wallpaper + background-music modes; true USB-panel backlight control is intentionally deferred pending firmware command confirmation
 - Wujiang/Suzhou weather and US AQI from Open-Meteo, with six upcoming hourly records and six future daily records for the Turing weather-clock screen
 - Local shortcut list and manifest-based plugin inventory
-- Unified local Music Service: one persistent main-Renderer playback host; Nora-style songs / albums / artists / genres / folders / playlists library; best-effort embedded tags and artwork; shared controls across main UI / HUD / non-video USB modes; selectable Windows output endpoint and the sixth desktop-wallpaper + background-music mode (actual codec playback and physical output routing still need target-PC validation)
+- Unified local Music Service: one persistent main-Renderer playback host; Nora-style songs / albums / artists / genres / folders / playlists; ID3/FLAC/WAV/Ogg/M4A tag and artwork import; M3U/M3U8 import/export; selectable Windows output endpoint; ten-band EQ; Track/Album ReplayGain; local synchronized LRC; sleep timer; shared controls across main UI / HUD / non-video USB modes; sixth desktop-wallpaper + background-music mode. Actual codec playback and physical output routing still need target-PC validation.
 - Vertical HUD mini-player inserted above the existing weather block without reordering the weather, clock or hardware metrics
 - Main window closes to the system tray; the hidden main renderer stays alive for playback and Turing display refresh
 - Saved USB 5-inch display target reopens on startup before HardwareService startup; delayed display enumeration is retried without guessing a different monitor
@@ -75,9 +75,10 @@ NexusMonitor source in this package is provided for the user's development/testi
 
 ## Current source handoff
 
-The stable `main` baseline is version 2.2.0. The 2.2.1 music platform refactor is in `feature/2.2.1-music-platform`, PR #2. Start with `START-HERE-NEXT-GPT.md`, then read `NexusMonitor-2.2.1-HANDOFF-CN.md`, `docs/MUSIC-PLATFORM-2.2.1-CN.md`, and the unique cross-version `NexusMonitor-DEVELOPMENT-LOG-CN.md`. Always re-check the branch HEAD and Actions status before relying on a CI result.
+The stable `main` baseline is version 2.2.0. The 2.2.1 music platform refactor is in `feature/2.2.1-music-platform`, PR #2 (still open). Start with `START-HERE-NEXT-GPT.md`, then read `NexusMonitor-2.2.1-HANDOFF-CN.md`, `docs/MUSIC-PLATFORM-2.2.1-CN.md`, and `NexusMonitor-DEVELOPMENT-LOG-CN.md`. Always re-check the branch HEAD and Actions.
 
-The latest verified application-code CI at the time of this document is [Run #44](https://github.com/xiaobei206/NexusMonitor/actions/runs/42344000038): 14/14 version checks, 195/195 Node tests, Renderer/Vite production build, PawnIO resource validation, .NET Release build (0 warnings / 0 errors), and Storage Tests. That run checked app-code HEAD `fafbe3e24c9e5127de6608bb72c9cacd3a65aaea`; later commits in this branch include documentation updates, so verify current HEAD before continuing. No 2.2.1 installer or Release has been published by the PR workflow. Physical USB / Turing / speaker / multi-display / codec acceptance remains pending on the target Windows PC.
+The latest full successful CI is [Run #104](https://github.com/xiaobei206/NexusMonitor/actions/runs/42348842265): 14/14 version gates, 210/210 Node tests, Renderer TypeScript / Vite build, PawnIO validation, .NET Release (0 warnings / 0 errors), and Storage Tests. It checked application HEAD `c8d24d28d353834cc04059eb2637a46ef8d94e78`. Current branch tip `b3f95d984118f74974f46dc62acde93d69a21908` adds final sleep-timer / playlist control CSS and requires a fresh CI run. PR CI does not publish the 2.2.1 installer. Actual codec decoding, output endpoint routing, USB display and speaker acceptance remain unverified on the target PC.
+
 
 ## Intel Alder Lake Iris Xe GT temperature experiment
 
