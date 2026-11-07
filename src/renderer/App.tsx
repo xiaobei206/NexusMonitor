@@ -581,7 +581,7 @@ function WidgetView({ snapshot, settings, history, weather, detailOnly = false, 
           </> : <>
             {(weather?.hourlyForecast ?? []).slice(0,3).length > 0 && <div className="widget-weather-forecast">{(weather?.hourlyForecast ?? []).slice(0,3).map((hour,index)=><div key={`${hour.time}-${index}`}><small>{new Date(hour.time).toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'})}</small><b>{weatherGlyph(hour.weatherCode)} {fmt(hour.temperature,0)}°</b><span>降水 {fmt(hour.precipitationProbability,0)}%</span></div>)}</div>}
           </>}
-          <div className="widget-detail-foot">天气来源：{weather?.source ?? settings.weatherSource ?? 'Open-Meteo'}。{weather?.attributionUrl && <button className="btn-quiet" onClick={()=>void window.nexus.openUrl(weather.attributionUrl)}>数据来源声明</button>}</div>
+          <div className="widget-detail-foot">天气来源：{weather?.source ?? settings.weatherSource ?? 'Open-Meteo'}。{weather?.attributionUrl && <button className="btn-quiet" onClick={()=>void window.nexus.openUrl(weather.attributionUrl ?? '')}>数据来源声明</button>}</div>
         </article>}
         {showWidgetMetric('sensors') && selectedSensors.length > 0 && <article className="widget-detail-card widget-custom-sensors">
           <div className="widget-detail-title"><div><span>08 / CUSTOM SENSORS</span><b>自选硬件传感器</b></div><strong>{selectedSensors.length}</strong></div>
