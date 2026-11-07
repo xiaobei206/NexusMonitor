@@ -66,6 +66,7 @@ function formatPreservesDepth(format: ExclusivePcmFormat, depth: number | null):
 export function chooseExclusiveFormat(
   source: ExclusiveSourceFormat,
   deviceFormats: ExclusiveDeviceFormat[],
+  preferredTransportSampleRate?: number,
 ): ExclusiveNegotiatedFormat | null {
   const usable = deviceFormats.filter(item =>
     (item.format === 's16' || item.format === 's24' || item.format === 's32' || item.format === 'f32') &&
@@ -77,8 +78,13 @@ export function chooseExclusiveFormat(
   const concreteRates = [...new Set(usable.map(item => item.sampleRate).filter(rate => rate > 0))];
   const hasWildcardRate = usable.some(item => item.sampleRate === 0);
   const sourceRate = source.dsd ? 88200 : source.sampleRateHz;
+  const requestedTransportRate = Number.isInteger(preferredTransportSampleRate) && Number(preferredTransportSampleRate) > 0
+    ? Number(preferredTransportSampleRate) : null;
   let targetRate: number;
-  if (sourceRate != null && (hasWildcardRate || concreteRates.includes(sourceRate))) {
+  if (requestedTransportRate != null) {
+    if (!hasWildcardRate && !concreteRates.includes(requestedTransportRate)) return null;
+    targetRate = requestedTransportRate;
+  } else if (sourceRate != null && (hasWildcardRate || concreteRates.includes(sourceRate))) {
     targetRate = sourceRate;
   } else if (sourceRate != null) {
     const above = concreteRates.filter(rate => rate > sourceRate).sort((a, b) => a - b)[0];
