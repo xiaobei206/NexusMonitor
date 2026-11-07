@@ -33,6 +33,15 @@ function flacComment(key, value) {
   const bytes = Buffer.from(`${key}=${value}`, 'utf8');
   return Buffer.concat([u32le(bytes.length), bytes]);
 }
+function vorbisCommentPacket(marker, comments) {
+  const vendor = Buffer.from('NexusMonitor');
+  return Buffer.concat([
+    Buffer.from(marker, 'ascii'),
+    u32le(vendor.length), vendor,
+    u32le(comments.length),
+    ...comments.map(([key, value]) => flacComment(key, value)),
+  ]);
+}
 function wavChunk(id, data) {
   const head = Buffer.alloc(8);
   head.write(id, 0, 4, 'ascii');
@@ -125,4 +134,56 @@ test('reads WAV format information and INFO tags', () => {
   
 test.after(() => {
   fs.rmSync(temp, { recursive: true, force: true });
+});
+
+test('reads Ogg Vorbis and Opus channel count, sample rate and ReplayGain comments', () => {
+  const identification = Buffer.alloc(30);
+  identification[0] = 1;
+  identification.write('vorbis', 1, 'ascii');
+  identification.writeUInt32LE(0, 7);
+  identification[11] = 2;
+  identification.writeUInt32LE(44100, 12);
+  const vorbis = writeFixture('tagged.ogg', Buffer.concat([
+    identification,
+    vorbisCommentPacket(String.fromCharCode(3) + 'vorbis', [
+      ['TITLE', 'Ogg Song'],
+      ['REPLAYGAIN_TRACK_GAIN', '-5.25 dB'],
+    ]),
+  ]));
+  const vorbisMetadata = readMusicMetadata(vorbis);
+  assert.equal(vorbisMetadata.channels, 2);
+  assert.equal(vorbisMetadata.sampleRateHz, 44100);
+  assert.equal(vorbisMetadata.title, 'Ogg Song');
+  assert.equal(vorbisMetadata.replayGainTrackDb, -5.25);
+
+  const opusHead = Buffer.alloc(19);
+  opusHead.write('OpusHead', 0, 'ascii');
+  opusHead[8] = 1;
+  opusHead[9] = 2;
+  opusHead.writeUInt16LE(312, 10);
+  opusHead.writeUInt32LE(48000, 12);
+  const opus = writeFixture('tagged.opus', Buffer.concat([
+    opusHead,
+    vorbisCommentPacket('OpusTags', [
+      ['TITLE', 'Opus Song'],
+      ['REPLAYGAIN_ALBUM_GAIN', '-7.00 dB'],
+    ]),
+  ]));
+  const opusMetadata = readMusicMetadata(opus);
+  assert.equal(opusMetadata.channels, 2);
+  assert.equal(opusMetadata.title, 'Opus Song');
+  assert.equal(opusMetadata.replayGainAlbumDb, -7);
+});
+
+test('reads MP4 audio sample-entry channel count and sample rate', () => {
+  const sampleEntry = Buffer.alloc(36);
+  sampleEntry.writeUInt32BE(sampleEntry.length, 0);
+  sampleEntry.write('mp4a', 4, 'ascii');
+  sampleEntry.writeUInt16BE(2, 24);
+  sampleEntry.writeUInt16BE(16, 26);
+  sampleEntry.writeUInt32BE(48000 * 65536, 32);
+  const file = writeFixture('tagged.m4a', sampleEntry);
+  const metadata = readMusicMetadata(file);
+  assert.equal(metadata.channels, 2);
+  assert.equal(metadata.sampleRateHz, 48000);
 });
