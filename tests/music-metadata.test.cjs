@@ -20,7 +20,7 @@ function id3Frame(id, value) {
   return Buffer.concat([head, body]);
 }
 function id3UserTextFrame(description, value) {
-  const body = Buffer.concat([Buffer.from([3]), Buffer.from(`${description}\\0${value}`, 'utf8')]);
+  const body = Buffer.concat([Buffer.from([3]), Buffer.from(description, 'utf8'), Buffer.from([0]), Buffer.from(value, 'utf8')]);
   const head = Buffer.alloc(10);
   head.write('TXXX', 0, 4, 'ascii');
   head.writeUInt32BE(body.length, 4);
