@@ -132,3 +132,14 @@ test('music output device routing is independent and reports unsupported or unav
   assert.match(app, /outputDeviceId=\{settings\.musicOutputDeviceId \?\? 'default'\}/);
   assert.doesNotMatch(player, /catch\(error\).*setSinkId[\s\S]{0,180}setSinkId\('default'\)/);
 });
+
+test('music library exposes separate album artist genre and folder group views', () => {
+  const player = read('src/renderer/music-player.tsx');
+  for (const view of ['albums', 'artists', 'genres', 'folders']) {
+    assert.match(player, new RegExp(`view === '${view}'`));
+  }
+  assert.match(player, /function getMusicLibraryGroup/);
+  assert.match(player, /TrackArtwork trackId=\{group\.firstTrackId\}/);
+  assert.match(player, /nm-library-groups/);
+  assert.match(player, /getMusicLibraryGroup\(track, view\)\.id === selectedGroupId/);
+});
