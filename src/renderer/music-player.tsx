@@ -91,6 +91,8 @@ export function MusicPlaybackRuntime({ state, outputDeviceId = 'default', eqBand
   onWasapiStatus?: (status: MusicWasapiStatus) => void;
 }) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const outputDeviceIdRef = useRef(outputDeviceId);
+  outputDeviceIdRef.current = outputDeviceId;
   const audioContextRef = useRef<AudioContext | null>(null);
   const audioGraphPromiseRef = useRef<Promise<AudioContext> | null>(null);
   const mediaSourceRef = useRef<MediaElementAudioSourceNode | null>(null);
@@ -130,8 +132,20 @@ export function MusicPlaybackRuntime({ state, outputDeviceId = 'default', eqBand
     }
     if (audioGraphPromiseRef.current) return audioGraphPromiseRef.current;
     const initialization = (async () => {
-      const context = new AudioContext({ latencyHint: 'playback' });
+      const requestedDeviceId = outputDeviceIdRef.current || 'default';
+      const context = new AudioContext({ latencyHint: 'playback', sinkId: requestedDeviceId } as AudioContextOptions & { sinkId: string }) as SinkableAudioContext;
       try {
+        // Bind the selected output before createMediaElementSource transfers audio out of the element's direct sink.
+        // Never connect the playback graph to the Windows default device as an unverified fallback.
+        if (typeof context.setSinkId === 'function') {
+          await context.setSinkId(requestedDeviceId);
+        } else if (requestedDeviceId !== 'default') {
+          throw new Error('当前 Electron 不支持 AudioContext.setSinkId；为避免音乐被切到 Windows 默认声卡，已阻止切换音频图。');
+        }
+        const actualSinkId = typeof context.sinkId === 'string' ? (context.sinkId || 'default') : null;
+        if (actualSinkId !== null && actualSinkId !== requestedDeviceId) {
+          throw new Error(`目标输出设备绑定校验失败：请求 ${requestedDeviceId}，实际 ${actualSinkId}。`);
+        }
         const workletUrl = new URL('./music-pcm-tap.worklet.js', import.meta.url);
         await context.audioWorklet.addModule(workletUrl);
         const pcmTap = new AudioWorkletNode(context, 'nexus-music-pcm-tap', {
@@ -211,9 +225,11 @@ export function MusicPlaybackRuntime({ state, outputDeviceId = 'default', eqBand
           return;
         }
         await context.setSinkId(requestedDeviceId);
+        const actualDeviceId = context.sinkId || 'default';
+        if (actualDeviceId !== requestedDeviceId) throw new Error(`输出设备未按请求切换：目标 ${requestedDeviceId}，实际 ${actualDeviceId}`);
         onOutputStatus?.({
           state: requestedDeviceId === 'default' ? 'default' : 'active',
-          requestedDeviceId, actualDeviceId: context.sinkId || requestedDeviceId,
+          requestedDeviceId, actualDeviceId,
           message: requestedDeviceId === 'default' ? '均衡器使用系统默认输出设备' : '已将均衡后的音频路由到所选 Windows 输出设备',
         });
         return;
@@ -236,7 +252,7 @@ export function MusicPlaybackRuntime({ state, outputDeviceId = 'default', eqBand
       onOutputStatus?.({
         state: 'unavailable', requestedDeviceId,
         actualDeviceId: context?.sinkId || audio.sinkId || 'default',
-        message: `输出设备切换失败：${error instanceof Error ? error.message : String(error)}`,
+        message: `输出设备切换失败：${error instanceof Error ? error.message : String(error)}；没有确认目标设备前不会将其标记为已切换`,
       });
     }
   }, [outputDeviceId, onOutputStatus]);

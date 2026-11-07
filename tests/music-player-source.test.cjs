@@ -364,6 +364,15 @@ test('exclusive mode cleanup restores the ordinary output path and serializes au
   assert.match(player, /await window\.nexus\.closeMusicWasapi\(\)/);
   assert.match(player, /if \(exclusiveActiveRef\.current\)/);
   assert.match(player, /await applyOutputSink\(\)/);
+  const graphStart = player.indexOf('const ensureAudioGraph = useCallback');
+  const graphEnd = player.indexOf('const applyOutputSink = useCallback', graphStart);
+  const graph = player.slice(graphStart, graphEnd);
+  assert.match(graph, /outputDeviceIdRef\.current \|\| 'default'/);
+  assert.match(graph, /new AudioContext\(\{ latencyHint: 'playback', sinkId: requestedDeviceId \}/);
+  assert.match(graph, /await context\.setSinkId\(requestedDeviceId\)/);
+  assert.ok(graph.indexOf('await context.setSinkId(requestedDeviceId)') < graph.indexOf('context.createMediaElementSource(audio)'),
+    'selected output must be bound before the audio element is attached to Web Audio');
+  assert.match(graph, /为避免音乐被切到 Windows 默认声卡，已阻止切换音频图/);
 });
 
 test('native WASAPI pause stops the audio client before a later Start call', () => {
