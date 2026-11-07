@@ -742,7 +742,7 @@ function MainApp() {
   };
 
   return <div className={`app-shell theme-${themeClass}`} style={{'--accent':settings.accent,'--opacity':settings.opacity/100,...(settings.theme==='portrait'&&settings.backgroundDataUrl?{backgroundImage:`linear-gradient(90deg,rgba(8,13,20,.94),rgba(8,13,20,.79)),url(${settings.backgroundDataUrl})`,backgroundSize:'cover',backgroundPosition:'center'}:{})} as any}>
-    <MusicPlaybackRuntime state={music.state} outputDeviceId={settings.musicOutputDeviceId ?? 'default'} onOutputStatus={setMusicOutputStatus}/>
+    <MusicPlaybackRuntime state={music.state} outputDeviceId={settings.musicOutputDeviceId ?? 'default'} eqBands={settings.musicEqBands ?? [0,0,0,0,0,0,0,0,0,0]} onOutputStatus={setMusicOutputStatus}/>
     <aside className="sidebar">
       <div className="app-brand"><div className="brand-emblem"><span>N</span><i/></div><div><strong>NEXUS<span>MONITOR</span></strong><small>HARDWARE INTELLIGENCE</small></div></div>
       <div className="sidebar-divider"/>
