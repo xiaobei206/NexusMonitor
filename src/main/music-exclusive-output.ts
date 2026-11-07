@@ -113,7 +113,7 @@ export class MusicExclusiveOutput {
     return addon.probeDevice(deviceId);
   }
 
-  async openForTrack(deviceId: string, track: MusicTrack): Promise<WasapiOpenResult> {
+  async openForTrack(deviceId: string, track: MusicTrack, transportSampleRate?: number): Promise<WasapiOpenResult> {
     this.close();
     const addon = this.resolveAddon();
     if (!addon) throw new Error(this.loadMessage);
@@ -121,7 +121,7 @@ export class MusicExclusiveOutput {
 
     const source = classifyExclusiveSource(track);
     const probe = addon.probeDevice(deviceId);
-    const negotiated = chooseExclusiveFormat(source, probe.formats);
+    const negotiated = chooseExclusiveFormat(source, probe.formats, transportSampleRate);
     if (!negotiated) {
       throw new Error(`No supported stereo exclusive PCM format was reported by “${probe.name}”.`);
     }
