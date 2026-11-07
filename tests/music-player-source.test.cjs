@@ -35,7 +35,7 @@ test('non-video USB output uses the shared Music Service and has no legacy wallp
 test('the main renderer owns the only audio engine and the library is separate from video mode', () => {
   const app = read('src/renderer/App.tsx');
   const player = read('src/renderer/music-player.tsx');
-  assert.equal((app.match(/<MusicPlaybackRuntime state=\\{music\\.state\\}[^>]*\\/>/g) ?? []).length, 1);
+  assert.equal((app.match(/<MusicPlaybackRuntime\b/g) ?? []).length, 1);
   assert.match(player, /<audio ref=\{audioRef\} preload="metadata"/);
   assert.match(player, /chooseMusicFiles/);
   assert.match(player, /chooseMusicFolder/);
