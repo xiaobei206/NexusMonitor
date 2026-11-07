@@ -1,31 +1,14 @@
-# NexusMonitor 2.1.8 ZIP contents
+# NexusMonitor 2.2.0 ZIP contents
 
-Archive root: `NexusMonitor-2.1.8/`
-Manifest: `NexusMonitor-2.1.8-SOURCE-MANIFEST.sha256` (SHA-256 of all delivered files except the manifest itself).
-Payload files listed below: 155
+Archive root: `NexusMonitor-2.2.0/`
+Manifest: `NexusMonitor-2.2.0-SOURCE-MANIFEST.sha256` (SHA-256 of all delivered files except the manifest itself).
+Payload files listed below: 162
 Control files `ZIP-CONTENTS.md` and the source manifest are included in the ZIP; the manifest also hashes `ZIP-CONTENTS.md`.
 
 | File | Bytes |
 |---|---:|
-| `.gitignore` | 145 |
-| `AGENTS.md` | 964 |
-| `build-and-run.bat` | 123 |
-| `build-only.bat` | 1989 |
-| `build/icon.ico` | 63106 |
-| `build/tray.png` | 14291 |
-| `build/widget-window-monitor.ps1` | 2748 |
-| `docs/ALDERLAKE_GT_TEMPERATURE_CN.md` | 5373 |
-| `docs/archive/2.0.2-fix1/PATCH-MANIFEST.sha256` | 980 |
-| `docs/archive/2.0.2-fix1/PATCH-README.txt` | 1182 |
-| `docs/HUD_EDGE_BEHAVIOR_CN.md` | 2089 |
-| `docs/PLUGIN_API.md` | 1561 |
-| `docs/SETUP_CN.md` | 2867 |
-| `docs/SNAPSHOT_JSON_HOTFIX_CN.md` | 3504 |
-| `docs/TRAFFICMONITOR_POWERMON_RESEARCH_CN.md` | 7572 |
-| `docs/TURING_WEATHER_CLOCK_CN.md` | 1979 |
-| `docs/turing-weather-background-contact-sheet.jpg` | 352676 |
-| `docs/USB_DISPLAY_CN.md` | 5568 |
-| `docs/VERSIONING_CN.md` | 1874 |
+| `.gitignore` | 255 |
+| `AGENTS.md` | 1631 |
 | `HardwareService/Display/TuringDisplayService.cs` | 16592 |
 | `HardwareService/Display/TuringProtocol.cs` | 4863 |
 | `HardwareService/HardwareService.csproj` | 1260 |
@@ -43,18 +26,42 @@ Control files `ZIP-CONTENTS.md` and the source manifest are included in the ZIP;
 | `HardwareService/Monitoring/WindowsCpuClockEstimator.cs` | 2190 |
 | `HardwareService/Program.cs` | 3796 |
 | `HardwareService/Serialization/FiniteDoubleJsonConverter.cs` | 1085 |
-| `index.html` | 361 |
-| `install-and-run.bat` | 2176 |
 | `NexusMonitor-2.1.8-BUILD-RELEASE.cjs` | 3050 |
 | `NexusMonitor-2.1.8-BUILD-REPORT.md` | 3921 |
 | `NexusMonitor-2.1.8-HANDOFF-CN.md` | 4580 |
 | `NexusMonitor-2.1.8-Windows-验收命令.txt` | 668 |
-| `NexusMonitor-DEVELOPMENT-LOG-CN.md` | 34000 |
+| `NexusMonitor-2.2.0-BUILD-RELEASE.cjs` | 3050 |
+| `NexusMonitor-2.2.0-BUILD-REPORT.md` | 3721 |
+| `NexusMonitor-2.2.0-HANDOFF-CN.md` | 7151 |
+| `NexusMonitor-2.2.0-Windows-验收命令.txt` | 2930 |
+| `NexusMonitor-DEVELOPMENT-LOG-CN.md` | 36145 |
+| `PROTOCOL_REFERENCE.md` | 7966 |
+| `README.md` | 9165 |
+| `START-HERE-NEXT-GPT.md` | 5241 |
+| `VERSION` | 6 |
+| `build-and-run.bat` | 123 |
+| `build-only.bat` | 1989 |
+| `build/icon.ico` | 63106 |
+| `build/tray.png` | 14291 |
+| `build/widget-window-monitor.ps1` | 2748 |
+| `docs/ALDERLAKE_GT_TEMPERATURE_CN.md` | 5373 |
+| `docs/HUD_EDGE_BEHAVIOR_CN.md` | 2702 |
+| `docs/PLUGIN_API.md` | 1561 |
+| `docs/SETUP_CN.md` | 3164 |
+| `docs/SNAPSHOT_JSON_HOTFIX_CN.md` | 3504 |
+| `docs/TRAFFICMONITOR_POWERMON_RESEARCH_CN.md` | 7572 |
+| `docs/TURING_WEATHER_CLOCK_CN.md` | 1979 |
+| `docs/USB_DISPLAY_CN.md` | 6766 |
+| `docs/VERSIONING_CN.md` | 2023 |
+| `docs/archive/2.0.2-fix1/PATCH-MANIFEST.sha256` | 980 |
+| `docs/archive/2.0.2-fix1/PATCH-README.txt` | 1182 |
+| `docs/turing-weather-background-contact-sheet.jpg` | 352676 |
+| `index.html` | 361 |
+| `install-and-run.bat` | 2176 |
 | `package-lock.json` | 174377 |
 | `package-windows.bat` | 1052 |
 | `package.json` | 2847 |
 | `plugins/example-theme/plugin.json` | 330 |
-| `PROTOCOL_REFERENCE.md` | 7966 |
 | `public/turing-weather/sunny-afternoon.webp` | 29130 |
 | `public/turing-weather/sunny-alpine-day.webp` | 28118 |
 | `public/turing-weather/sunny-coast-day.webp` | 30076 |
@@ -82,14 +89,13 @@ Control files `ZIP-CONTENTS.md` and the source manifest are included in the ZIP;
 | `public/turing-weather/weather-snowfall.webp` | 45760 |
 | `public/turing-weather/weather-snowy-clear.webp` | 38870 |
 | `public/turing-weather/weather-thunderstorm.webp` | 12794 |
-| `README.md` | 8523 |
 | `scripts/diagnose-network.ps1` | 8206 |
 | `scripts/fetch-mchbar-module.ps1` | 2672 |
 | `scripts/publish-service.ps1` | 657 |
 | `scripts/validate-release-version.cjs` | 2910 |
 | `src/main/api-error.ts` | 1397 |
 | `src/main/fullscreen-detection.ts` | 1148 |
-| `src/main/index.ts` | 68508 |
+| `src/main/index.ts` | 87715 |
 | `src/main/logger.ts` | 2425 |
 | `src/main/service-backoff.ts` | 486 |
 | `src/main/snapshot-coordinator.ts` | 2436 |
@@ -97,12 +103,14 @@ Control files `ZIP-CONTENTS.md` and the source manifest are included in the ZIP;
 | `src/main/widget-detail-window.ts` | 3024 |
 | `src/main/widget-docking.ts` | 6550 |
 | `src/main/window-layout.ts` | 1767 |
-| `src/preload/index.ts` | 8168 |
-| `src/renderer/App.tsx` | 155511 |
+| `src/preload/index.ts` | 9701 |
+| `src/renderer/App.tsx` | 156621 |
 | `src/renderer/aqi.ts` | 1065 |
 | `src/renderer/calendar-data.d.mts` | 868 |
 | `src/renderer/calendar-data.mjs` | 8043 |
-| `src/renderer/main.tsx` | 2284 |
+| `src/renderer/main.tsx` | 2313 |
+| `src/renderer/music-player.css` | 12431 |
+| `src/renderer/music-player.tsx` | 20345 |
 | `src/renderer/power-summary.ts` | 4709 |
 | `src/renderer/storage-view.ts` | 2122 |
 | `src/renderer/styles.css` | 105921 |
@@ -110,12 +118,13 @@ Control files `ZIP-CONTENTS.md` and the source manifest are included in the ZIP;
 | `src/renderer/turing-autoconnect.ts` | 951 |
 | `src/renderer/turing-dashboard.ts` | 41317 |
 | `src/renderer/turing-selection.ts` | 3804 |
-| `src/renderer/vite-env.d.ts` | 4365 |
+| `src/renderer/vite-env.d.ts` | 5133 |
 | `src/renderer/weather-scene.ts` | 6138 |
 | `src/renderer/widget-calendar.css` | 6306 |
 | `src/renderer/widget-calendar.tsx` | 6177 |
-| `src/shared/types.ts` | 7390 |
-| `START-HERE-NEXT-GPT.md` | 4759 |
+| `src/shared/types.ts` | 8774 |
+| `tests/HardwareService.Tests/HardwareService.Tests.csproj` | 390 |
+| `tests/HardwareService.Tests/Program.cs` | 17634 |
 | `tests/alderlake-gt-probe-source.test.cjs` | 3072 |
 | `tests/api-error.test.cjs` | 1104 |
 | `tests/aqi-colors.test.cjs` | 1955 |
@@ -123,9 +132,8 @@ Control files `ZIP-CONTENTS.md` and the source manifest are included in the ZIP;
 | `tests/fullscreen-detection.test.cjs` | 1010 |
 | `tests/gpu-clock-source.test.cjs` | 1369 |
 | `tests/hardware-inventory-config.test.cjs` | 1100 |
-| `tests/HardwareService.Tests/HardwareService.Tests.csproj` | 390 |
-| `tests/HardwareService.Tests/Program.cs` | 17634 |
 | `tests/logger.test.cjs` | 1565 |
+| `tests/music-player-source.test.cjs` | 4134 |
 | `tests/network-monitor-source.test.cjs` | 1306 |
 | `tests/network-scale-ui.test.cjs` | 908 |
 | `tests/power-summary.test.cjs` | 3469 |
@@ -160,5 +168,4 @@ Control files `ZIP-CONTENTS.md` and the source manifest are included in the ZIP;
 | `tsconfig.json` | 509 |
 | `tsconfig.renderer.json` | 107 |
 | `tsconfig.test-utils.json` | 807 |
-| `VERSION` | 6 |
 | `vite.config.mts` | 605 |
