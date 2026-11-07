@@ -8,9 +8,10 @@ import {
   Palette, Power, RefreshCw, Settings2, ShieldCheck, SlidersHorizontal, Sparkles,
   Square, Thermometer, Upload, Wifi, X, Zap, Clock3, CloudSun, Check, Plus, Search,
   Laptop, GripVertical, Database, GaugeCircle, Sun, Moon, Cable, RotateCcw, Puzzle, CalendarDays,
-  Image as ImageIcon, FolderOpen, Play, Pause, SkipBack, SkipForward, Film, MonitorPlay, Tv,
+  Image as ImageIcon, FolderOpen, Play, Pause, SkipBack, SkipForward, Film, MonitorPlay, Tv, Music2,
 } from 'lucide-react';
-import type { AppPage, AppSettings, CpuSnapshot, DiskSnapshot, GpuSnapshot, NetworkSnapshot, ServiceStatus, SnapshotResult, SystemSnapshot, ThemeId, WeatherSnapshot, SensorValue } from '../shared/types';
+import type { AppPage, AppSettings, CpuSnapshot, DiskSnapshot, GpuSnapshot, MusicCommand, MusicState, NetworkSnapshot, ServiceStatus, SnapshotResult, SystemSnapshot, ThemeId, WeatherSnapshot, SensorValue } from '../shared/types';
+import { MusicLibraryPage, MusicMiniPlayer, MusicPlaybackRuntime, MusicPlayerDock, useMusicState } from './music-player';
 import { renderTuringDashboard, renderTuringWeatherClock } from './turing-dashboard';
 import { getWeatherSceneAsset } from './weather-scene';
 import { selectTuringDisk, selectTuringGpu, selectTuringNetwork, selectNetworkInterfaces } from './turing-selection';
@@ -78,6 +79,7 @@ const navItems: Array<{ id: AppPage; label: string; icon: any; group: string }> 
   { id: 'turing', label: '图灵副屏', icon: Monitor, group: '设备输出' },
   { id: 'usb-display', label: 'USB 5 寸副屏', icon: MonitorPlay, group: '设备输出' },
   { id: 'themes', label: '主题工作室', icon: Palette, group: '个性化' },
+  { id: 'music', label: '音乐播放器', icon: Music2, group: '个性化' },
   { id: 'shortcuts', label: '快捷入口', icon: Link2, group: '个性化' },
   { id: 'plugins', label: '插件管理', icon: PuzzleIcon, group: '扩展管理' },
   { id: 'settings', label: '系统设置', icon: Settings2, group: '管理' },
@@ -184,7 +186,7 @@ type WidgetDragState = {
   moved: boolean;
 } | null;
 
-function WidgetView({ snapshot, settings, history, weather, detailOnly = false }: { snapshot: Nullable<SystemSnapshot>; settings: AppSettings; history: WidgetHistory; weather: Nullable<WeatherSnapshot>; detailOnly?: boolean }) {
+function WidgetView({ snapshot, settings, history, weather, detailOnly = false, musicState, musicCommand }: { snapshot: Nullable<SystemSnapshot>; settings: AppSettings; history: WidgetHistory; weather: Nullable<WeatherSnapshot>; detailOnly?: boolean; musicState: MusicState | null; musicCommand: (command: MusicCommand) => void }) {
   const [expanded, setExpanded] = useState(detailOnly);
   const [fadingOut, setFadingOut] = useState(false);
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -421,6 +423,7 @@ function WidgetView({ snapshot, settings, history, weather, detailOnly = false }
             <div className="widget-vertical-meta">{powerSummary.label}</div>
           </div>
         </div>}
+        {!detailOnly && <MusicMiniPlayer state={musicState} onCommand={musicCommand}/>}
         {showWidgetMetric('weather') && <div className="widget-vertical-weather">
           <div className="widget-vertical-weather-head"><CloudSun size={22}/><b>天气 · {weather?.location ?? '苏州'}</b><span className="widget-weather-glyph">{weatherGlyph(weather?.weatherCode)}</span><strong>{fmt(weather?.temperature,0)}°C</strong></div>
           <div className="widget-vertical-weather-meta">{weatherText(weather?.weatherCode)} · 体感 {fmt(weather?.apparentTemperature,0)}°C · 湿度 {fmt(weather?.humidity,0)}%</div>
@@ -595,6 +598,7 @@ function MainApp() {
   const widgetQuery = new URLSearchParams(window.location.search);
   const isWidget = widgetQuery.get('widget') === '1';
   const isWidgetDetail = widgetQuery.get('widget-detail') === '1';
+  const music = useMusicState();
   const persistTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const settingsRef = useRef(settings);
   const settingsPromise = useRef<Promise<AppSettings | null> | null>(null);
@@ -705,7 +709,7 @@ function MainApp() {
     ? `物理磁盘不可用：${snapshot.storage.lastError ?? 'WMI 查询失败'}`
     : null;
 
-  if (isWidget) return <WidgetView snapshot={snapshot} settings={settings} history={history} weather={weather} detailOnly={isWidgetDetail}/>;
+  if (isWidget) return <WidgetView snapshot={snapshot} settings={settings} history={history} weather={weather} detailOnly={isWidgetDetail} musicState={music.state} musicCommand={music.command}/>;
 
   const cpu = snapshot?.cpu;
   const gpu = snapshot?.gpus?.[0];
@@ -731,6 +735,7 @@ function MainApp() {
   };
 
   return <div className={`app-shell theme-${themeClass}`} style={{'--accent':settings.accent,'--opacity':settings.opacity/100,...(settings.theme==='portrait'&&settings.backgroundDataUrl?{backgroundImage:`linear-gradient(90deg,rgba(8,13,20,.94),rgba(8,13,20,.79)),url(${settings.backgroundDataUrl})`,backgroundSize:'cover',backgroundPosition:'center'}:{})} as any}>
+    <MusicPlaybackRuntime state={music.state}/>
     <aside className="sidebar">
       <div className="app-brand"><div className="brand-emblem"><span>N</span><i/></div><div><strong>NEXUS<span>MONITOR</span></strong><small>HARDWARE INTELLIGENCE</small></div></div>
       <div className="sidebar-divider"/>
@@ -759,6 +764,7 @@ function MainApp() {
 
         {page==='devices'&&<DevicesPage snapshot={snapshot} settings={settings} updateSettings={updateSettings} notify={notify} refreshSnapshot={refreshSnapshot}/>}
         {page==='usb-display'&&<UsbDisplayPage settings={settings} updateSettings={updateSettings} notify={notify}/>}
+        {page==='music'&&<MusicLibraryPage state={music.state} onCommand={music.command} notify={notify}/> }
         <div className={`turing-background-host ${page === 'turing' ? 'active' : 'inactive'}`} aria-hidden={page !== 'turing'}><TuringPage settings={settings} updateSettings={updateSettings} snapshot={snapshot} weather={weather} notify={notify} active={page === 'turing'} settingsLoaded={settingsLoaded} serviceReady={serviceStatus.phase === 'online' || serviceStatus.phase === 'degraded'}/></div>
         {page==='themes'&&<ThemePage settings={settings} updateSettings={updateSettings} notify={notify}/>}
         {page==='shortcuts'&&<ShortcutsPage settings={settings} updateSettings={updateSettings} notify={notify}/>}
@@ -766,6 +772,7 @@ function MainApp() {
         {page==='settings'&&<SettingsPage settings={settings} updateSettings={updateSettings} notify={notify}/>}
         <footer className="content-footer"><span>© 2026 NEXUSMONITOR · DESKTOP TELEMETRY</span><span>LOCAL-FIRST · NO ACCOUNT · NO CLOUD SYNC</span></footer>
       </div>
+      {!(page === 'usb-display' && settings.usbDisplayMode === 'video') && <MusicPlayerDock state={music.state} onCommand={music.command} onOpen={() => setPage('music')}/>}
     </main>
     {toast&&<div className="toast"><Check size={15}/>{toast}</div>}
   </div>;
