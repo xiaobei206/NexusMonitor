@@ -15,6 +15,7 @@ export interface WasapiNativeStatus {
   open: boolean;
   ready: boolean;
   openError: string;
+  channels: number;
   deviceName: string;
   format: string;
   sampleRate: number;
@@ -26,10 +27,15 @@ export interface WasapiNativeStatus {
   droppedFrames: number;
   error: string;
 }
+interface WasapiProbeDiagnostics {
+  testedCandidates:number; supportedCandidates:number; extensibleMatches:number; classicMatches:number;
+  mixFormatChannels:number; mixFormatSampleRate:number; lastProbeHresult:string;
+}
+interface WasapiDeviceProbe { name:string; formats:ExclusiveDeviceFormat[]; diagnostics?:WasapiProbeDiagnostics; }
 interface WasapiNativeAddon {
   listDevices(): WasapiOutputDevice[];
-  probeDevice(deviceId?: string): { name: string; formats: ExclusiveDeviceFormat[] };
-  open(options: { deviceId: string; sampleRate: number; format: string }): { pending: boolean };
+  probeDevice(deviceId?: string): WasapiDeviceProbe;
+  open(options: {deviceId:string;sampleRate:number;format:string;channels:1|2}):{pending:boolean};
   start(): boolean;
   stop(): boolean;
   write(pcm: Buffer): number;
@@ -41,7 +47,7 @@ export interface WasapiOpenResult {
   deviceName: string;
   format: string;
   sampleRate: number;
-  channels: 2;
+  channels: 1 | 2;
   bytesPerFrame: number;
   exclusive: true;
   transport: 'renderer-float32-pcm';
@@ -108,7 +114,7 @@ export class MusicExclusiveOutput {
     return addon.listDevices();
   }
 
-  probeDevice(deviceId: string): { name: string; formats: ExclusiveDeviceFormat[] } {
+  probeDevice(deviceId: string): WasapiDeviceProbe {
     const addon = this.resolveAddon();
     if (!addon) throw new Error(this.loadMessage);
     return addon.probeDevice(deviceId);
@@ -124,13 +130,17 @@ export class MusicExclusiveOutput {
     const probe = addon.probeDevice(deviceId);
     const negotiated = chooseExclusiveFormat(source, probe.formats, transportSampleRate);
     if (!negotiated) {
-      throw new Error(`No supported stereo exclusive PCM format was reported by “${probe.name}”.`);
+      const details = probe.diagnostics;
+      const mix = details && details.mixFormatChannels > 0
+        ? `${details.mixFormatChannels} ch @ ${details.mixFormatSampleRate} Hz`
+        : 'unavailable';
+      const diagnostic = details
+        ? `Tested ${details.testedCandidates} mono/stereo PCM combinations; ${details.supportedCandidates} accepted (${details.extensibleMatches} WAVEFORMATEXTENSIBLE, ${details.classicMatches} WAVEFORMATEX). Windows shared mix format: ${mix}. Last probe: ${details.lastProbeHresult}.`
+        : 'The endpoint did not return probe diagnostics.';
+      throw new Error(`No compatible exclusive PCM format was reported by “${probe.name}”. ${diagnostic}`);
     }
-
     const request = addon.open({
-      deviceId,
-      sampleRate: negotiated.sampleRate,
-      format: negotiated.format,
+      deviceId, sampleRate: negotiated.sampleRate, format: negotiated.format, channels: negotiated.channels,
     });
     if (!request?.pending) {
       addon.close();
@@ -154,8 +164,8 @@ export class MusicExclusiveOutput {
           deviceName: status.deviceName || probe.name,
           format: negotiated.format,
           sampleRate: negotiated.sampleRate,
-          channels: 2,
-          bytesPerFrame: negotiated.format === 's16' ? 4 : negotiated.format === 's24' ? 6 : 8,
+          channels: negotiated.channels,
+          bytesPerFrame: (negotiated.format === 's16' ? 2 : negotiated.format === 's24' ? 3 : 4) * negotiated.channels,
           exclusive: true,
           transport: 'renderer-float32-pcm',
           bitPerfect: false,

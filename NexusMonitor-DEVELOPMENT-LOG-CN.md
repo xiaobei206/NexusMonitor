@@ -482,3 +482,27 @@ Property 'volume' does not exist on type 'AudioHTMLAttributes<HTMLAudioElement>'
 - MSVC 日志中存在非致命的 `NOMINMAX` 重定义、C++20 参数被覆盖为 C++17；Node 也报告 `DEP0190` shell 参数弃用提示。它们没有导致 CI 失败，可在下一正式版本中单独清理。
 - 2.2.1 不宣称完成 Gapless / Crossfade 双 Deck、native decoder-to-device bit-perfect、全部 codec profile 实际播放矩阵。WASAPI 当前为 Chromium/WebAudio Float32 PCM → native WASAPI，`bitPerfect:false`。
 - 真实 Windows 目标机仍需验证五寸屏扬声器、应用/系统 endpoint 分流、热插拔、WASAPI 独占下其他程序音频、长时间 underrun、支持格式真实文件播放、六种 USB 模式、桌面壁纸不被遮挡、睡眠 / 唤醒与 COM3 Turing 长期稳定性。Hosted CI 不替代这些实机验收。
+
+
+## 2.2.2（WASAPI mono / WAVEFORMATEX 兼容与 USB 动作文案，2026-11-07）
+
+### 用户反馈与目标
+
+- P4 Mono UAC Direct v62 在 2.2.1 下报错：`No supported stereo exclusive PCM format was reported`。2.2.1 只探测双声道 `WAVEFORMATEXTENSIBLE`，不能据此判断单声道 endpoint 完全不支持独占。
+- USB 五寸副屏 `music-only` 模式的主按钮文案过长，改为「应用模式」；其它可视副屏模式保持「启动副屏」。
+
+### 本轮实现
+
+- native WASAPI 同时探测单声道 / 双声道 PCM。
+- 每个格式组合同时尝试传统 `WAVEFORMATEX` 和 `WAVEFORMATEXTENSIBLE`。
+- Probe 额外读取 Windows shared mix format 的声道数与采样率，并返回候选数量、两种结构的命中数量与 HRESULT 诊断。
+- 实际 `IAudioClient::Initialize` 也有 classic `WAVEFORMATEX` 回退，避免只在探测时宣称支持、实际打开仍失败。
+- Stereo endpoint 优先；只有无可用 stereo 候选时才选择 mono。
+- Renderer 保持 stereo Float32 PCM transport；native 输出按最终协商声道数配置格式、channel mask、block alignment、ring-buffer frame size，并对 mono endpoint 执行 `(L+R)/2`。
+- WASAPI 状态显示实际 mono/stereo；发生 channel downmix 时不宣称 bit-perfect。
+- 新增 mono format chooser 与 native source regression；新增 USB music-only 按钮文案回归。
+
+### 版本与验证
+
+- 正式版本递增至 2.2.2；同步 VERSION、package / lockfile、HardwareService assembly/API/snapshot、Renderer 版本字段、版本化 build/release 入口和版本校验门禁。
+- 本节的 Hosted Windows CI / 安装包结果在本轮构建完成后追加。用户目标机的真实 P4 扬声器输出、Windows 系统其它应用音频隔离、热插拔与长时间稳定性不能由 Hosted CI 推断。

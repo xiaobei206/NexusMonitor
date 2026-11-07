@@ -6,7 +6,7 @@ const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 const { validate } = require('./scripts/validate-release-version.cjs');
 
-const expectedVersion = '2.2.1';
+const expectedVersion = '2.2.2';
 const projectRoot = __dirname;
 process.chdir(projectRoot);
 

@@ -23,6 +23,7 @@ export type MusicWasapiStatus = {
   droppedFrames?: number;
   bitPerfect: false;
   bitPerfectCandidate?: boolean;
+  channels?: 1 | 2;
 };
 type MusicHook = { state: MusicState | null; command: (command: MusicCommand) => void };
 
@@ -372,9 +373,10 @@ export function MusicPlaybackRuntime({ state, outputDeviceId = 'default', eqBand
         deviceName: result.deviceName,
         format: result.format,
         sampleRate: result.sampleRate,
+        channels: result.channels,
         bitPerfect: false,
         bitPerfectCandidate: result.bitPerfectCandidate,
-        message: `已打开 WASAPI 独占输出：${result.deviceName} · ${result.format.toUpperCase()} · ${result.sampleRate} Hz。当前 Renderer PCM 传输路径不具备 bit-perfect 条件。`,
+        message: `已打开 WASAPI 独占输出：${result.deviceName} · ${result.channels === 1 ? '单声道' : '立体声'} · ${result.format.toUpperCase()} · ${result.sampleRate} Hz。当前 Renderer PCM 传输路径不具备 bit-perfect 条件。`,
       });
       await applyOutputSink();
     };

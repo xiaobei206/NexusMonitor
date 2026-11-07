@@ -101,21 +101,35 @@ uint32_t BytesPerSample(SampleFormat value) {
   }
 }
 
-WAVEFORMATEXTENSIBLE MakeWaveFormat(uint32_t sampleRate, SampleFormat format) {
+WAVEFORMATEXTENSIBLE MakeWaveFormat(uint32_t sampleRate, SampleFormat format, uint16_t channels) {
   WAVEFORMATEXTENSIBLE value{};
   const uint16_t bits = format == SampleFormat::S16 ? 16 :
                         format == SampleFormat::S24 ? 24 : 32;
   value.Format.wFormatTag = WAVE_FORMAT_EXTENSIBLE;
-  value.Format.nChannels = 2;
+  value.Format.nChannels = channels;
   value.Format.nSamplesPerSec = sampleRate;
   value.Format.wBitsPerSample = bits;
-  value.Format.nBlockAlign = static_cast<WORD>(2 * BytesPerSample(format));
+  value.Format.nBlockAlign = static_cast<WORD>(channels * BytesPerSample(format));
   value.Format.nAvgBytesPerSec = sampleRate * value.Format.nBlockAlign;
   value.Format.cbSize = sizeof(WAVEFORMATEXTENSIBLE) - sizeof(WAVEFORMATEX);
   value.Samples.wValidBitsPerSample = bits;
-  value.dwChannelMask = SPEAKER_FRONT_LEFT | SPEAKER_FRONT_RIGHT;
+  value.dwChannelMask = channels == 1 ? SPEAKER_FRONT_CENTER : (SPEAKER_FRONT_LEFT | SPEAKER_FRONT_RIGHT);
   value.SubFormat = format == SampleFormat::F32 ? KSDATAFORMAT_SUBTYPE_IEEE_FLOAT
                                                  : KSDATAFORMAT_SUBTYPE_PCM;
+  return value;
+}
+
+WAVEFORMATEX MakeClassicWaveFormat(uint32_t sampleRate, SampleFormat format, uint16_t channels) {
+  WAVEFORMATEX value{};
+  const uint16_t bits = format == SampleFormat::S16 ? 16 :
+                        format == SampleFormat::S24 ? 24 : 32;
+  value.wFormatTag = format == SampleFormat::F32 ? WAVE_FORMAT_IEEE_FLOAT : WAVE_FORMAT_PCM;
+  value.nChannels = channels;
+  value.nSamplesPerSec = sampleRate;
+  value.wBitsPerSample = bits;
+  value.nBlockAlign = static_cast<WORD>(channels * BytesPerSample(format));
+  value.nAvgBytesPerSec = sampleRate * value.nBlockAlign;
+  value.cbSize = 0;
   return value;
 }
 
@@ -165,10 +179,38 @@ std::string GetFriendlyName(IMMDevice* device) {
   return result;
 }
 
-bool IsFormatSupported(IAudioClient* client, uint32_t sampleRate, SampleFormat format) {
-  WAVEFORMATEXTENSIBLE wave = MakeWaveFormat(sampleRate, format);
-  return client->IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE,
-                                   reinterpret_cast<WAVEFORMATEX*>(&wave), nullptr) == S_OK;
+bool IsFormatSupported(IAudioClient* client, uint32_t sampleRate, SampleFormat format,
+                       uint16_t channels, bool* extensibleSupported,
+                       bool* classicSupported, HRESULT* lastResult) {
+  WAVEFORMATEXTENSIBLE extensible = MakeWaveFormat(sampleRate, format, channels);
+  const HRESULT extensibleResult = client->IsFormatSupported(
+      AUDCLNT_SHAREMODE_EXCLUSIVE, reinterpret_cast<WAVEFORMATEX*>(&extensible), nullptr);
+  WAVEFORMATEX classic = MakeClassicWaveFormat(sampleRate, format, channels);
+  const HRESULT classicResult = client->IsFormatSupported(
+      AUDCLNT_SHAREMODE_EXCLUSIVE, &classic, nullptr);
+  if (extensibleSupported) *extensibleSupported = extensibleResult == S_OK;
+  if (classicSupported) *classicSupported = classicResult == S_OK;
+  if (lastResult) *lastResult = classicResult;
+  return extensibleResult == S_OK || classicResult == S_OK;
+}
+
+HRESULT InitializeExclusiveStream(IAudioClient* client, uint32_t sampleRate,
+                                  SampleFormat format, uint16_t channels,
+                                  DWORD flags, REFERENCE_TIME duration,
+                                  REFERENCE_TIME periodicity, bool* usedClassicFormat) {
+  WAVEFORMATEXTENSIBLE extensible = MakeWaveFormat(sampleRate, format, channels);
+  HRESULT result = client->Initialize(AUDCLNT_SHAREMODE_EXCLUSIVE, flags, duration,
+                                      periodicity,
+                                      reinterpret_cast<WAVEFORMATEX*>(&extensible), nullptr);
+  if (SUCCEEDED(result) || result == AUDCLNT_E_BUFFER_SIZE_NOT_ALIGNED) {
+    if (usedClassicFormat) *usedClassicFormat = false;
+    return result;
+  }
+  WAVEFORMATEX classic = MakeClassicWaveFormat(sampleRate, format, channels);
+  result = client->Initialize(AUDCLNT_SHAREMODE_EXCLUSIVE, flags, duration,
+                              periodicity, &classic, nullptr);
+  if (usedClassicFormat) *usedClassicFormat = true;
+  return result;
 }
 
 napi_value JsString(napi_env env, const std::string& value) {
@@ -295,6 +337,7 @@ struct Engine {
   std::string runtimeError;
   std::string deviceId;
   uint32_t sampleRate = 48000;
+  uint16_t channels = 2;
   uint32_t bytesPerSample = 4;
   uint32_t bytesPerFrame = 8;
   SampleFormat format = SampleFormat::F32;
@@ -362,10 +405,11 @@ void AudioWorker(Engine* engine) {
   // periodicity to match. If the endpoint needs alignment, the retry below
   // uses the exact aligned frame count returned by GetBufferSize().
   REFERENCE_TIME duration = period;
-  WAVEFORMATEXTENSIBLE wave = MakeWaveFormat(engine->sampleRate, engine->format);
   const DWORD flags = AUDCLNT_STREAMFLAGS_EVENTCALLBACK | AUDCLNT_STREAMFLAGS_NOPERSIST;
-  hr = audioClient->Initialize(AUDCLNT_SHAREMODE_EXCLUSIVE, flags, duration, period,
-                               reinterpret_cast<WAVEFORMATEX*>(&wave), nullptr);
+  bool usedClassicFormat = false;
+  hr = InitializeExclusiveStream(audioClient, engine->sampleRate, engine->format,
+                                 engine->channels, flags, duration, period,
+                                 &usedClassicFormat);
   if (hr == AUDCLNT_E_BUFFER_SIZE_NOT_ALIGNED) {
     UINT32 alignedFrames = 0;
     HRESULT sizeResult = audioClient->GetBufferSize(&alignedFrames);
@@ -377,13 +421,17 @@ void AudioWorker(Engine* engine) {
       hr = device->Activate(__uuidof(IAudioClient), CLSCTX_ALL, nullptr,
                             reinterpret_cast<void**>(&audioClient));
       if (SUCCEEDED(hr)) {
-        hr = audioClient->Initialize(AUDCLNT_SHAREMODE_EXCLUSIVE, flags, duration, duration,
-                                     reinterpret_cast<WAVEFORMATEX*>(&wave), nullptr);
+        hr = InitializeExclusiveStream(audioClient, engine->sampleRate, engine->format,
+                                       engine->channels, flags, duration, duration,
+                                       &usedClassicFormat);
       }
     }
   }
   if (FAILED(hr)) {
-    SetOpenResult(engine, HresultMessage("IAudioClient::Initialize exclusive", hr), deviceName);
+    SetOpenResult(engine, HresultMessage(
+        usedClassicFormat ? "IAudioClient::Initialize exclusive WAVEFORMATEX"
+                          : "IAudioClient::Initialize exclusive WAVEFORMATEXTENSIBLE",
+        hr), deviceName);
     Release(audioClient); Release(device); Release(enumerator);
     return;
   }
@@ -576,25 +624,56 @@ napi_value ProbeDevice(napi_env env, napi_callback_info info) {
     Throw(env, HresultMessage("Activate IAudioClient", hr));
     Release(device); Release(enumerator); return nullptr;
   }
+  uint32_t mixFormatSampleRate = 0;
+  uint16_t mixFormatChannels = 0;
+  WAVEFORMATEX* mixFormat = nullptr;
+  if (SUCCEEDED(client->GetMixFormat(&mixFormat)) && mixFormat != nullptr) {
+    mixFormatSampleRate = mixFormat->nSamplesPerSec;
+    mixFormatChannels = mixFormat->nChannels;
+    CoTaskMemFree(mixFormat);
+  }
   napi_value result, formats;
   napi_create_object(env, &result);
   napi_create_array(env, &formats);
   SetString(env, result, "name", GetFriendlyName(device));
-  const uint32_t rates[] = {44100, 48000, 88200, 96000, 176400, 192000};
+  std::vector<uint32_t> rates = {44100, 48000, 88200, 96000, 176400, 192000};
+  if (mixFormatSampleRate > 0 &&
+      std::find(rates.begin(), rates.end(), mixFormatSampleRate) == rates.end()) {
+    rates.push_back(mixFormatSampleRate);
+  }
+  const uint16_t channelCandidates[] = {2, 1};
   const SampleFormat candidates[] = {SampleFormat::S16, SampleFormat::S24, SampleFormat::S32, SampleFormat::F32};
-  uint32_t index = 0;
+  uint32_t index = 0, testedCandidates = 0, extensibleMatches = 0, classicMatches = 0;
+  HRESULT lastProbeResult = S_OK;
   for (uint32_t rate : rates) {
-    for (SampleFormat format : candidates) {
-      if (!IsFormatSupported(client, rate, format)) continue;
-      napi_value item;
-      napi_create_object(env, &item);
-      SetString(env, item, "format", FormatName(format));
-      SetNumber(env, item, "channels", 2);
-      SetNumber(env, item, "sampleRate", rate);
-      napi_set_element(env, formats, index++, item);
+    for (uint16_t channels : channelCandidates) {
+      for (SampleFormat format : candidates) {
+        bool extensibleSupported = false, classicSupported = false;
+        ++testedCandidates;
+        if (!IsFormatSupported(client, rate, format, channels,
+                                &extensibleSupported, &classicSupported, &lastProbeResult)) continue;
+        if (extensibleSupported) ++extensibleMatches;
+        if (classicSupported) ++classicMatches;
+        napi_value item;
+        napi_create_object(env, &item);
+        SetString(env, item, "format", FormatName(format));
+        SetNumber(env, item, "channels", channels);
+        SetNumber(env, item, "sampleRate", rate);
+        napi_set_element(env, formats, index++, item);
+      }
     }
   }
+  napi_value diagnostics;
+  napi_create_object(env, &diagnostics);
+  SetNumber(env, diagnostics, "testedCandidates", testedCandidates);
+  SetNumber(env, diagnostics, "supportedCandidates", index);
+  SetNumber(env, diagnostics, "extensibleMatches", extensibleMatches);
+  SetNumber(env, diagnostics, "classicMatches", classicMatches);
+  SetNumber(env, diagnostics, "mixFormatChannels", mixFormatChannels);
+  SetNumber(env, diagnostics, "mixFormatSampleRate", mixFormatSampleRate);
+  SetString(env, diagnostics, "lastProbeHresult", HresultMessage("IsFormatSupported", lastProbeResult));
   napi_set_named_property(env, result, "formats", formats);
+  napi_set_named_property(env, result, "diagnostics", diagnostics);
   Release(client); Release(device); Release(enumerator);
   return result;
 }
@@ -611,13 +690,19 @@ napi_value Open(napi_env env, napi_callback_info info) {
   const std::string formatName = GetStringProperty(env, argv[0], "format", "f32");
   const SampleFormat format = ParseFormat(formatName);
   const uint32_t rate = GetUintProperty(env, argv[0], "sampleRate", 48000);
+  const uint32_t requestedChannels = GetUintProperty(env, argv[0], "channels", 2);
   if (format == SampleFormat::Invalid) { Throw(env, "Unsupported WASAPI PCM format."); return nullptr; }
+  if (requestedChannels != 1 && requestedChannels != 2) {
+    Throw(env, "WASAPI exclusive output supports mono or stereo PCM only.");
+    return nullptr;
+  }
   CloseEngine();
   g_engine.deviceId = deviceId;
   g_engine.sampleRate = rate;
+  g_engine.channels = static_cast<uint16_t>(requestedChannels);
   g_engine.format = format;
   g_engine.bytesPerSample = BytesPerSample(format);
-  g_engine.bytesPerFrame = g_engine.bytesPerSample * 2;
+  g_engine.bytesPerFrame = g_engine.bytesPerSample * g_engine.channels;
   const size_t capacity = std::max<size_t>(65536, static_cast<size_t>(rate) * g_engine.bytesPerFrame * 2);
   g_engine.ring.Allocate(capacity);
   g_engine.audioEvent = CreateEventW(nullptr, FALSE, FALSE, nullptr);
@@ -647,7 +732,7 @@ napi_value Open(napi_env env, napi_callback_info info) {
   SetBoolean(env, result, "pending", true);
   SetString(env, result, "format", FormatName(format));
   SetNumber(env, result, "sampleRate", rate);
-  SetNumber(env, result, "channels", 2);
+  SetNumber(env, result, "channels", g_engine.channels);
   SetNumber(env, result, "bytesPerFrame", g_engine.bytesPerFrame);
   return result;
 }
@@ -691,15 +776,18 @@ napi_value Write(napi_env env, napi_callback_info info) {
   const auto* input = static_cast<const uint8_t*>(data);
   std::vector<uint8_t> converted;
   const size_t frames = length / 8;
-  if (g_engine.format == SampleFormat::F32) {
-    converted.assign(input, input + length);
-  } else {
-    converted.resize(frames * g_engine.bytesPerFrame);
-    const size_t samples = frames * 2;
-    for (size_t index = 0; index < samples; ++index) {
-      const float value = ReadFloat(input + index * sizeof(float));
-      uint8_t* destination = converted.data() + index * g_engine.bytesPerSample;
-      if (g_engine.format == SampleFormat::S16) {
+  converted.resize(frames * g_engine.bytesPerFrame);
+  for (size_t frame = 0; frame < frames; ++frame) {
+    const float left = ReadFloat(input + (frame * 2) * sizeof(float));
+    const float right = ReadFloat(input + (frame * 2 + 1) * sizeof(float));
+    for (uint16_t channel = 0; channel < g_engine.channels; ++channel) {
+      const float value = g_engine.channels == 1 ? (left + right) * 0.5f
+        : (channel == 0 ? left : right);
+      uint8_t* destination = converted.data() +
+        (frame * g_engine.channels + channel) * g_engine.bytesPerSample;
+      if (g_engine.format == SampleFormat::F32) {
+        std::memcpy(destination, &value, sizeof(value));
+      } else if (g_engine.format == SampleFormat::S16) {
         const int32_t sample = value <= -1.0f ? -32768 : static_cast<int32_t>(std::lrint(value * 32767.0f));
         const int16_t packed = static_cast<int16_t>(sample);
         std::memcpy(destination, &packed, sizeof(packed));
@@ -748,6 +836,7 @@ napi_value Stats(napi_env env, napi_callback_info info) {
   SetString(env, result, "deviceName", deviceName);
   SetString(env, result, "format", FormatName(g_engine.format));
   SetNumber(env, result, "sampleRate", g_engine.sampleRate);
+  SetNumber(env, result, "channels", g_engine.channels);
   SetBoolean(env, result, "running", g_engine.running.load(std::memory_order_acquire));
   SetNumber(env, result, "bufferedBytes", static_cast<double>(g_engine.ring.Available()));
   SetNumber(env, result, "underruns", static_cast<double>(g_engine.underruns.load()));

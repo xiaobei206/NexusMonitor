@@ -57,6 +57,11 @@ test('5-inch hardware brightness remains explicitly deferred and wallpapers rely
   assert.match(app, /US AQI/);
 });
 
+test('music-only display action button uses the short 应用模式 label', () => {
+  assert.match(app, /mode==='music-only'\?'应用模式':'启动副屏'/);
+  assert.doesNotMatch(app, /应用桌面壁纸音乐模式/);
+});
+
 test('USB output renderer never owns a second wallpaper audio element', () => {
   const usb = app.slice(app.indexOf('function UsbDisplayOutput('), app.indexOf('\nexport default function App'));
   assert.doesNotMatch(usb, /audioRef|audioSource|<audio|usbDisplayAudioPath/);

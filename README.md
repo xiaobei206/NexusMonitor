@@ -1,4 +1,4 @@
-# NexusMonitor 2.2.1 — Electron Edition (released)
+# NexusMonitor 2.2.2 — Electron Edition (development on main)
 
 > **新对话 / 新开发者接手：先读 [START-HERE-NEXT-GPT.md](START-HERE-NEXT-GPT.md) 和根目录 [AGENTS.md](AGENTS.md)。** 入口文档列出阅读顺序、源码目录地图、验证命令与硬件验收边界。
 
@@ -75,15 +75,13 @@ NexusMonitor source in this package is provided for the user's development/testi
 
 ## Current source handoff
 
-The current released baseline is **main / 2.2.1**. PR #2 has been merged and release v2.2.1 is published. Personal-project development proceeds directly on `main`; do not create feature branches or PRs unless explicitly requested.
+The current development baseline is **main / 2.2.2**. Personal-project development proceeds directly on `main`; do not create feature branches or PRs unless explicitly requested.
 
-Start with `START-HERE-NEXT-GPT.md`, then `AGENTS.md`, `NexusMonitor-2.2.1-HANDOFF-CN.md`, `docs/MUSIC-PLATFORM-2.2.1-CN.md`, and `NexusMonitor-DEVELOPMENT-LOG-CN.md`.
+Version 2.2.2 focuses on broader WASAPI Exclusive compatibility: probing classic `WAVEFORMATEX` and `WAVEFORMATEXTENSIBLE`, testing mono and stereo PCM, preferring stereo where available, and supporting mono-only endpoints by downmixing Renderer stereo Float32 PCM at the native output boundary. The USB `music-only` action button is shortened to `应用模式`.
 
-Windows CI Run #175 succeeded on main commit `9de1e9db2f700fa69326792b990cef4a57a56d1d`: 14/14 version gates, 225/225 Node tests, Renderer TypeScript / Vite production build, native N-API WASAPI addon, PawnIO verification, .NET Release, Storage Tests, NSIS packaging, SHA-256 generation, and GitHub Release publication. [Run #175](https://github.com/xiaobei206/NexusMonitor/actions/runs/42354102069).
+Read `START-HERE-NEXT-GPT.md`, `AGENTS.md`, `NexusMonitor-2.2.2-HANDOFF-CN.md`, and `NexusMonitor-2.2.2-BUILD-REPORT.md` for current implementation, CI and hardware acceptance boundaries.
 
-The official installer is [NexusMonitor-2.2.1-Setup.exe](https://github.com/xiaobei206/NexusMonitor/releases/download/v2.2.1/NexusMonitor-2.2.1-Setup.exe) (160,009,308 bytes). SHA-256: `1fafefc129308aaa72664699d2796c2818c5237bae6092b7c3b56a7b06351596`. The checksum sidecar is included in the release. The installer is not code-signed because no signing certificate is configured.
-
-The 2.2.1 target-PC acceptance remains open for five-inch speaker output, endpoint isolation/hot-plug, actual codec playback fixtures, six USB modes, music-only desktop visibility, sleep/wake, mixed DPI and long-run Turing stability. The WASAPI path is explicitly not bit-perfect; Gapless / Crossfade dual-deck playback is not included. Hosted CI does not replace physical-device acceptance.
+**Hosted CI is pending for this commit.** Do not treat the 2.2.1 Windows CI or installer hash as validation of 2.2.2. Physical P4 speaker output, endpoint isolation/hot-plug, long-run underrun and the six USB display modes still require target-PC acceptance.
 
 ## Intel Alder Lake Iris Xe GT temperature experiment
 
