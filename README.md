@@ -1,5 +1,7 @@
 # NexusMonitor 2.1.8 — Electron Edition
 
+> **新对话 / 新开发者接手：先读 [START-HERE-NEXT-GPT.md](START-HERE-NEXT-GPT.md) 和根目录 [AGENTS.md](AGENTS.md)。** 入口文档列出阅读顺序、源码目录地图、验证命令与硬件验收边界。
+
 A Windows desktop hardware HUD rebuilt with Electron + React + TypeScript. The front-end is separate from a local .NET 10 hardware host.
 
 ## Technology

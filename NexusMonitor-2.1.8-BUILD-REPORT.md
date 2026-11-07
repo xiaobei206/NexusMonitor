@@ -54,3 +54,11 @@
 ### 未由 CI 覆盖的验收
 
 COM3 Turing 3.5 英寸屏持续刷新、ESP32-P4 5 英寸 USB 显示器边界、多屏负坐标、首次真实 GUI 冷启动/HUD 展开、设备拔插与长期运行，必须在用户实际 Windows 机器和硬件上验证。CI 通过不等于这些实机项目已通过。
+
+---
+
+## 文档交接入口同步（2026-11-07）
+
+新增根目录 `START-HERE-NEXT-GPT.md` 与 `AGENTS.md`，并将安装、插件清单、Turing 天气时钟、HUD 与 Alder Lake GT 专题文档对照当前源码整理。该整理不修改应用代码或 v2.1.8 安装包，也不改变本报告已有的应用构建结论。
+
+新接手者从 [START-HERE-NEXT-GPT.md](START-HERE-NEXT-GPT.md) 开始；后续验证以当前 workflow 和最新 Actions 为准。此次文档提交触发的新 CI 需要单独检查。

@@ -2,7 +2,7 @@
 
 - 当前正式源码版本：`2.1.8`
 - 基线：`2.1.7` 完整源码；不覆盖历史版本。
-- 目标 Windows 工作目录：`O:\6\NexusMonitor-2.1.8`
+- 用户 Windows 机器已知工作目录：`O:\6\NexusMonitor-2.1.8`（仅供该机器实机验收参考；其他环境不得假设路径存在）
 - 技术栈：Electron 45.2.1、React 19、TypeScript 7、Vite、.NET 10 HardwareService。
 
 ## 本轮修复
@@ -14,7 +14,7 @@
 
 ```powershell
 $ErrorActionPreference = 'Stop'
-Set-Location 'O:\6\NexusMonitor-2.1.8'
+# 先进入当前实际 clone 的仓库根目录；不要照抄用户机器的 O: 路径。
 npm.cmd ci --include=dev --no-audit --no-fund
 if ($LASTEXITCODE -ne 0) { throw 'npm ci failed' }
 node '.\NexusMonitor-2.1.8-BUILD-RELEASE.cjs' --validate-only
@@ -43,9 +43,10 @@ if ($LASTEXITCODE -ne 0) { throw 'Build or release failed' }
 ## GitHub 仓库与 2.1.8 最终验证状态（2026-11-06）
 
 **公开源码仓库：** https://github.com/xiaobei206/NexusMonitor  
-**当前已验证提交：** `6ff189829829b1b16802b276f5ad4784674b4d46`  
+**v2.1.8 应用源码/正式 Release 验证提交：** `6ff189829829b1b16802b276f5ad4784674b4d46`  
 **正式 Release：** https://github.com/xiaobei206/NexusMonitor/releases/tag/v2.1.8  
-**成功 Actions：** https://github.com/xiaobei206/NexusMonitor/actions/runs/42239092025
+**应用代码成功 Actions：** https://github.com/xiaobei206/NexusMonitor/actions/runs/42239092025  
+**此前文档同步提交：** `09b6739cd1aa876e9e410b149651fcb385393439`，Windows CI 见 https://github.com/xiaobei206/NexusMonitor/actions/runs/42242756560。新接手时仍须重新检查当前 main HEAD 和 Actions。
 
 ### 远程 Windows 验证结论
 
@@ -74,3 +75,8 @@ if ($LASTEXITCODE -ne 0) { throw 'Build or release failed' }
 3. 每版先推送 `main`，等待 Windows CI 完整通过；同一版本不存在 Release 时，成功构建自动打包并发布 `v<version>`。已有 Release 不会被覆盖。
 4. 每次更新开发日志、交接文档、构建报告和 SHA-256 源码清单。不要把 CI 成功写成实机硬件验收成功。
 5. GitHub Actions 页面保存构建日志；用户运行时日志和设置留在本机 `%APPDATA%\\NexusMonitor`，不提交到公开仓库。
+
+
+## 新对话接手入口
+
+新 GPT / 编程代理先读 [START-HERE-NEXT-GPT.md](START-HERE-NEXT-GPT.md) 和 [AGENTS.md](AGENTS.md)。不要把本文件中的历史验证 SHA、用户机器路径或版本专属脚本当作新分支 HEAD/通用路径；先检查当前 main 和 VERSION。

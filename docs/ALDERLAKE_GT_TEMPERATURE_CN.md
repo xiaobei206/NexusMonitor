@@ -1,26 +1,29 @@
-# Alder Lake Iris Xe GT 温度 — 2.0.4 当前构建要求
+# Alder Lake Iris Xe GT 温度：NexusMonitor 2.1.8 当前构建说明
 
-2.0.4 继续使用本文件描述的只读 MCHBAR GT 温度探测代码。与早期可选资源配置不同，`HardwareService/HardwareService.csproj` 现在将 `Resources\PawnIO\IntelMCHBAR.bin` 作为必需的 EmbeddedResource；缺失时 .NET 构建会直接失败，不允许生成一个悄悄不含 GT 温度模块的服务。
+本专题保留 Alder Lake-H / Iris Xe 的只读 MCHBAR GT 温度技术背景。HardwareService 将 `HardwareService/Resources/PawnIO/IntelMCHBAR.bin` 作为必需嵌入资源；此二进制不提交到 Git，需要通过项目脚本从官方 PawnIO Modules 发布包获取并校验。
 
-从 2.0.3 源码包恢复工程后，先在项目根目录执行：
+在仓库根目录运行：
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\fetch-mchbar-module.ps1
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\fetch-mchbar-module.ps1
 ```
 
-脚本对官方 PawnIO.Modules 0.2.11 发布 ZIP 做 SHA-256 校验后才提取模块。当前 2.0.4 源码 ZIP 不包含该二进制，因为上传的 2.0.3 基线中没有该文件；不要自行创建空文件或用来源不明的 `.bin` 冒充。
+版本专属完整构建脚本在资源缺失时会调用此脚本，GitHub Actions 也会准备并校验模块。不能创建空文件或用来源不明的二进制替代。CI 中下载/哈希校验成功只证明构建资源完整性通过，不证明用户机器上的 Iris Xe 温度一定可读；运行后还需检查 `gpuTemperatureProbeStatus` 和真实温度读数。
 
-运行脚本并成功生成 `HardwareService\Resources\PawnIO\IntelMCHBAR.bin` 后，再执行 `npm.cmd run test:storage` / `dotnet build`。服务启动后仍要看真实状态 `gpuTemperatureProbeStatus`；只有状态为 `available` 且 Iris Xe 温度有实际读数时，才能说温度已恢复。
+## 历史技术记录
+
+以下保留 2.0.x 阶段的调查过程与硬件依据。“当前版本”“源码 ZIP”等措辞按当时的时间点理解，不代表当前分支状态。
+
 
 ---
 
-# Alder Lake Iris Xe GT 温度攻关 — 历史技术记录
+## Alder Lake Iris Xe GT 温度攻关 — 历史技术记录
 
 ## 目标机器与现状
 
 当前目标是 Intel Core i9-12900H + Intel Iris Xe（Alder Lake-H）。PawnIO 已安装并运行；LHM 0.9.6 已能读取 CPU 温度/频率/封装功耗，以及 Iris Xe 的负载、动态频率、电压、功耗和 Video Decode 负载，但没有枚举出 GPU Temperature 传感器。
 
-2.0.1 不修改已验证正常的 CPU/GPU IGCL/LHM 路径。普通 LHM GPU 温度优先；只有 Intel GPU 没有可用温度时，才尝试本页的 MCHBAR 方案。
+历史版本 2.0.1 不修改已验证正常的 CPU/GPU IGCL/LHM 路径。普通 LHM GPU 温度优先；只有 Intel GPU 没有可用温度时，才尝试本页的 MCHBAR 方案。
 
 ## 技术依据
 

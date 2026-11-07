@@ -2,27 +2,28 @@
 
 Archive root: `NexusMonitor-2.1.8/`
 Manifest: `NexusMonitor-2.1.8-SOURCE-MANIFEST.sha256` (SHA-256 of all delivered files except the manifest itself).
-Payload files listed below: 153
+Payload files listed below: 155
 Control files `ZIP-CONTENTS.md` and the source manifest are included in the ZIP; the manifest also hashes `ZIP-CONTENTS.md`.
 
 | File | Bytes |
 |---|---:|
 | `.gitignore` | 145 |
+| `AGENTS.md` | 964 |
 | `build-and-run.bat` | 123 |
 | `build-only.bat` | 1989 |
 | `build/icon.ico` | 63106 |
 | `build/tray.png` | 14291 |
 | `build/widget-window-monitor.ps1` | 2748 |
-| `docs/ALDERLAKE_GT_TEMPERATURE_CN.md` | 5422 |
+| `docs/ALDERLAKE_GT_TEMPERATURE_CN.md` | 5373 |
 | `docs/archive/2.0.2-fix1/PATCH-MANIFEST.sha256` | 980 |
 | `docs/archive/2.0.2-fix1/PATCH-README.txt` | 1182 |
-| `docs/HUD_EDGE_BEHAVIOR_CN.md` | 1871 |
-| `docs/PLUGIN_API.md` | 1188 |
-| `docs/SETUP_CN.md` | 7123 |
+| `docs/HUD_EDGE_BEHAVIOR_CN.md` | 2089 |
+| `docs/PLUGIN_API.md` | 1561 |
+| `docs/SETUP_CN.md` | 2867 |
 | `docs/SNAPSHOT_JSON_HOTFIX_CN.md` | 3504 |
 | `docs/TRAFFICMONITOR_POWERMON_RESEARCH_CN.md` | 7572 |
+| `docs/TURING_WEATHER_CLOCK_CN.md` | 1979 |
 | `docs/turing-weather-background-contact-sheet.jpg` | 352676 |
-| `docs/TURING_WEATHER_CLOCK_CN.md` | 2757 |
 | `docs/USB_DISPLAY_CN.md` | 5568 |
 | `docs/VERSIONING_CN.md` | 1874 |
 | `HardwareService/Display/TuringDisplayService.cs` | 16592 |
@@ -45,10 +46,10 @@ Control files `ZIP-CONTENTS.md` and the source manifest are included in the ZIP;
 | `index.html` | 361 |
 | `install-and-run.bat` | 2176 |
 | `NexusMonitor-2.1.8-BUILD-RELEASE.cjs` | 3050 |
-| `NexusMonitor-2.1.8-BUILD-REPORT.md` | 3404 |
-| `NexusMonitor-2.1.8-HANDOFF-CN.md` | 3884 |
+| `NexusMonitor-2.1.8-BUILD-REPORT.md` | 3921 |
+| `NexusMonitor-2.1.8-HANDOFF-CN.md` | 4580 |
 | `NexusMonitor-2.1.8-Windows-验收命令.txt` | 668 |
-| `NexusMonitor-DEVELOPMENT-LOG-CN.md` | 33049 |
+| `NexusMonitor-DEVELOPMENT-LOG-CN.md` | 34000 |
 | `package-lock.json` | 174377 |
 | `package-windows.bat` | 1052 |
 | `package.json` | 2847 |
@@ -81,7 +82,7 @@ Control files `ZIP-CONTENTS.md` and the source manifest are included in the ZIP;
 | `public/turing-weather/weather-snowfall.webp` | 45760 |
 | `public/turing-weather/weather-snowy-clear.webp` | 38870 |
 | `public/turing-weather/weather-thunderstorm.webp` | 12794 |
-| `README.md` | 8297 |
+| `README.md` | 8523 |
 | `scripts/diagnose-network.ps1` | 8206 |
 | `scripts/fetch-mchbar-module.ps1` | 2672 |
 | `scripts/publish-service.ps1` | 657 |
@@ -114,6 +115,7 @@ Control files `ZIP-CONTENTS.md` and the source manifest are included in the ZIP;
 | `src/renderer/widget-calendar.css` | 6306 |
 | `src/renderer/widget-calendar.tsx` | 6177 |
 | `src/shared/types.ts` | 7390 |
+| `START-HERE-NEXT-GPT.md` | 4759 |
 | `tests/alderlake-gt-probe-source.test.cjs` | 3072 |
 | `tests/api-error.test.cjs` | 1104 |
 | `tests/aqi-colors.test.cjs` | 1955 |

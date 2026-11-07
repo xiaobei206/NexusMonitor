@@ -363,3 +363,11 @@ Property 'volume' does not exist on type 'AudioHTMLAttributes<HTMLAudioElement>'
 - Hosted Windows CI 已完成构建、自动化测试和安装包制作；但没有连接用户的 Turing COM3、ESP32-P4 5 寸屏或用户实际多屏桌面，不能由 CI 结果推断这些设备的实机表现已验收。
 - 本次 NSIS EXE 没有代码签名证书，Windows 可能显示 SmartScreen 或未知发布者提示。
 - GitHub Actions 运行页面保留完整 workflow 日志；本文件保留长期开发原因、修复和最终结论。每用户的应用运行日志、设置和设备数据不上传仓库，以免混入个人机器数据。
+
+---
+
+## 2026-11-07 文档一致性整理与跨对话接手入口
+
+复核发现部分辅助文档仍标注 2.0.x，且交接文档把用户机器工作目录写得像通用路径。本轮新增根目录 `START-HERE-NEXT-GPT.md` 和 `AGENTS.md`；README 增加入口；重写安装说明，准确限定插件系统目前是 manifest 清单管理；修订 Turing、HUD、Alder Lake GT 专题的版本/历史表述；同时更新 HANDOFF、构建报告、ZIP 文件尺寸列表和 SHA-256 清单。
+
+该提交只整理文档和交接体系，不修改应用行为、依赖或正式版本号。此前应用完整 Windows 构建与 v2.1.8 发布见 [应用 CI 42239092025](https://github.com/xiaobei206/NexusMonitor/actions/runs/42239092025)；此前文档同步基线 CI [42242756560](https://github.com/xiaobei206/NexusMonitor/actions/runs/42242756560) 已成功。本轮新提交的 workflow 结果必须另行检查，不能用旧运行结果代替。
