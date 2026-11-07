@@ -19,8 +19,8 @@ export function parseM3u(input: string): M3uTrackEntry[] {
 export function serializeM3u(tracks: Array<{ path: string; title: string; artist?: string | null; durationSeconds?: number | null }>): string {
   const lines = ['#EXTM3U'];
   for (const track of tracks) {
-    const duration = Number.isFinite(track.durationSeconds) && (track.durationSeconds ?? -1) >= 0
-      ? Math.floor(track.durationSeconds!)
+    const duration = typeof track.durationSeconds === 'number' && Number.isFinite(track.durationSeconds) && track.durationSeconds >= 0
+      ? Math.floor(track.durationSeconds)
       : -1;
     const display = [track.title, track.artist].filter(Boolean).join(' - ').replace(/[\r\n]/g, ' ').trim();
     lines.push(`#EXTINF:${duration},${display}`);
