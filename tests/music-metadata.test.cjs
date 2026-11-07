@@ -19,6 +19,13 @@ function id3Frame(id, value) {
   head.writeUInt32BE(body.length, 4);
   return Buffer.concat([head, body]);
 }
+function id3UserTextFrame(description, value) {
+  const body = Buffer.concat([Buffer.from([3]), Buffer.from(`${description}\\0${value}`, 'utf8')]);
+  const head = Buffer.alloc(10);
+  head.write('TXXX', 0, 4, 'ascii');
+  head.writeUInt32BE(body.length, 4);
+  return Buffer.concat([head, body]);
+}
 function syncSafe(value) {
   return Buffer.from([(value >> 21) & 0x7f, (value >> 14) & 0x7f, (value >> 7) & 0x7f, value & 0x7f]);
 }
@@ -40,6 +47,8 @@ test('reads ID3v2 MP3 title, artist, album, year and track number', () => {
     id3Frame('TALB', 'Test Album'),
     id3Frame('TDRC', '2024-10-12'),
     id3Frame('TRCK', '7/12'),
+    id3UserTextFrame('REPLAYGAIN_TRACK_GAIN', '-6.25 dB'),
+    id3UserTextFrame('REPLAYGAIN_TRACK_PEAK', '0.923456'),
   ]);
   const header = Buffer.concat([Buffer.from('ID3'), Buffer.from([3, 0, 0]), syncSafe(frames.length)]);
   const file = writeFixture('tagged.mp3', Buffer.concat([header, frames, Buffer.from('audio-data')]));
@@ -49,6 +58,8 @@ test('reads ID3v2 MP3 title, artist, album, year and track number', () => {
   assert.equal(metadata.album, 'Test Album');
   assert.equal(metadata.year, 2024);
   assert.equal(metadata.trackNumber, 7);
+  assert.equal(metadata.replayGainTrackDb, -6.25);
+  assert.equal(metadata.replayGainTrackPeak, 0.923456);
   assert.equal(musicFormatLabel(file), 'MP3');
 });
 
@@ -61,6 +72,10 @@ test('reads native FLAC Vorbis-comment blocks without an Ogg packet marker', () 
     'GENRE=Ambient',
     'DATE=2022',
     'TRACKNUMBER=3/9',
+    'REPLAYGAIN_TRACK_GAIN=-4.50 dB',
+    'REPLAYGAIN_ALBUM_GAIN=-7.00 dB',
+    'REPLAYGAIN_TRACK_PEAK=0.9876',
+    'REPLAYGAIN_ALBUM_PEAK=0.9567',
   ].map(value => flacComment(...value.split(/=(.*)/s).slice(0, 2)));
   const payload = Buffer.concat([u32le(vendor.length), vendor, u32le(comments.length), ...comments]);
   const blockHead = Buffer.from([0x84, (payload.length >> 16) & 0xff, (payload.length >> 8) & 0xff, payload.length & 0xff]);
@@ -72,6 +87,10 @@ test('reads native FLAC Vorbis-comment blocks without an Ogg packet marker', () 
   assert.equal(metadata.genre, 'Ambient');
   assert.equal(metadata.year, 2022);
   assert.equal(metadata.trackNumber, 3);
+  assert.equal(metadata.replayGainTrackDb, -4.5);
+  assert.equal(metadata.replayGainAlbumDb, -7);
+  assert.equal(metadata.replayGainTrackPeak, 0.9876);
+  assert.equal(metadata.replayGainAlbumPeak, 0.9567);
 });
 
 test('reads WAV format information and INFO tags', () => {
