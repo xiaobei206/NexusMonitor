@@ -31,13 +31,13 @@ Control files `ZIP-CONTENTS.md` and the source manifest are included in the ZIP;
 | `NexusMonitor-2.1.8-HANDOFF-CN.md` | 4580 |
 | `NexusMonitor-2.1.8-Windows-验收命令.txt` | 668 |
 | `NexusMonitor-2.2.0-BUILD-RELEASE.cjs` | 3050 |
-| `NexusMonitor-2.2.0-BUILD-REPORT.md` | 3721 |
-| `NexusMonitor-2.2.0-HANDOFF-CN.md` | 7151 |
+| `NexusMonitor-2.2.0-BUILD-REPORT.md` | 4493 |
+| `NexusMonitor-2.2.0-HANDOFF-CN.md` | 7251 |
 | `NexusMonitor-2.2.0-Windows-验收命令.txt` | 2930 |
-| `NexusMonitor-DEVELOPMENT-LOG-CN.md` | 36145 |
+| `NexusMonitor-DEVELOPMENT-LOG-CN.md` | 37069 |
 | `PROTOCOL_REFERENCE.md` | 7966 |
 | `README.md` | 9165 |
-| `START-HERE-NEXT-GPT.md` | 5241 |
+| `START-HERE-NEXT-GPT.md` | 5611 |
 | `VERSION` | 6 |
 | `build-and-run.bat` | 123 |
 | `build-only.bat` | 1989 |
@@ -104,7 +104,7 @@ Control files `ZIP-CONTENTS.md` and the source manifest are included in the ZIP;
 | `src/main/widget-docking.ts` | 6550 |
 | `src/main/window-layout.ts` | 1767 |
 | `src/preload/index.ts` | 9701 |
-| `src/renderer/App.tsx` | 156621 |
+| `src/renderer/App.tsx` | 156469 |
 | `src/renderer/aqi.ts` | 1065 |
 | `src/renderer/calendar-data.d.mts` | 868 |
 | `src/renderer/calendar-data.mjs` | 8043 |
@@ -133,7 +133,7 @@ Control files `ZIP-CONTENTS.md` and the source manifest are included in the ZIP;
 | `tests/gpu-clock-source.test.cjs` | 1369 |
 | `tests/hardware-inventory-config.test.cjs` | 1100 |
 | `tests/logger.test.cjs` | 1565 |
-| `tests/music-player-source.test.cjs` | 4124 |
+| `tests/music-player-source.test.cjs` | 5523 |
 | `tests/network-monitor-source.test.cjs` | 1306 |
 | `tests/network-scale-ui.test.cjs` | 908 |
 | `tests/power-summary.test.cjs` | 3469 |
