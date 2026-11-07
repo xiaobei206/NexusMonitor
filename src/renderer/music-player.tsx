@@ -391,6 +391,29 @@ export function MusicPlayerDock({ state, onCommand, onOpen }: {
   </div>;
 }
 
+type MusicLibraryView = 'songs' | 'albums' | 'artists' | 'genres' | 'folders';
+type MusicLibraryGroup = { id: string; title: string; subtitle: string; count: number; firstTrackId: string };
+function getMusicLibraryGroup(track: MusicTrack, view: MusicLibraryView): Omit<MusicLibraryGroup, 'count' | 'firstTrackId'> {
+  if (view === 'albums') {
+    const artist = track.artist || '未知艺术家';
+    const album = track.album?.trim() || '未知专辑';
+    return { id: `album:${artist.toLocaleLowerCase()}:${album.toLocaleLowerCase()}`, title: album, subtitle: artist };
+  }
+  if (view === 'artists') {
+    const artist = track.artist?.trim() || '未知艺术家';
+    return { id: `artist:${artist.toLocaleLowerCase()}`, title: artist, subtitle: '艺术家' };
+  }
+  if (view === 'genres') {
+    const genre = track.genre?.trim() || '未分类';
+    return { id: `genre:${genre.toLocaleLowerCase()}`, title: genre, subtitle: '流派' };
+  }
+  const normalized = track.path.replace(/\\/g, '/');
+  const parts = normalized.split('/');
+  parts.pop();
+  const folder = parts.join('/') || '/';
+  return { id: `folder:${folder.toLocaleLowerCase()}`, title: parts[parts.length - 1] || folder, subtitle: folder };
+}
+
 export function MusicLibraryPage({ state, onCommand, notify, settings, updateSettings, outputStatus }: {
   state: MusicState | null;
   onCommand: (command: MusicCommand) => void;
@@ -401,14 +424,51 @@ export function MusicLibraryPage({ state, onCommand, notify, settings, updateSet
 }) {
   const [query, setQuery] = useState('');
   const [targetPlaylist, setTargetPlaylist] = useState('');
+  const [view, setView] = useState<MusicLibraryView>('songs');
+  const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
   const currentPlaylist = state?.playlists.find(item => item.id === state.activePlaylistId) ?? null;
-  const visibleTracks = useMemo(() => {
+  const scopedTracks = useMemo(() => {
     if (!state) return [];
     const ids = currentPlaylist ? new Set(currentPlaylist.trackIds) : null;
+    return state.tracks.filter(track => !ids || ids.has(track.id));
+  }, [state, currentPlaylist]);
+  const groups = useMemo<MusicLibraryGroup[]>(() => {
+    if (view === 'songs') return [];
+    const map = new Map<string, MusicLibraryGroup>();
+    for (const track of scopedTracks) {
+      const identity = getMusicLibraryGroup(track, view);
+      const existing = map.get(identity.id);
+      if (existing) existing.count++;
+      else map.set(identity.id, { ...identity, count: 1, firstTrackId: track.id });
+    }
+    return [...map.values()].sort((a, b) => a.title.localeCompare(b.title, 'zh-CN', { numeric: true, sensitivity: 'base' }));
+  }, [scopedTracks, view]);
+  const selectedGroup = groups.find(group => group.id === selectedGroupId) ?? null;
+  const visibleGroups = useMemo(() => {
     const needle = query.trim().toLocaleLowerCase();
-    return state.tracks.filter(track => (!ids || ids.has(track.id)) && (!needle || `${track.title} ${track.artist} ${track.album ?? ''} ${track.genre ?? ''}`.toLocaleLowerCase().includes(needle)));
-  }, [state, currentPlaylist, query]);
+    return groups.filter(group => !needle || `${group.title} ${group.subtitle}`.toLocaleLowerCase().includes(needle));
+  }, [groups, query]);
+  const visibleTracks = useMemo(() => {
+    if (!state || (view !== 'songs' && !selectedGroupId)) return [];
+    const needle = query.trim().toLocaleLowerCase();
+    return scopedTracks.filter(track => {
+      if (selectedGroupId && getMusicLibraryGroup(track, view).id !== selectedGroupId) return false;
+      return !needle || `${track.title} ${track.artist} ${track.album ?? ''} ${track.genre ?? ''}`.toLocaleLowerCase().includes(needle);
+    });
+  }, [state, scopedTracks, view, selectedGroupId, query]);
 
+  const chooseView = (next: MusicLibraryView) => {
+    setView(next);
+    setSelectedGroupId(null);
+    setQuery('');
+    onCommand({ type: 'select-playlist', playlistId: null });
+  };
+  const choosePlaylist = (playlistId: string) => {
+    setView('songs');
+    setSelectedGroupId(null);
+    setQuery('');
+    onCommand({ type: 'select-playlist', playlistId });
+  };
   const importFiles = async () => {
     const result = await window.nexus.chooseMusicFiles();
     if (result.added || result.skipped) notify(`已导入 ${result.added} 个音频文件，跳过 ${result.skipped} 个文件`);
@@ -431,10 +491,14 @@ export function MusicLibraryPage({ state, onCommand, notify, settings, updateSet
     if (first) onCommand({ type: 'play-track', trackId: first.id });
     else notify('当前列表没有可播放的本地音频文件');
   };
+  const heading = currentPlaylist?.name ?? selectedGroup?.title ?? ({
+    songs: '全部歌曲', albums: '专辑', artists: '艺术家', genres: '流派', folders: '文件夹',
+  } as Record<MusicLibraryView, string>)[view];
+  const viewLabel = ({ songs: 'ALL TRACKS', albums: 'ALBUMS', artists: 'ARTISTS', genres: 'GENRES', folders: 'FOLDERS' } as Record<MusicLibraryView, string>)[view];
 
   return <div className="nm-library-page">
     <div className="nm-library-heading">
-      <div><span>MUSIC / LOCAL LIBRARY</span><h1>音乐播放器</h1><p>本地音频 · 标签与封面 · 歌单管理 · 全局共享播放</p></div>
+      <div><span>MUSIC / LOCAL LIBRARY</span><h1>音乐播放器</h1><p>曲库、专辑、艺术家、流派、文件夹与歌单 · 全局共享播放</p></div>
       <div className="nm-library-actions">
         <button type="button" className="btn-secondary" onClick={() => void importFolder()}><FolderOpen size={15}/>导入文件夹</button>
         <button type="button" className="btn-primary" onClick={() => void importFiles()}><Plus size={15}/>添加音频</button>
@@ -443,13 +507,25 @@ export function MusicLibraryPage({ state, onCommand, notify, settings, updateSet
     <MusicOutputDevicePicker settings={settings} updateSettings={updateSettings} status={outputStatus}/>
     <div className="nm-library-layout">
       <aside className="nm-playlist-sidebar">
-        <div className="nm-playlist-title"><b>音乐库</b><button type="button" title="新建歌单" onClick={createPlaylist}><Plus size={16}/></button></div>
-        <button type="button" className={!state?.activePlaylistId ? 'selected' : ''} onClick={() => onCommand({ type: 'select-playlist', playlistId: null })}>
+        <div className="nm-playlist-title"><b>浏览曲库</b><button type="button" title="新建歌单" onClick={createPlaylist}><Plus size={16}/></button></div>
+        <button type="button" className={view === 'songs' && !currentPlaylist ? 'selected' : ''} onClick={() => chooseView('songs')}>
           <Music2 size={16}/><span>全部歌曲</span><small>{state?.tracks.length ?? 0}</small>
         </button>
+        <button type="button" className={view === 'albums' ? 'selected' : ''} onClick={() => chooseView('albums')}>
+          <Disc3 size={16}/><span>专辑</span><small>{state?.tracks.filter(track => track.album).reduce((set, track) => set.add(track.album!), new Set<string>()).size ?? 0}</small>
+        </button>
+        <button type="button" className={view === 'artists' ? 'selected' : ''} onClick={() => chooseView('artists')}>
+          <Music2 size={16}/><span>艺术家</span><small>{state?.tracks.reduce((set, track) => set.add(track.artist || '未知艺术家'), new Set<string>()).size ?? 0}</small>
+        </button>
+        <button type="button" className={view === 'genres' ? 'selected' : ''} onClick={() => chooseView('genres')}>
+          <ListMusic size={16}/><span>流派</span><small>{state?.tracks.reduce((set, track) => set.add(track.genre || '未分类'), new Set<string>()).size ?? 0}</small>
+        </button>
+        <button type="button" className={view === 'folders' ? 'selected' : ''} onClick={() => chooseView('folders')}>
+          <Folder size={16}/><span>文件夹</span><small>{new Set((state?.tracks ?? []).map(track => getMusicLibraryGroup(track, 'folders').id)).size}</small>
+        </button>
         <div className="nm-playlist-divider">我的歌单</div>
-        {(state?.playlists ?? []).map(playlist => <button key={playlist.id} type="button" className={state?.activePlaylistId === playlist.id ? 'selected' : ''}
-          onClick={() => onCommand({ type: 'select-playlist', playlistId: playlist.id })}>
+        {(state?.playlists ?? []).map(playlist => <button key={playlist.id} type="button" className={currentPlaylist?.id === playlist.id && view === 'songs' ? 'selected' : ''}
+          onClick={() => choosePlaylist(playlist.id)}>
           <ListMusic size={15}/><span>{playlist.name}</span><small>{playlist.trackIds.length}</small>
         </button>)}
         {currentPlaylist && <div className="nm-playlist-management">
@@ -459,36 +535,45 @@ export function MusicLibraryPage({ state, onCommand, notify, settings, updateSet
       </aside>
       <section className="nm-track-panel">
         <div className="nm-track-toolbar">
-          <div><span>{currentPlaylist ? 'PLAYLIST' : 'ALL TRACKS'}</span><h2>{currentPlaylist?.name ?? '全部歌曲'}</h2><small>{visibleTracks.length} 首歌曲</small></div>
+          <div><span>{currentPlaylist ? 'PLAYLIST' : selectedGroup ? viewLabel : viewLabel}</span><h2>{heading}</h2><small>{view === 'songs' || selectedGroup ? `${visibleTracks.length} 首歌曲` : `${groups.length} 个分类`}</small></div>
           <div className="nm-track-actions">
-            <label className="nm-track-search"><Search size={15}/><input value={query} onChange={event => setQuery(event.target.value)} placeholder="搜索歌曲"/></label>
-            <button type="button" className="btn-primary" disabled={!visibleTracks.some(track => !track.missing)} onClick={playAll}><Play size={14}/>播放全部</button>
+            {selectedGroup && <button type="button" className="btn-secondary" onClick={() => setSelectedGroupId(null)}>返回{view === 'albums' ? '专辑' : view === 'artists' ? '艺术家' : view === 'genres' ? '流派' : '文件夹'}</button>}
+            <label className="nm-track-search"><Search size={15}/><input value={query} onChange={event => setQuery(event.target.value)} placeholder={view === 'songs' || selectedGroup ? '搜索歌曲' : '搜索分类'}/></label>
+            {(view === 'songs' || selectedGroup) && <button type="button" className="btn-primary" disabled={!visibleTracks.some(track => !track.missing)} onClick={playAll}><Play size={14}/>播放全部</button>}
           </div>
         </div>
-        {state?.playlists.length ? <div className="nm-add-playlist-row"><label>将歌曲加入歌单</label><select value={targetPlaylist} onChange={event => setTargetPlaylist(event.target.value)}><option value="">选择歌单</option>{state.playlists.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select><span>在“全部歌曲”中使用每首歌右侧的加入按钮。</span></div> : null}
-        <div className="nm-track-list">
-          <div className="nm-track-list-head"><span>#</span><span>歌曲</span><span>格式</span><span>操作</span></div>
-          {visibleTracks.length === 0 ? <div className="nm-library-empty"><Music2 size={28}/><b>{state?.tracks.length ? '没有匹配的歌曲' : '音乐库还是空的'}</b><span>导入本地音频文件或整个音乐文件夹，即可建立自己的歌单。</span></div> :
-            visibleTracks.map((track: MusicTrack, index) => <div key={track.id} className={`nm-track-row ${state?.currentTrackId === track.id ? 'playing' : ''} ${track.missing ? 'missing' : ''}`}
-              onDoubleClick={() => !track.missing && onCommand({ type: 'play-track', trackId: track.id })}>
-              <span className="nm-track-index">{state?.currentTrackId === track.id && state.isPlaying ? <span className="nm-playing-bars">▮▮</span> : String(index + 1).padStart(2, '0')}</span>
-              <span className="nm-track-name"><b>{track.title}</b><small>{track.missing ? '文件不存在或已移动' : track.artist}</small></span>
-              <span className="nm-track-format">{track.format ?? 'AUDIO'}</span>
-              <span className="nm-track-row-actions">
-                <button type="button" title="播放歌曲" disabled={track.missing} onClick={() => onCommand({ type: 'play-track', trackId: track.id })}><Play size={14}/></button>
-                {targetPlaylist && !currentPlaylist && <button type="button" title="加入所选歌单" onClick={() => onCommand({ type: 'add-to-playlist', trackId: track.id, playlistId: targetPlaylist })}><ListPlus size={15}/></button>}
-                {currentPlaylist && <>
-                  <button type="button" title="歌单中上移" disabled={currentPlaylist.trackIds.indexOf(track.id) <= 0} onClick={() => onCommand({ type: 'move-track', playlistId: currentPlaylist.id, trackId: track.id, direction: 'up' })}><ArrowUp size={14}/></button>
-                  <button type="button" title="歌单中下移" disabled={currentPlaylist.trackIds.indexOf(track.id) >= currentPlaylist.trackIds.length - 1} onClick={() => onCommand({ type: 'move-track', playlistId: currentPlaylist.id, trackId: track.id, direction: 'down' })}><ArrowDown size={14}/></button>
-                </>}
-                <button type="button" title={currentPlaylist ? "从当前歌单移除" : "从音乐库移除"} onClick={() => {
-                  const prompt = currentPlaylist ? `从歌单“${currentPlaylist.name}”移除“${track.title}”？音乐库中的原文件和歌曲记录会保留。` : `从音乐库移除“${track.title}”？不会删除原始文件。`;
-                  if (window.confirm(prompt)) onCommand(currentPlaylist ? { type: 'remove-from-playlist', playlistId: currentPlaylist.id, trackId: track.id } : { type: 'remove-track', trackId: track.id });
-                }}><Trash2 size={14}/></button>
-              </span>
-            </div>)
-          }
-        </div>
+        {view !== 'songs' && !selectedGroup ? <div className="nm-library-groups">
+          {visibleGroups.length === 0 ? <div className="nm-library-empty"><Music2 size={28}/><b>没有可显示的分类</b><span>导入带有标签的音乐，或检查歌曲文件夹。</span></div> :
+            visibleGroups.map(group => <button type="button" key={group.id} className="nm-library-group-card" onClick={() => { setSelectedGroupId(group.id); setQuery(''); }}>
+              <TrackArtwork trackId={group.firstTrackId} className="nm-library-group-art" fallback={<Disc3 size={24}/>} />
+              <span><b>{group.title}</b><small>{group.subtitle}</small></span><em>{group.count} 首</em>
+            </button>)}
+        </div> : <>
+          {state?.playlists.length && !currentPlaylist && view === 'songs' ? <div className="nm-add-playlist-row"><label>将歌曲加入歌单</label><select value={targetPlaylist} onChange={event => setTargetPlaylist(event.target.value)}><option value="">选择歌单</option>{state.playlists.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select><span>在“全部歌曲”中使用每首歌右侧的加入按钮。</span></div> : null}
+          <div className="nm-track-list">
+            <div className="nm-track-list-head"><span>#</span><span>歌曲</span><span>格式</span><span>操作</span></div>
+            {visibleTracks.length === 0 ? <div className="nm-library-empty"><Music2 size={28}/><b>{state?.tracks.length ? '没有匹配的歌曲' : '音乐库还是空的'}</b><span>导入本地音频文件或整个音乐文件夹，即可建立自己的歌单。</span></div> :
+              visibleTracks.map((track: MusicTrack, index) => <div key={track.id} className={`nm-track-row ${state?.currentTrackId === track.id ? 'playing' : ''} ${track.missing ? 'missing' : ''}`}
+                onDoubleClick={() => !track.missing && onCommand({ type: 'play-track', trackId: track.id })}>
+                <span className="nm-track-index">{state?.currentTrackId === track.id && state.isPlaying ? <span className="nm-playing-bars">▮▮</span> : String(index + 1).padStart(2, '0')}</span>
+                <span className="nm-track-name"><b>{track.title}</b><small>{track.missing ? '文件不存在或已移动' : [track.artist, track.album].filter(Boolean).join(' · ')}</small></span>
+                <span className="nm-track-format">{track.format ?? 'AUDIO'}</span>
+                <span className="nm-track-row-actions">
+                  <button type="button" title="播放歌曲" disabled={track.missing} onClick={() => onCommand({ type: 'play-track', trackId: track.id })}><Play size={14}/></button>
+                  {targetPlaylist && !currentPlaylist && view === 'songs' && <button type="button" title="加入所选歌单" onClick={() => onCommand({ type: 'add-to-playlist', trackId: track.id, playlistId: targetPlaylist })}><ListPlus size={15}/></button>}
+                  {currentPlaylist && <>
+                    <button type="button" title="歌单中上移" disabled={currentPlaylist.trackIds.indexOf(track.id) <= 0} onClick={() => onCommand({ type: 'move-track', playlistId: currentPlaylist.id, trackId: track.id, direction: 'up' })}><ArrowUp size={14}/></button>
+                    <button type="button" title="歌单中下移" disabled={currentPlaylist.trackIds.indexOf(track.id) >= currentPlaylist.trackIds.length - 1} onClick={() => onCommand({ type: 'move-track', playlistId: currentPlaylist.id, trackId: track.id, direction: 'down' })}><ArrowDown size={14}/></button>
+                  </>}
+                  <button type="button" title={currentPlaylist ? "从当前歌单移除" : "从音乐库移除"} onClick={() => {
+                    const prompt = currentPlaylist ? `从歌单“${currentPlaylist.name}”移除“${track.title}”？音乐库中的原文件和歌曲记录会保留。` : `从音乐库移除“${track.title}”？不会删除原始文件。`;
+                    if (window.confirm(prompt)) onCommand(currentPlaylist ? { type: 'remove-from-playlist', playlistId: currentPlaylist.id, trackId: track.id } : { type: 'remove-track', trackId: track.id });
+                  }}><Trash2 size={14}/></button>
+                </span>
+              </div>)
+            }
+          </div>
+        </>}
       </section>
     </div>
   </div>;
