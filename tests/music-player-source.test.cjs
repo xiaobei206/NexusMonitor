@@ -285,3 +285,15 @@ test('ten-band EQ exposes named presets without changing the flat default', () =
   assert.match(player, /低音增强/);
   assert.match(player, /高音增强/);
 });
+
+test('WASAPI negotiation accepts only probed device formats and strictly reports bit-perfect eligibility', () => {
+  const module = read('src/main/music-exclusive-format.ts');
+  const types = read('src/shared/types.ts');
+  const main = read('src/main/music-metadata.ts');
+  assert.match(module, /export function chooseExclusiveFormat/);
+  assert.match(module, /LOSSLESS_EXTENSIONS = new Set\(\['\.flac', '\.wav'\]\)/);
+  assert.match(module, /source\.channels === 2/);
+  assert.match(module, /sourceDepth != null/);
+  assert.match(main, /target\.channels \|\|= channels/);
+  assert.match(types, /channels\?: number \| null/);
+});
