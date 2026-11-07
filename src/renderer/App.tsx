@@ -35,6 +35,7 @@ const defaultSettings: AppSettings = {
   turingAutoBrightnessEnabled: false, turingDayBrightness: 70, turingNightBrightness: 25, turingDayStart: '08:00', turingNightStart: '20:00',
   musicOutputDeviceId: 'default', musicOutputDeviceLabel: '系统默认输出设备',
   musicEqBands: [0,0,0,0,0,0,0,0,0,0],
+  musicReplayGainEnabled: false, musicReplayGainMode: 'track',
   usbDisplayDisplayId: '', usbDisplayMode: 'monitor', usbDisplayImagePath: '', usbDisplayVideoPath: '', usbDisplayMediaFit: 'cover', shortcuts: [], compactMode: false,
   widgetVisibleMetrics: ['cpu','gpu','memory','storage','network','power','weather','sensors'], widgetSensorIds: [],
   widgetAlwaysOnTop: true, widgetPinned: false, widgetAutoHide: false, widgetSmartFullscreen: true,
@@ -56,6 +57,8 @@ function normalizeLoadedSettings(raw: Record<string, unknown>): { settings: AppS
       ...defaultSettings,
       ...raw,
       musicEqBands: Array.from({ length: 10 }, (_, index) => { const value = Number(rawMusicEqBands[index] ?? 0); return Number.isFinite(value) ? Math.max(-12, Math.min(12, value)) : 0; }),
+      musicReplayGainEnabled: raw.musicReplayGainEnabled === true,
+      musicReplayGainMode: raw.musicReplayGainMode === 'album' ? 'album' : 'track',
       // Settings files survive upgrades. Treat malformed or old values as absent
       // instead of letting one null array crash the entire React root on startup.
       selectedNetworks: Array.isArray(raw.selectedNetworks) ? raw.selectedNetworks.filter((id): id is string => typeof id === 'string') : [...defaultSettings.selectedNetworks],
