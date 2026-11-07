@@ -191,3 +191,26 @@ test('EQ stays flat by default, clamps persisted bands, and initializes processi
   assert.match(player, /filter\.Q\.value = 1\.4/);
   assert.match(player, /gain\.setTargetAtTime/);
 });
+
+test('ReplayGain is opt-in, selects track or album tags, and applies peak-safe gain in the shared graph', () => {
+  const app = read('src/renderer/App.tsx');
+  const player = read('src/renderer/music-player.tsx');
+  const main = read('src/main/index.ts');
+  const types = read('src/shared/types.ts');
+  assert.match(types, /replayGainTrackDb\?: number \| null/);
+  assert.match(types, /replayGainAlbumDb\?: number \| null/);
+  assert.match(types, /replayGainTrackPeak\?: number \| null/);
+  assert.match(types, /musicReplayGainEnabled\?: boolean/);
+  assert.match(app, /musicReplayGainEnabled: false/);
+  assert.match(app, /musicReplayGainMode: 'track'/);
+  assert.match(app, /currentMusicTrack\?\.replayGainAlbumDb/);
+  assert.match(app, /replayGainDb=\{replayGainDb\}/);
+  assert.match(main, /replayGainTrackDb: metadata\.replayGainTrackDb/);
+  assert.match(player, /function MusicReplayGainControls/);
+  assert.match(player, /读取文件内的 Track \/ Album Gain 与 Peak 标签/);
+  assert.match(player, /createGain\(\)/);
+  assert.match(player, /replayGainNodeRef\.current\?\.gain\.setTargetAtTime/);
+  assert.match(player, /const safeDb = Number\.isFinite\(peak\) && peak > 0/);
+  assert.match(player, /: 0;/);
+  assert.match(player, /replayGainAppliedDb = useMemo/);
+});
