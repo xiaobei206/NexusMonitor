@@ -271,3 +271,17 @@ test('M3U playlists import local paths into a new ordered playlist and export st
   assert.match(player, /导出 M3U8/);
   assert.match(playlist, /Playlists are intentionally local-only/);
 });
+
+test('ten-band EQ exposes named presets without changing the flat default', () => {
+  const app = read('src/renderer/App.tsx');
+  const player = read('src/renderer/music-player.tsx');
+  assert.match(app, /musicEqBands: \[0,0,0,0,0,0,0,0,0,0\]/);
+  for (const preset of ['rock', 'pop', 'vocal', 'classical', 'jazz', 'electronic', 'bass', 'treble']) {
+    assert.match(player, new RegExp(`^  ${preset}: \\{ label:`, 'm'));
+  }
+  assert.match(player, /selectedPreset = Object\.entries\(MUSIC_EQ_PRESETS\)/);
+  assert.match(player, /Object\.entries\(MUSIC_EQ_PRESETS\)\.map/);
+  assert.match(player, /自定义曲线/);
+  assert.match(player, /低音增强/);
+  assert.match(player, /高音增强/);
+});
