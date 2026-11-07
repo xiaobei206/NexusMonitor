@@ -745,8 +745,19 @@ function MainApp() {
     return null;
   };
 
+  const currentMusicTrack = music.state?.tracks.find(track => track.id === music.state?.currentTrackId) ?? null;
+  const replayGainMode = settings.musicReplayGainMode === 'album' ? 'album' : 'track';
+  const replayGainDb = settings.musicReplayGainEnabled
+    ? (replayGainMode === 'album'
+      ? currentMusicTrack?.replayGainAlbumDb ?? currentMusicTrack?.replayGainTrackDb
+      : currentMusicTrack?.replayGainTrackDb ?? currentMusicTrack?.replayGainAlbumDb) ?? null
+    : null;
+  const replayGainPeak = replayGainMode === 'album'
+    ? currentMusicTrack?.replayGainAlbumPeak ?? currentMusicTrack?.replayGainTrackPeak ?? null
+    : currentMusicTrack?.replayGainTrackPeak ?? currentMusicTrack?.replayGainAlbumPeak ?? null;
+
   return <div className={`app-shell theme-${themeClass}`} style={{'--accent':settings.accent,'--opacity':settings.opacity/100,...(settings.theme==='portrait'&&settings.backgroundDataUrl?{backgroundImage:`linear-gradient(90deg,rgba(8,13,20,.94),rgba(8,13,20,.79)),url(${settings.backgroundDataUrl})`,backgroundSize:'cover',backgroundPosition:'center'}:{})} as any}>
-    <MusicPlaybackRuntime state={music.state} outputDeviceId={settings.musicOutputDeviceId ?? 'default'} eqBands={settings.musicEqBands ?? [0,0,0,0,0,0,0,0,0,0]} onOutputStatus={setMusicOutputStatus}/>
+    <MusicPlaybackRuntime state={music.state} outputDeviceId={settings.musicOutputDeviceId ?? 'default'} eqBands={settings.musicEqBands ?? [0,0,0,0,0,0,0,0,0,0]} replayGainDb={replayGainDb} replayGainPeak={replayGainPeak} onOutputStatus={setMusicOutputStatus}/>
     <aside className="sidebar">
       <div className="app-brand"><div className="brand-emblem"><span>N</span><i/></div><div><strong>NEXUS<span>MONITOR</span></strong><small>HARDWARE INTELLIGENCE</small></div></div>
       <div className="sidebar-divider"/>
