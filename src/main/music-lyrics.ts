@@ -1,7 +1,5 @@
-export interface MusicLyricLine {
-  timeSeconds: number;
-  text: string;
-}
+import type { MusicLyricLine } from '../shared/types';
+export type { MusicLyricLine } from '../shared/types';
 
 const TIMESTAMP = /\[(\d{1,3}):([0-5]?\d)(?:[.:](\d{1,3}))?\]/g;
 
