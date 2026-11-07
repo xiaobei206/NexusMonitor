@@ -37,6 +37,13 @@ const api = {
   },
   getWeatherKeyStatus: (source: string) => ipcRenderer.invoke('app:weather-key-status', source),
   saveWeatherApiKey: (source: string, key: string) => ipcRenderer.invoke('app:save-weather-api-key', { source, key }),
+  getWeatherApiSecretStatus: (source: string) => ipcRenderer.invoke('app:weather-secret-status', source),
+  saveWeatherApiSecret: (source: string, secret: string) => ipcRenderer.invoke('app:save-weather-api-secret', { source, secret }),
+  getQWeatherStatus: () => ipcRenderer.invoke('app:qweather-status'),
+  generateQWeatherKeyPair: () => ipcRenderer.invoke('app:qweather-generate-keypair'),
+  saveQWeatherConfig: (config: {developerId:string;projectId:string;credentialId:string;apiHost:string}) => ipcRenderer.invoke('app:qweather-save-config', config),
+  testWeather: () => ipcRenderer.invoke('app:weather-test'),
+  copyText: (value: string) => ipcRenderer.invoke('app:copy-text', value),
   saveSettings: (settings: Record<string, unknown>) => ipcRenderer.invoke('app:save-settings', settings),
   onSettingsUpdated: (callback: (settings: Record<string, unknown>) => void) => {
     const listener = (_event: Electron.IpcRendererEvent, settings: Record<string, unknown>) => callback(settings);

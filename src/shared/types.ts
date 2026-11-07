@@ -24,7 +24,7 @@ export interface SystemSnapshot {
 }
 export interface WeatherHourSnapshot { time: string; temperature: number | null; precipitationProbability: number | null; weatherCode: number | null; }
 export interface WeatherDaySnapshot { date: string; maxTemperature: number | null; minTemperature: number | null; weatherCode: number | null; precipitationProbability: number | null; windSpeedMax: number | null; }
-export type WeatherSourceId = 'open-meteo' | 'qweather' | 'weatherapi' | 'openweather';
+export type WeatherSourceId = 'open-meteo' | 'qweather' | 'weathercn' | 'caiyun' | 'weatherapi' | 'openweather';
 export interface WeatherSnapshot {
   location: string; fetchedAt: string; temperature: number | null; apparentTemperature: number | null;
   humidity: number | null; windSpeed: number | null; windDirection: number | null; precipitation: number | null;
@@ -32,7 +32,7 @@ export interface WeatherSnapshot {
   ozone: number | null; no2: number | null; source: string;
   todayMaxTemperature?: number | null; todayMinTemperature?: number | null;
   precipitationProbability?: number | null; hourlyForecast?: WeatherHourSnapshot[] | null; dailyForecast?: WeatherDaySnapshot[] | null;
-  sunrise?: string | null; sunset?: string | null;
+  sunrise?: string | null; sunset?: string | null; aqiStandard?: 'US-EPA' | 'China-MEP' | string; attributionUrl?: string | null;
 }
 export interface ShortcutItem { id: string; title: string; target: string; kind: 'url' | 'file' | 'folder' | 'app'; icon?: string; }
 export interface AppSettings {
@@ -48,7 +48,7 @@ export interface AppSettings {
   turingWallpaperFile?: string; turingWallpaperDirectory?: string;
   turingWallpaperFit?: 'contain' | 'cover' | 'stretch'; turingWallpaperIntervalSeconds?: 30 | 60 | 90 | 120;
   shortcuts: ShortcutItem[]; compactMode: boolean;
-  widgetVisibleMetrics?: string[]; widgetSensorIds?: string[]; widgetAlwaysOnTop?: boolean; widgetPinned?: boolean; widgetAutoHide?: boolean; widgetSmartFullscreen?: boolean; widgetLastDisplayId?: number; widgetDisplayPositions?: Record<string, { x: number; y: number; dockEdge: 'left' | 'right' | 'top' | 'bottom' | null }>;  thresholds: { loadWarning: number; loadCritical: number; tempWarning: number; tempCritical: number }; launchAtLogin?: boolean; minimizeToTray?: boolean;
+  widgetVisibleMetrics?: string[]; widgetSensorIds?: string[]; widgetAlwaysOnTop?: boolean; widgetPinned?: boolean; widgetAutoHide?: boolean; widgetSmartFullscreen?: boolean; widgetLastDisplayId?: number; widgetDisplayPositions?: Record<string, { x: number; y: number; width?: number; height?: number; dockEdge: 'left' | 'right' | 'top' | 'bottom' | null }>;  thresholds: { loadWarning: number; loadCritical: number; tempWarning: number; tempCritical: number }; launchAtLogin?: boolean; minimizeToTray?: boolean;
 }
 export interface TuringStatus {
   connected: boolean; port: string | null; deviceFound: boolean; message: string; orientation: number; brightness: number;

@@ -220,7 +220,7 @@ function WidgetView({ snapshot, settings, history, weather, detailOnly = false, 
   const disks = snapshot?.disks ?? [];
   const disk = selectTuringDisk(snapshot);
   const systemVolume = getSystemVolume(snapshot);
-  const aqiPresentation = getAqiPresentation(weather?.aqi);
+  const aqiPresentation = getAqiPresentation(weather?.aqi, weather?.aqiStandard);
   const networks = selectNetworkInterfaces(snapshot, settings.selectedNetworks);
   const rx = networks.length ? networks.reduce((total, network) => total + network.rxBytesPerSec, 0) : null;
   const tx = networks.length ? networks.reduce((total, network) => total + network.txBytesPerSec, 0) : null;
@@ -581,7 +581,7 @@ function WidgetView({ snapshot, settings, history, weather, detailOnly = false, 
           </> : <>
             {(weather?.hourlyForecast ?? []).slice(0,3).length > 0 && <div className="widget-weather-forecast">{(weather?.hourlyForecast ?? []).slice(0,3).map((hour,index)=><div key={`${hour.time}-${index}`}><small>{new Date(hour.time).toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'})}</small><b>{weatherGlyph(hour.weatherCode)} {fmt(hour.temperature,0)}°</b><span>降水 {fmt(hour.precipitationProbability,0)}%</span></div>)}</div>}
           </>}
-          <div className="widget-detail-foot">天气来源：{weather?.source ?? settings.weatherSource ?? 'Open-Meteo'}。</div>
+          <div className="widget-detail-foot">天气来源：{weather?.source ?? settings.weatherSource ?? 'Open-Meteo'}。{weather?.attributionUrl && <button className="btn-quiet" onClick={()=>void window.nexus.openUrl(weather.attributionUrl)}>数据来源声明</button>}</div>
         </article>}
         {showWidgetMetric('sensors') && selectedSensors.length > 0 && <article className="widget-detail-card widget-custom-sensors">
           <div className="widget-detail-title"><div><span>08 / CUSTOM SENSORS</span><b>自选硬件传感器</b></div><strong>{selectedSensors.length}</strong></div>
@@ -741,7 +741,7 @@ function MainApp() {
   const gpuLoadColor = thresholdColor(gpu?.load, thresholds.loadWarning, thresholds.loadCritical, '#a58bff');
   const gpuTempColor = thresholdColor(gpu?.temperature, thresholds.tempWarning, thresholds.tempCritical, '#a58bff');
   const visible = (id: string) => settings.visibleMetrics.includes(id);
-  const aqiPresentation = getAqiPresentation(weather?.aqi);
+  const aqiPresentation = getAqiPresentation(weather?.aqi, weather?.aqiStandard);
   const renderHeroMetric = (id: string): ReactNode => {
     if (!visible(id)) return null;
     if (id === 'cpu') return <article key={id} className="hero-card cpu-hero"><div className="hero-card-top"><div><span className="card-kicker">01 / PROCESSOR</span><h2>中央处理器</h2><p>{cpu?.name || 'CPU SENSOR · WAITING'}</p></div><div className="hero-chip"><Cpu size={15}/> INTEL CORE</div></div><div className="hero-core"><Ring value={cpu?.load ?? null} color={cpuLoadColor} label="CPU LOAD" size={138}/><div className="hero-stats"><div><span>温度</span><b style={{color:cpuTempColor}}>{fmt(cpu?.temperature)}<small>°C</small></b></div><div><span>频率{cpu?.clockSource==='WindowsPerformanceEstimate'?' · 估算':''}</span><b title={cpu?.clockSource==='WindowsPerformanceEstimate'?'根据 Windows 活跃逻辑处理器性能计数器估算，不是直接硬件测量':''}>{cpu?.clockMHz==null?'—':`${cpu.clockSource==='WindowsPerformanceEstimate'?'~':''}${(cpu.clockMHz/1000).toFixed(2)}`}<small>GHz</small></b></div><div><span>功耗</span><b>{fmt(cpu?.powerW)}<small>W</small></b></div></div></div><div className="hero-chart"><div className="chart-label"><span>PROCESSOR LOAD HISTORY</span><b>60 S</b></div><Sparkline values={history.cpu} color="#66ddf2" height={64} fill/></div><div className="hero-bottom"><span><i className="legend-dot cyan"/> CPU PACKAGE</span><span>{cpu?.cores?.length ?? '—'} LOGICAL SENSORS</span></div></article>;
@@ -752,7 +752,7 @@ function MainApp() {
     if (!visible(id)) return null;
     if (id === 'memory') return <MetricCard key={id} title="物理内存" eyebrow="MEMORY / RAM" value={snapshot?.memory.percent ?? null} unit="%" detail={`${bytes(snapshot?.memory.usedBytes)} / ${bytes(snapshot?.memory.totalBytes)}`} color="#a58bff" icon={MemoryStick} history={history.memory} footer={<><span>可用 {bytes(snapshot?.memory.availableBytes)}</span><span>物理内存</span></>}/>;
     if (id === 'network') return <MetricCard key={id} title="网络吞吐" eyebrow="NETWORK / I/O" value={null} unit="" detail="双向实时流量" color="#5bd6aa" icon={Network} history={history.network} footer={<><span>↓ {rate(selectedNetworks.reduce((a,n)=>a+n.rxBytesPerSec,0))}</span><span>↑ {rate(selectedNetworks.reduce((a,n)=>a+n.txBytesPerSec,0))}</span></>}/>;
-    if (id === 'weather') return <article key={id} className="metric-card weather-card" style={{'--metric-accent':'#80b8ff'} as any}><div className="metric-top"><div className="metric-icon"><CloudSun size={17}/></div><div className="metric-heading"><span>SUZHOU / LOCAL WEATHER</span><strong>苏州 · {settings.weatherLocation==='wujiang'?'吴江':'市区'}</strong></div><button className="icon-quiet" onClick={()=>notify('天气每 15 分钟自动更新')}><MoreHorizontal size={17}/></button></div><div className="weather-main"><div><strong>{fmt(weather?.temperature,0)}<small>°C</small></strong><span>{weatherText(weather?.weatherCode)}</span></div><div className="weather-icon weather-glyph-main" aria-hidden="true">{weatherGlyph(weather?.weatherCode)}</div></div><div className="weather-details"><span><Thermometer size={13}/>体感 {fmt(weather?.apparentTemperature,0)}°</span><span><Activity size={13}/>湿度 {fmt(weather?.humidity,0)}%</span><span><WindIcon/>风速 {fmt(weather?.windSpeed,0)} km/h</span></div><div className="aqi-line"><span>US AIR QUALITY INDEX</span><b className="aqi-reading" style={{color:aqiPresentation.textColor}}><span style={{color:aqiPresentation.textColor}}>AQI</span> {weather?.aqi == null ? '—' : Math.round(weather.aqi)} <small style={{color:aqiPresentation.textColor}}>{aqiPresentation.label}</small></b><span>PM2.5 {fmt(weather?.pm25,0)} μg/m³</span></div></article>;
+    if (id === 'weather') return <article key={id} className="metric-card weather-card" style={{'--metric-accent':'#80b8ff'} as any}><div className="metric-top"><div className="metric-icon"><CloudSun size={17}/></div><div className="metric-heading"><span>SUZHOU / LOCAL WEATHER</span><strong>苏州 · {settings.weatherLocation==='wujiang'?'吴江':'市区'}</strong></div><button className="icon-quiet" onClick={()=>notify('天气每 15 分钟自动更新')}><MoreHorizontal size={17}/></button></div><div className="weather-main"><div><strong>{fmt(weather?.temperature,0)}<small>°C</small></strong><span>{weatherText(weather?.weatherCode)}</span></div><div className="weather-icon weather-glyph-main" aria-hidden="true">{weatherGlyph(weather?.weatherCode)}</div></div><div className="weather-details"><span><Thermometer size={13}/>体感 {fmt(weather?.apparentTemperature,0)}°</span><span><Activity size={13}/>湿度 {fmt(weather?.humidity,0)}%</span><span><WindIcon/>风速 {fmt(weather?.windSpeed,0)} km/h</span></div><div className="aqi-line"><span>{weather?.aqiStandard === 'China-MEP' ? 'CHINA AQI INDEX' : 'US AIR QUALITY INDEX'}</span><b className="aqi-reading" style={{color:aqiPresentation.textColor}}><span style={{color:aqiPresentation.textColor}}>AQI</span> {weather?.aqi == null ? '—' : Math.round(weather.aqi)} <small style={{color:aqiPresentation.textColor}}>{aqiPresentation.label}</small></b><span>PM2.5 {fmt(weather?.pm25,0)} μg/m³</span></div></article>;
     return null;
   };
 
@@ -775,7 +775,7 @@ function MainApp() {
       {['监控中心','设备输出','个性化','扩展管理','管理'].map(group => <div className="nav-group" key={group}><div className="nav-group-title">{group}</div>{navItems.filter(n=>n.group===group).map(item=>{
         const Icon=item.icon; return <button key={item.id} className={`nav-item ${page===item.id?'active':''}`} onClick={()=>setPage(item.id)}><Icon size={17}/><span>{item.label}</span>{page===item.id&&<i/>}</button>;
       })}</div>)}
-      <div className="sidebar-bottom"><div className={`service-chip ${serviceState==='online'?'online':'offline'}`}><span className="pulse-dot"/><div><b>{serviceStatus.phase==='degraded'?'服务响应超时':serviceState==='online'?'本机服务在线':'等待硬件服务'}</b><small>{serviceState==='online'?'LOCAL TELEMETRY':serviceStatus.phase==='restarting'?'RESTARTING':'LOCALHOST :18765'}</small></div></div><div className="sidebar-footer"><span>NEXUS MONITOR</span><span>2.2.5</span></div></div>
+      <div className="sidebar-bottom"><div className={`service-chip ${serviceState==='online'?'online':'offline'}`}><span className="pulse-dot"/><div><b>{serviceStatus.phase==='degraded'?'服务响应超时':serviceState==='online'?'本机服务在线':'等待硬件服务'}</b><small>{serviceState==='online'?'LOCAL TELEMETRY':serviceStatus.phase==='restarting'?'RESTARTING':'LOCALHOST :18765'}</small></div></div><div className="sidebar-footer"><span>NEXUS MONITOR</span><span>2.2.6</span></div></div>
     </aside>
 
     <main className="main-area">
@@ -1278,9 +1278,9 @@ function UsbDisplayOutput(){
   const number=(value:any,digits=0)=>value==null||!Number.isFinite(Number(value))?'—':Number(value).toFixed(digits);
   const prettyBytes=(value:number)=>{if(!Number.isFinite(value))return'—';const unit=['B','KB','MB','GB','TB'];let i=0,n=value;while(n>=1024&&i<4){n/=1024;i++;}return `${n.toFixed(i>=2?1:0)} ${unit[i]}`;};
   const pctColor=(v:any)=>Number(v)>=90?'#ff5f6d':Number(v)>=75?'#ffbf5b':'#50e3a4';
-  const aqi=getAqiPresentation(weather?.aqi);
+  const aqi=getAqiPresentation(weather?.aqi, weather?.aqiStandard);
   const monitor=<div className="usb-output-monitor usb-output-monitor-v2"><div className="usb-monitor-grid"/><header><div><strong>NEXUS<span>MONITOR</span></strong><small>USB SECONDARY DISPLAY · 960 × 540</small></div><div className="usb-monitor-clock">{now.toLocaleTimeString('zh-CN',{hour12:false})}</div></header><section className="usb-monitor-top"><article className="usb-main-metric cpu"><div className="usb-metric-title"><span>CPU</span><i>PROCESSOR</i></div><div className="usb-metric-core"><BigRing value={cpu.load} color={pctColor(cpu.load)} label="LOAD"/></div><div className="usb-metric-readings"><b>{number(cpu.temperature)}<small>°C</small></b><b>{number(cpu.powerW)}<small> W</small></b><span>{cpu.name||'CPU'}</span></div><MiniAreaChart values={samples.map(v=>v.cpu)} color="#52d5a2"/></article><article className="usb-main-metric gpu"><div className="usb-metric-title"><span>GPU</span><i>GRAPHICS</i></div><div className="usb-metric-core"><BigRing value={gpu.load} color={pctColor(gpu.load)} label="LOAD"/></div><div className="usb-metric-readings"><b>{number(gpu.temperature)}<small>°C</small></b><b>{number(gpu.powerW)}<small> W</small></b><span>{gpu.name||'GPU'}</span></div><MiniAreaChart values={samples.map(v=>v.gpu)} color="#62a8ff"/></article></section><section className="usb-monitor-bottom"><article><div className="usb-stat-head"><span>MEMORY</span><b>{number(memory.percent)}%</b></div><div className="usb-bar"><i style={{width:`${Math.max(0,Math.min(100,Number(memory.percent)||0))}%`,background:pctColor(memory.percent)}}/></div><div className="usb-stat-foot"><span>{prettyBytes(memory.usedBytes)}</span><span>{prettyBytes(memory.totalBytes)}</span></div></article><article><div className="usb-stat-head"><span>NETWORK</span><b>↓ {prettyBytes(rx)}/s</b></div><MiniAreaChart values={samples.map(v=>v.rx)} color="#e5b65b" height={42}/><div className="usb-stat-foot"><span>UPLOAD ↑ {prettyBytes(tx)}/s</span><span>{snapshot?.networks?.find((n:any)=>n.isDefaultRoute&&n.status==='Up')?.name||'AUTO'}</span></div></article><article><div className="usb-stat-head"><span>STORAGE</span><b>{number(disk.temperature)}°C</b></div><div className="usb-bar"><i style={{width:`${Math.max(6,Math.min(100,Number(disk.load)||0))}%`,background:'#b26eff'}}/></div><div className="usb-stat-foot"><span>{disk.model||'Primary disk'}</span><span>{number(disk.load)}% ACTIVE</span></div></article></section><footer><span>{cpu.name||'CPU'} · {gpu.name||'GPU'}</span><span>更新 {snapshot?.timestamp?new Date(snapshot.timestamp).toLocaleTimeString('zh-CN',{hour12:false}):'—'}</span></footer></div>;
-  const weatherView=<div className="usb-output-weather usb-output-weather-v2"><div className="usb-weather-grid"/><header><div><span>{weather?.location??'LOCAL WEATHER'}</span><small>WEATHER / AIR QUALITY</small></div><div className="usb-weather-time">{now.toLocaleTimeString('zh-CN',{hour12:false})}</div></header><section className="usb-weather-main"><div className="usb-weather-temp">{number(weather?.temperature)}<em>°C</em></div><div className="usb-weather-summary"><strong>{weatherText(weather?.weatherCode)}</strong><span>体感 {number(weather?.apparentTemperature)}° · 湿度 {number(weather?.humidity)}% · 风速 {number(weather?.windSpeed)} km/h</span></div><div className="usb-aqi-badge" style={{borderColor:aqi.color,boxShadow:`0 0 24px ${aqi.color}22`}}><small>US AQI</small><strong style={{color:aqi.textColor}}>{aqi.label==='—'?'—':number(weather?.aqi)}</strong><span style={{color:aqi.textColor}}>{aqi.level}</span></div></section><section className="usb-weather-details"><article><b>{number(weather?.pm25)}</b><span>PM2.5 µg/m³</span></article><article><b>{number(weather?.pm10)}</b><span>PM10 µg/m³</span></article><article><b>{number(weather?.todayMaxTemperature)}° / {number(weather?.todayMinTemperature)}°</b><span>今日最高 / 最低</span></article><article><b>{number(weather?.precipitationProbability)}%</b><span>降水概率</span></article></section><footer><span>{now.toLocaleDateString('zh-CN',{year:'numeric',month:'long',day:'numeric',weekday:'long'})}</span><span>数据源 {weather?.source||'—'}</span></footer></div>;
+  const weatherView=<div className="usb-output-weather usb-output-weather-v2"><div className="usb-weather-grid"/><header><div><span>{weather?.location??'LOCAL WEATHER'}</span><small>WEATHER / AIR QUALITY</small></div><div className="usb-weather-time">{now.toLocaleTimeString('zh-CN',{hour12:false})}</div></header><section className="usb-weather-main"><div className="usb-weather-temp">{number(weather?.temperature)}<em>°C</em></div><div className="usb-weather-summary"><strong>{weatherText(weather?.weatherCode)}</strong><span>体感 {number(weather?.apparentTemperature)}° · 湿度 {number(weather?.humidity)}% · 风速 {number(weather?.windSpeed)} km/h</span></div><div className="usb-aqi-badge" style={{borderColor:aqi.color,boxShadow:`0 0 24px ${aqi.color}22`}}><small>{weather?.aqiStandard === 'China-MEP' ? 'CN AQI' : 'US AQI'}</small><strong style={{color:aqi.textColor}}>{aqi.label==='—'?'—':number(weather?.aqi)}</strong><span style={{color:aqi.textColor}}>{aqi.level}</span></div></section><section className="usb-weather-details"><article><b>{number(weather?.pm25)}</b><span>PM2.5 µg/m³</span></article><article><b>{number(weather?.pm10)}</b><span>PM10 µg/m³</span></article><article><b>{number(weather?.todayMaxTemperature)}° / {number(weather?.todayMinTemperature)}°</b><span>今日最高 / 最低</span></article><article><b>{number(weather?.precipitationProbability)}%</b><span>降水概率</span></article></section><footer><span>{now.toLocaleDateString('zh-CN',{year:'numeric',month:'long',day:'numeric',weekday:'long'})}</span><span>数据源 {weather?.source||'—'}</span></footer></div>;
   const portraitMedia=settings.usbDisplayMediaOrientation==='portrait';
   return <main className="usb-output-root">{mode==='monitor'?monitor:null}{(mode==='static'||mode==='gif')&&(mediaSource?<img className={`usb-output-media ${settings.usbDisplayMediaFit==='contain'?'contain':'cover'} ${portraitMedia?'portrait':''}`} src={mediaSource}/>:<div className="usb-output-empty">{mode==='gif'?'请选择 GIF 壁纸':'请选择静态壁纸'}</div>)}{mode==='video'&&(mediaSource?<video className={`usb-output-video ${portraitMedia?'portrait':''}`} src={mediaSource} autoPlay loop muted controls/>:<div className="usb-output-empty">请选择本地视频</div>)}{mode==='weather-clock'?weatherView:null}{mode!=='video'&&<div className="usb-output-music"><MusicMiniPlayer state={music.state} onCommand={music.command}/></div>}</main>;
 }
@@ -1328,22 +1328,96 @@ function PluginsPage({notify}:any){
 function SettingsPage({settings,updateSettings,notify}:any){
   const weatherSource = settings.weatherSource ?? 'open-meteo';
   const weatherSourceNote = weatherSource === 'open-meteo'
-    ? 'Open-Meteo 无需密钥；天气预报与 AQI 独立获取。'
+    ? 'Open-Meteo 无需密钥；天气预报与空气质量独立获取。'
     : weatherSource === 'qweather'
-      ? '当前适配的是 QWeather 旧版 V7：天气预报暂时可用，但 V7 空气质量接口已于 2026-06-01 停止；天气 V7 计划于 2027-06-01 停止。当前不会显示该源的 AQI。'
-      : weatherSource === 'weatherapi'
-        ? '需要支持至少 4 天预报的套餐，才能显示“今天以外的未来 3 天”。可显示 PM2.5 等污染物，但不把其 1–6 级空气质量类别冒充数值 AQI。'
-        : '需要开通 OpenWeather One Call 3.0。空气污染接口提供污染物浓度；其 AQI 是 1–5 级别，不作为 0–500 数值 AQI 显示。';
+      ? '新版 QWeather V1：本机 Ed25519 私钥自动签发 JWT；当前天气、240 小时逐小时、7 天逐日和实时空气质量。'
+      : weatherSource === 'weathercn'
+        ? '华风爱科标准 API：实况、24 小时逐小时、10 天逐日和中国国标 AQI。标准测试 Key 每日 500 次、5 QPS；Location Key 缓存 24 小时以控制调用量。'
+        : weatherSource === 'caiyun'
+          ? '彩云天气 V2.6：App Key + App Secret 签名认证；综合接口一次获取实况、小时/逐日预报和空气质量。'
+          : weatherSource === 'weatherapi'
+            ? '需要支持至少 4 天预报的套餐，才能显示“今天以外的未来 3 天”。PM2.5 等污染物可用，但不把其 1–6 级空气质量类别冒充数值 AQI。'
+            : '需要开通 OpenWeather One Call 3.0 权限。空气污染接口提供污染物浓度；其 AQI 是 1–5 级别，不作为 0–500 数值 AQI 显示。';
   const [weatherApiKey,setWeatherApiKey] = useState('');
   const [weatherKeyConfigured,setWeatherKeyConfigured] = useState(Boolean(settings.weatherApiKeyConfigured?.[weatherSource]));
+  const [weatherApiSecret,setWeatherApiSecret] = useState('');
+  const [weatherSecretConfigured,setWeatherSecretConfigured] = useState(false);
+  const [qweatherConfig,setQweatherConfig] = useState({
+    developerId: String(settings.qweatherConfig?.developerId ?? ''),
+    projectId: String(settings.qweatherConfig?.projectId ?? ''),
+    credentialId: String(settings.qweatherConfig?.credentialId ?? ''),
+    apiHost: String(settings.qweatherConfig?.apiHost ?? ''),
+  });
+  const [qweatherSetup,setQweatherSetup] = useState({configured:false,hasPrivateKey:false,publicKey:'',fingerprint:''});
+  const [weatherBusy,setWeatherBusy] = useState(false);
   useEffect(() => {
     setWeatherApiKey('');
+    setWeatherApiSecret('');
     void window.nexus.getWeatherKeyStatus(weatherSource).then(result => setWeatherKeyConfigured(Boolean(result?.configured))).catch(() => setWeatherKeyConfigured(false));
+    if (weatherSource === 'caiyun') {
+      void window.nexus.getWeatherApiSecretStatus('caiyun').then(result => setWeatherSecretConfigured(Boolean(result?.configured))).catch(() => setWeatherSecretConfigured(false));
+    } else setWeatherSecretConfigured(false);
+    if (weatherSource === 'qweather') {
+      void window.nexus.getQWeatherStatus().then(result => {
+        setQweatherSetup({configured:Boolean(result?.configured),hasPrivateKey:Boolean(result?.hasPrivateKey),publicKey:result?.publicKey ?? '',fingerprint:result?.fingerprint ?? ''});
+        setQweatherConfig(result?.config ?? {developerId:'',projectId:'',credentialId:'',apiHost:''});
+      }).catch(() => setQweatherSetup({configured:false,hasPrivateKey:false,publicKey:'',fingerprint:''}));
+    }
   }, [weatherSource]);
-  const saveWeatherKey = async () => {
+  const saveWeatherCredentials = async () => {
+    if (weatherSource === 'caiyun') {
+      if (weatherApiKey.trim()) {
+        const keyResult = await window.nexus.saveWeatherApiKey('caiyun', weatherApiKey);
+        if (!keyResult?.ok) { notify('App Key 保存失败：' + (keyResult?.message ?? '未知错误')); return; }
+        setWeatherKeyConfigured(Boolean(keyResult.configured));
+        setWeatherApiKey('');
+      }
+      if (weatherApiSecret.trim()) {
+        const secretResult = await window.nexus.saveWeatherApiSecret('caiyun', weatherApiSecret);
+        if (!secretResult?.ok) { notify('App Secret 保存失败：' + (secretResult?.message ?? '未知错误')); return; }
+        setWeatherSecretConfigured(Boolean(secretResult.configured));
+        setWeatherApiSecret('');
+      }
+      notify('彩云凭据已在本机加密保存');
+      return;
+    }
     const result = await window.nexus.saveWeatherApiKey(weatherSource, weatherApiKey);
-    if (result?.ok) { setWeatherKeyConfigured(Boolean(result.configured)); setWeatherApiKey(''); notify(result.configured ? '天气 API Key 已加密保存' : '天气 API Key 已清除'); }
-    else notify('保存密钥失败：' + (result?.message ?? '未知错误'));
+    if (result?.ok) {
+      setWeatherKeyConfigured(Boolean(result.configured));
+      setWeatherApiKey('');
+      notify('天气 API Key 已加密保存');
+    } else notify('保存密钥失败：' + (result?.message ?? '未知错误'));
+  };
+  const generateQweatherKey = async () => {
+    setWeatherBusy(true);
+    try {
+      const result = await window.nexus.generateQWeatherKeyPair();
+      if (result?.ok) {
+        setQweatherSetup(current => ({...current,hasPrivateKey:true,publicKey:result.publicKey ?? '',fingerprint:result.fingerprint ?? ''}));
+        notify('Ed25519 密钥对已在本机生成，私钥已加密保存');
+      } else notify('密钥生成失败：' + (result?.message ?? '未知错误'));
+    } catch (error) { notify('密钥生成失败：' + String(error)); }
+    finally { setWeatherBusy(false); }
+  };
+  const saveQweather = async () => {
+    setWeatherBusy(true);
+    try {
+      const result = await window.nexus.saveQWeatherConfig(qweatherConfig);
+      if (result?.ok) {
+        setQweatherSetup(current => ({...current,configured:Boolean(result.configured)}));
+        setWeatherKeyConfigured(Boolean(result.configured));
+        notify('和风天气 JWT 配置已保存');
+      } else notify('配置未保存：' + (result?.message ?? '未知错误'));
+    } catch (error) { notify('配置保存失败：' + String(error)); }
+    finally { setWeatherBusy(false); }
+  };
+  const testWeatherProvider = async () => {
+    setWeatherBusy(true);
+    try {
+      const result = await window.nexus.testWeather();
+      notify(result?.ok ? '天气 API 连接成功：' + (result.source ?? '') : '天气 API 测试失败：' + (result?.message ?? '请检查凭据与服务商权限'));
+    } catch (error) { notify('天气 API 测试失败：' + String(error)); }
+    finally { setWeatherBusy(false); }
   };
   const widgetOptions = [
     ['cpu','CPU 处理器'],['gpu','GPU 显卡'],['memory','物理内存'],
@@ -1370,17 +1444,44 @@ function SettingsPage({settings,updateSettings,notify}:any){
         <label className="field-label">天气区域</label><div className="segmented"><button className={settings.weatherLocation==='suzhou'?'selected':''} onClick={()=>updateSettings({weatherLocation:'suzhou'})}>苏州市区</button><button className={settings.weatherLocation==='wujiang'?'selected':''} onClick={()=>updateSettings({weatherLocation:'wujiang'})}>吴江区</button></div>
         <label className="field-label">天气数据来源</label>
         <select className="select-input" value={weatherSource} onChange={e=>updateSettings({weatherSource:e.target.value as AppSettings['weatherSource']})}>
-          <option value="open-meteo">Open-Meteo（无需 API Key）</option>
-          <option value="qweather">QWeather（旧版 V7，需 API Key）</option>
+          <option value="open-meteo">Open-Meteo（免费免密）</option>
+          <option value="qweather">和风天气 QWeather V1（JWT）</option>
+          <option value="weathercn">华风爱科 WeatherCN（API Key）</option>
+          <option value="caiyun">彩云天气 V2.6（App Key + Secret）</option>
           <option value="weatherapi">WeatherAPI（需 API Key / 4 天预报套餐）</option>
           <option value="openweather">OpenWeather（需 One Call 3.0 权限）</option>
         </select>
-        {weatherSource !== 'open-meteo' && <div className="weather-api-key-panel">
+        {['weathercn','weatherapi','openweather'].includes(weatherSource) && <div className="weather-api-key-panel">
           <div className="weather-key-status"><span>{weatherKeyConfigured ? '已保存加密密钥' : '尚未配置 API Key'}</span><small>仅保存在本机 Windows 安全存储中</small></div>
-          <input className="text-input" type="password" autoComplete="off" value={weatherApiKey} onChange={e=>setWeatherApiKey(e.target.value)} placeholder={weatherKeyConfigured ? '输入新 Key 可替换；留空不修改' : '粘贴该服务提供的 API Key'} />
-          <div className="setting-actions"><button className="btn-secondary" disabled={!weatherApiKey.trim()} onClick={()=>void saveWeatherKey()}>保存 API Key</button>{weatherKeyConfigured&&<button className="btn-quiet" onClick={()=>{setWeatherApiKey('');void window.nexus.saveWeatherApiKey(weatherSource,'').then(result=>{setWeatherKeyConfigured(false);notify(result?.ok?'API Key 已清除':'清除失败')})}}>清除密钥</button>}</div>
+          <input className="text-input" type="password" autoComplete="off" value={weatherApiKey} onChange={e=>setWeatherApiKey(e.target.value)} placeholder={weatherKeyConfigured ? '输入新 Key 可替换' : '粘贴该服务提供的 API Key'} />
+          <div className="setting-actions"><button className="btn-secondary" disabled={!weatherApiKey.trim()} onClick={()=>void saveWeatherCredentials()}>保存 API Key</button>{weatherKeyConfigured&&<button className="btn-quiet" onClick={()=>{setWeatherApiKey('');void window.nexus.saveWeatherApiKey(weatherSource,'').then(result=>{setWeatherKeyConfigured(false);notify(result?.ok?'API Key 已清除':'清除失败')})}}>清除密钥</button>}</div>
         </div>}
-        <div className="setting-note"><CloudSun size={15}/><span>{weatherSourceNote} {weatherSource !== 'open-meteo' && '密钥使用 Electron safeStorage 加密保存，不会写入明文设置文件。'}天气约每 15 分钟更新。</span></div>
+        {weatherSource === 'caiyun' && <div className="weather-api-key-panel">
+          <div className="weather-key-status"><span>{weatherKeyConfigured && weatherSecretConfigured ? 'App Key / Secret 均已加密保存' : '需要一组 App Key + App Secret'}</span><small>彩云 V2.6 签名认证；两项只保存在本机 Windows 安全存储</small></div>
+          <label className="field-label">App Key</label>
+          <input className="text-input" type="password" autoComplete="off" value={weatherApiKey} onChange={e=>setWeatherApiKey(e.target.value)} placeholder={weatherKeyConfigured ? '留空保留现有 App Key' : '粘贴彩云 App Key'} />
+          <label className="field-label">App Secret</label>
+          <input className="text-input" type="password" autoComplete="off" value={weatherApiSecret} onChange={e=>setWeatherApiSecret(e.target.value)} placeholder={weatherSecretConfigured ? '留空保留现有 App Secret' : '粘贴彩云 App Secret'} />
+          <div className="setting-actions"><button className="btn-secondary" disabled={!weatherApiKey.trim() && !weatherApiSecret.trim()} onClick={()=>void saveWeatherCredentials()}>加密保存彩云凭据</button></div>
+        </div>}
+        {weatherSource === 'qweather' && <div className="weather-api-key-panel">
+          <div className="weather-key-status"><span>{qweatherSetup.configured ? 'JWT 已配置' : qweatherSetup.hasPrivateKey ? '本机密钥已生成，等待控制台登记 / 配置' : '尚未生成本机密钥'}</span><small>私钥仅留在本机并由 Windows 安全存储加密；只将公钥上传至和风天气</small></div>
+          <div className="setting-actions"><button className="btn-secondary" disabled={weatherBusy || qweatherSetup.hasPrivateKey} onClick={()=>void generateQweatherKey()}>{qweatherSetup.hasPrivateKey ? '本机 Ed25519 密钥已生成' : '① 本机生成 Ed25519 密钥'}</button><button className="btn-quiet" disabled={!qweatherSetup.publicKey} onClick={()=>void window.nexus.copyText(qweatherSetup.publicKey).then(()=>notify('公钥已复制'))}>复制公钥</button></div>
+          <textarea className="text-input" rows={4} readOnly value={qweatherSetup.publicKey} placeholder="先生成密钥；复制完整 PUBLIC KEY 内容到和风天气控制台的 JWT 凭据设置。" />
+          {qweatherSetup.fingerprint && <small className="setting-note">公钥 SHA-256：{qweatherSetup.fingerprint}</small>}
+          <label className="field-label">Developer ID（iss）</label>
+          <input className="text-input" autoComplete="off" value={qweatherConfig.developerId} onChange={e=>setQweatherConfig(current=>({...current,developerId:e.target.value}))} placeholder="Q 开头的 10 位 Developer ID" />
+          <label className="field-label">Project ID（sub）</label>
+          <input className="text-input" autoComplete="off" value={qweatherConfig.projectId} onChange={e=>setQweatherConfig(current=>({...current,projectId:e.target.value}))} placeholder="控制台项目 ID" />
+          <label className="field-label">Credential ID（kid）</label>
+          <input className="text-input" autoComplete="off" value={qweatherConfig.credentialId} onChange={e=>setQweatherConfig(current=>({...current,credentialId:e.target.value}))} placeholder="上传公钥后由控制台生成的凭据 ID" />
+          <label className="field-label">API Host</label>
+          <input className="text-input" autoComplete="off" value={qweatherConfig.apiHost} onChange={e=>setQweatherConfig(current=>({...current,apiHost:e.target.value}))} placeholder="控制台分配的 *.qweatherapi.com 域名" />
+          <div className="setting-actions"><button className="btn-secondary" disabled={weatherBusy || !qweatherSetup.hasPrivateKey} onClick={()=>void saveQweather()}>保存 JWT 配置</button><button className="btn-quiet" disabled={weatherBusy || !qweatherSetup.configured} onClick={()=>void testWeatherProvider()}>测试连接</button></div>
+          <small className="setting-note">控制台步骤：项目管理 → 添加凭据 → JSON Web Token → 粘贴公钥。保存后复制 Credential ID；Developer ID 和 API Host 在控制台设置页查看。</small>
+        </div>}
+        {['weathercn','caiyun','weatherapi','openweather'].includes(weatherSource) && <div className="setting-actions"><button className="btn-quiet" disabled={weatherBusy || !weatherKeyConfigured || (weatherSource === 'caiyun' && !weatherSecretConfigured)} onClick={()=>void testWeatherProvider()}>测试连接</button></div>}
+        <div className="setting-note"><CloudSun size={15}/><span>{weatherSourceNote} {['weathercn','weatherapi','openweather','caiyun'].includes(weatherSource) && '凭据使用 Electron safeStorage 加密保存，不写入明文设置文件。'}天气约每 15 分钟更新。</span></div>
       </section>
     </div>
     <section className="panel widget-visibility-panel">
@@ -1388,6 +1489,6 @@ function SettingsPage({settings,updateSettings,notify}:any){
       <p className="panel-note">每项独立开关。这里控制悬浮窗窄条及展开卡片中的模块；主界面总览的显示项目保持独立设置。单个底层传感器可在“硬件与网络”页面收藏。</p>
       <div className="widget-visibility-grid">{widgetOptions.map(([id,label])=><label className="widget-visibility-option" key={id}><input type="checkbox" checked={widgetVisible.includes(id)} onChange={()=>toggleWidgetMetric(id)}/><span>{label}</span></label>)}</div>
     </section>
-    <section className="panel about-panel"><div className="about-emblem">N</div><div><b>NexusMonitor 2.2.5</b><span>Electron + React UI · .NET 10 Hardware Service</span><small>本机优先，不需要账户；硬件数据通过 127.0.0.1 本地接口传递。</small></div><span className="count-pill">DEVELOPMENT BUILD</span></section>
+    <section className="panel about-panel"><div className="about-emblem">N</div><div><b>NexusMonitor 2.2.6</b><span>Electron + React UI · .NET 10 Hardware Service</span><small>本机优先，不需要账户；硬件数据通过 127.0.0.1 本地接口传递。</small></div><span className="count-pill">DEVELOPMENT BUILD</span></section>
   </>;
 }

@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Net.Http.Headers;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -7,7 +8,7 @@ using NexusMonitor.HardwareService.Models;
 namespace NexusMonitor.HardwareService.Monitoring;
 
 /// <summary>
-/// Normalizes four weather providers into one snapshot contract. Provider credentials are
+/// Normalizes six selectable weather providers into one snapshot contract. Provider credentials are
 /// supplied by the desktop main process at request time and are never persisted by this service.
 /// All local weather times are normalized to the China Standard Time offset (+08:00).
 /// </summary>
@@ -19,26 +20,31 @@ public sealed class WeatherService
     private DateTime _cachedAt;
     private readonly SemaphoreSlim _gate = new(1, 1);
     private readonly ILogger<WeatherService> _logger;
+    private readonly Dictionary<string, (string Key, DateTimeOffset ExpiresAt)> _weatherCnLocationCache = new(StringComparer.OrdinalIgnoreCase);
 
     public WeatherService(ILogger<WeatherService> logger) => _logger = logger;
 
-    public async Task<WeatherSnapshot?> GetAsync(string location, string source, string? apiKey, CancellationToken ct = default)
+    public async Task<WeatherSnapshot?> GetAsync(string location, string source, string? apiKey, string? apiSecret = null, string? apiHost = null, bool forceRefresh = false, CancellationToken ct = default)
     {
         var normalizedLocation = location.Equals("wujiang", StringComparison.OrdinalIgnoreCase) ? "wujiang" : "suzhou";
         var normalizedSource = NormalizeSource(source);
-        if (normalizedSource != "open-meteo" && string.IsNullOrWhiteSpace(apiKey))
+        if (((normalizedSource is "qweather" or "weathercn") && string.IsNullOrWhiteSpace(apiKey))
+            || (normalizedSource == "qweather" && string.IsNullOrWhiteSpace(apiHost))
+            || (normalizedSource == "caiyun" && (string.IsNullOrWhiteSpace(apiKey) || string.IsNullOrWhiteSpace(apiSecret)))
+            || ((normalizedSource is "weatherapi" or "openweather") && string.IsNullOrWhiteSpace(apiKey)))
         {
             _logger.LogWarning("Weather source {Source} was selected but has no API key", normalizedSource);
             return null;
         }
         var keyHash = string.IsNullOrWhiteSpace(apiKey) ? "public" : Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(apiKey))).Substring(0, 12);
-        var cacheKey = $"{normalizedLocation}:{normalizedSource}:{keyHash}";
-        if (_cache is not null && DateTime.UtcNow - _cachedAt < TimeSpan.FromMinutes(12) && cacheKey == _cacheKey) return _cache;
+        var secretHash = string.IsNullOrWhiteSpace(apiSecret) ? "none" : Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(apiSecret))).Substring(0, 12);
+        var cacheKey = $"{normalizedLocation}:{normalizedSource}:{keyHash}:{secretHash}:{apiHost}";
+        if (!forceRefresh && _cache is not null && DateTime.UtcNow - _cachedAt < TimeSpan.FromMinutes(12) && cacheKey == _cacheKey) return _cache;
 
         await _gate.WaitAsync(ct);
         try
         {
-            if (_cache is not null && DateTime.UtcNow - _cachedAt < TimeSpan.FromMinutes(12) && cacheKey == _cacheKey) return _cache;
+            if (!forceRefresh && _cache is not null && DateTime.UtcNow - _cachedAt < TimeSpan.FromMinutes(12) && cacheKey == _cacheKey) return _cache;
             var (name, latitude, longitude) = normalizedLocation == "wujiang"
                 ? ("苏州·吴江", 31.16, 120.64)
                 : ("苏州", 31.2989, 120.5853);
@@ -46,7 +52,9 @@ public sealed class WeatherService
             WeatherSnapshot? result = normalizedSource switch
             {
                 "open-meteo" => await GetOpenMeteoAsync(name, latitude, longitude, ct),
-                "qweather" => await GetQWeatherAsync(name, latitude, longitude, apiKey!, ct),
+                "qweather" => await GetQWeatherAsync(name, latitude, longitude, apiKey!, apiHost!, ct),
+                "weathercn" => await GetWeatherCnAsync(name, latitude, longitude, apiKey!, ct),
+                "caiyun" => await GetCaiyunAsync(name, latitude, longitude, apiKey!, apiSecret!, ct),
                 "weatherapi" => await GetWeatherApiAsync(name, latitude, longitude, apiKey!, ct),
                 "openweather" => await GetOpenWeatherAsync(name, latitude, longitude, apiKey!, ct),
                 _ => null,
@@ -57,12 +65,12 @@ public sealed class WeatherService
                 _cacheKey = cacheKey;
                 _cachedAt = DateTime.UtcNow;
             }
-            return result ?? (cacheKey == _cacheKey ? _cache : null);
+            return result ?? (!forceRefresh && cacheKey == _cacheKey ? _cache : null);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             _logger.LogError("Weather request failed for {Location} using {Source}: {ErrorType}", normalizedLocation, normalizedSource, ex.GetType().Name);
-            return cacheKey == _cacheKey ? _cache : null;
+            return !forceRefresh && cacheKey == _cacheKey ? _cache : null;
         }
         finally { _gate.Release(); }
     }
@@ -70,6 +78,8 @@ public sealed class WeatherService
     private static string NormalizeSource(string? source) => source?.Trim().ToLowerInvariant() switch
     {
         "qweather" => "qweather",
+        "weathercn" => "weathercn",
+        "caiyun" => "caiyun",
         "weatherapi" => "weatherapi",
         "openweather" => "openweather",
         _ => "open-meteo",
@@ -115,13 +125,27 @@ public sealed class WeatherService
         return new DateTimeOffset(DateTime.SpecifyKind(local, DateTimeKind.Unspecified), TimeSpan.FromHours(8));
     }
 
-    private static async Task<JsonDocument> FetchAsync(string url, CancellationToken ct)
+    private static async Task<JsonDocument> FetchAsync(string url, CancellationToken ct, Action<HttpRequestMessage>? configure = null)
     {
-        using var response = await Http.GetAsync(url, ct);
+        using var request = new HttpRequestMessage(HttpMethod.Get, url);
+        configure?.Invoke(request);
+        using var response = await Http.SendAsync(request, ct);
         response.EnsureSuccessStatusCode();
         await using var stream = await response.Content.ReadAsStreamAsync(ct);
         return await JsonDocument.ParseAsync(stream, cancellationToken: ct);
     }
+
+    private static Task<JsonDocument> FetchBearerAsync(string url, string token, CancellationToken ct) =>
+        FetchAsync(url, ct, request => request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token));
+
+    private static int? Percent(JsonElement element, string name)
+    {
+        var value = N(element, name);
+        if (value is null) return null;
+        return (int)Math.Round(value.Value <= 1 ? value.Value * 100 : value.Value, MidpointRounding.AwayFromZero);
+    }
+
+    private static double? KmPerHour(JsonElement element, string name) => N(element, name) is double value ? value * 3.6 : null;
 
     private static int? MapWeatherApiCode(int? code)
     {
@@ -217,7 +241,7 @@ public sealed class WeatherService
                 if (time is null || time <= currentTime) continue;
                 hours.Add(new WeatherHourSnapshot(time.Value, N(A(P(hourly, "temperature_2m"), i)), I(A(P(hourly, "precipitation_probability"), i)), I(A(P(hourly, "weather_code"), i))));
             }
-            return new WeatherSnapshot(name, DateTimeOffset.UtcNow, N(current, "temperature_2m"), N(current, "apparent_temperature"), N(current, "relative_humidity_2m"), N(current, "wind_speed_10m"), N(current, "wind_direction_10m"), N(current, "precipitation"), I(current, "weather_code"), D(air, "us_aqi"), D(air, "pm2_5"), D(air, "pm10"), D(air, "ozone"), D(air, "nitrogen_dioxide"), "Open-Meteo", N(A(maxima, 0)), N(A(minima, 0)), hours.FirstOrDefault()?.PrecipitationProbability, hours, dailyForecast, sunrise, sunset);
+            return new WeatherSnapshot(name, DateTimeOffset.UtcNow, N(current, "temperature_2m"), N(current, "apparent_temperature"), N(current, "relative_humidity_2m"), N(current, "wind_speed_10m"), N(current, "wind_direction_10m"), N(current, "precipitation"), I(current, "weather_code"), D(air, "us_aqi"), D(air, "pm2_5"), D(air, "pm10"), D(air, "ozone"), D(air, "nitrogen_dioxide"), "Open-Meteo", N(A(maxima, 0)), N(A(minima, 0)), hours.FirstOrDefault()?.PrecipitationProbability, hours, dailyForecast, sunrise, sunset, "US-EPA");
         }
     }
 
@@ -298,42 +322,327 @@ public sealed class WeatherService
         }
     }
 
-    private async Task<WeatherSnapshot?> GetQWeatherAsync(string name, double lat, double lon, string apiKey, CancellationToken ct)
+
+    private static bool IndexHasCode(JsonElement indexes, string code)
     {
-        var key = Uri.EscapeDataString(apiKey);
-        var location = $"{lon.ToString(CultureInfo.InvariantCulture)},{lat.ToString(CultureInfo.InvariantCulture)}";
-        var root = "https://devapi.qweather.com/v7";
-        var nowTask = FetchAsync($"{root}/weather/now?location={location}&key={key}", ct);
-        var hourlyTask = FetchAsync($"{root}/weather/24h?location={location}&key={key}", ct);
-        var dailyTask = FetchAsync($"{root}/weather/7d?location={location}&key={key}", ct);
-        using var nDoc = await nowTask;
-        using var hDoc = await hourlyTask;
-        using var dDoc = await dailyTask;
-        var now = P(nDoc.RootElement, "now");
-        var hoursRoot = P(hDoc.RootElement, "hourly");
-        var dailyRoot = P(dDoc.RootElement, "daily");
-        var currentTime = ParseLocalTime(S(now, "obsTime")) ?? DateTimeOffset.Now;
-        var hours = new List<WeatherHourSnapshot>();
-        for (var i = 0; i < Length(hoursRoot) && hours.Count < 6; i++)
+        for (var i = 0; i < Length(indexes); i++)
+            if (string.Equals(S(A(indexes, i), "code"), code, StringComparison.OrdinalIgnoreCase)) return true;
+        return false;
+    }
+
+    private async Task<WeatherSnapshot?> GetQWeatherAsync(string name, double lat, double lon, string token, string apiHost, CancellationToken ct)
+    {
+        var host = apiHost.Trim().TrimEnd('/');
+        if (!Uri.TryCreate("https://" + host, UriKind.Absolute, out var parsedHost)
+            || parsedHost.Host != host || !parsedHost.Host.EndsWith(".qweatherapi.com", StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException("QWeather API Host must be your assigned *.qweatherapi.com hostname.");
+        var root = $"https://{host}";
+        var latitude = lat.ToString("0.##", CultureInfo.InvariantCulture);
+        var longitude = lon.ToString("0.##", CultureInfo.InvariantCulture);
+        var coordinate = $"{latitude}/{longitude}";
+        var currentTask = FetchBearerAsync($"{root}/weather/v1/current/{coordinate}?localTime=true&lang=zh", token, ct);
+        var hourlyTask = FetchBearerAsync($"{root}/weather/v1/hourly/{coordinate}?hours=240&localTime=true&lang=zh", token, ct);
+        var dailyTask = FetchBearerAsync($"{root}/weather/v1/daily/{coordinate}?days=7&localTime=true&lang=zh", token, ct);
+        var airTask = FetchBearerAsync($"{root}/airquality/v1/current/{coordinate}?lang=zh", token, ct);
+        using var currentDoc = await currentTask;
+        using var hourlyDoc = await hourlyTask;
+        using var dailyDoc = await dailyTask;
+        JsonDocument? airDoc = null;
+        try { airDoc = await airTask; }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
+        catch (Exception ex) { _logger.LogWarning("QWeather V1 air-quality request failed for {Location}: {ErrorType}; weather remains available", name, ex.GetType().Name); }
+        using (airDoc)
         {
-            var hour = A(hoursRoot, i); var time = ParseLocalTime(S(hour, "fxTime"));
-            if (time is null || time <= currentTime) continue;
-            hours.Add(new WeatherHourSnapshot(time.Value, N(hour, "temp"), int.TryParse(S(hour, "pop"), out var pop) ? pop : null, MapQWeatherCode(S(hour, "icon"))));
+            var current = currentDoc.RootElement;
+            var hourlyRoot = P(hourlyDoc.RootElement, "hours");
+            var dailyRoot = P(dailyDoc.RootElement, "days");
+            var airRoot = airDoc?.RootElement ?? default;
+            var now = DateTimeOffset.Now;
+            var hours = new List<WeatherHourSnapshot>();
+            for (var i = 0; i < Length(hourlyRoot) && hours.Count < 6; i++)
+            {
+                var hour = A(hourlyRoot, i);
+                var time = ParseLocalTime(S(hour, "forecastTime"));
+                if (time is null || time <= now) continue;
+                hours.Add(new WeatherHourSnapshot(time.Value,
+                    N(P(hour, "temperature"), "value"),
+                    Percent(P(hour, "precipitation"), "probability"),
+                    int.TryParse(S(P(hour, "condition"), "code"), out var code) ? MapQWeatherCode(code.ToString(CultureInfo.InvariantCulture)) : null));
+            }
+            var days = new List<WeatherDaySnapshot>();
+            for (var i = 1; i < Length(dailyRoot) && days.Count < 6; i++)
+            {
+                var day = A(dailyRoot, i);
+                var date = ParseLocalTime(S(day, "forecastStartTime")) ?? ParseLocalTime(S(day, "forecastStart")) ?? ParseLocalTime(S(day, "date"));
+                if (date is null) continue;
+                days.Add(new WeatherDaySnapshot(date.Value,
+                    N(P(day, "temperatureMax"), "value"),
+                    N(P(day, "temperatureMin"), "value"),
+                    int.TryParse(S(P(P(day, "daytime"), "condition"), "code"), out var code) ? MapQWeatherCode(code.ToString(CultureInfo.InvariantCulture)) : null,
+                    Percent(P(P(day, "daytime"), "precipitation"), "probability"),
+                    KmPerHour(P(P(P(day, "daytime"), "wind"), "speed"), "value")));
+            }
+            var firstDay = A(dailyRoot, 0);
+            var firstDate = ParseLocalTime(S(firstDay, "forecastStartTime")) ?? now;
+            var astronomy = P(firstDay, "astro");
+            var sunriseText = S(astronomy, "sunrise");
+            var sunsetText = S(astronomy, "sunset");
+            var sunrise = ParseLocalTime(sunriseText) ?? ParseClock(firstDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), sunriseText);
+            var sunset = ParseLocalTime(sunsetText) ?? ParseClock(firstDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), sunsetText);
+            var indexes = P(airRoot, "indexes");
+            var preferredAqiCode = IndexHasCode(indexes, "cn-mee") ? "cn-mee" : "us-epa";
+            double? aqi = null;
+            for (var i = 0; i < Length(indexes); i++)
+            {
+                var item = A(indexes, i);
+                if (string.Equals(S(item, "code"), preferredAqiCode, StringComparison.OrdinalIgnoreCase)) { aqi = N(item, "aqi"); break; }
+            }
+            var pollutants = P(airRoot, "pollutants");
+            double? pollutant(string code)
+            {
+                for (var i = 0; i < Length(pollutants); i++)
+                {
+                    var item = A(pollutants, i);
+                    if (string.Equals(S(item, "code"), code, StringComparison.OrdinalIgnoreCase)) return N(P(item, "concentration"), "value");
+                }
+                return null;
+            }
+            var condition = P(current, "condition");
+            return new WeatherSnapshot(name, DateTimeOffset.UtcNow,
+                N(P(current, "temperature"), "value"),
+                N(P(current, "feelsLike"), "value"),
+                N(current, "humidity") is double humidity ? humidity * 100 : null,
+                KmPerHour(P(P(current, "wind"), "speed"), "value"),
+                N(P(P(current, "wind"), "direction"), "degree"),
+                N(P(P(current, "precipitation"), "amount"), "value"),
+                int.TryParse(S(condition, "code"), out var currentCode) ? MapQWeatherCode(currentCode.ToString(CultureInfo.InvariantCulture)) : null,
+                aqi, pollutant("pm2p5"), pollutant("pm10"), pollutant("o3"), pollutant("no2"),
+                "QWeather", N(P(firstDay, "temperatureMax"), "value"), N(P(firstDay, "temperatureMin"), "value"),
+                hours.FirstOrDefault()?.PrecipitationProbability, hours, days, sunrise, sunset,
+                IndexHasCode(indexes, "cn-mee") ? "China-MEP" : "US-EPA", "https://developer.qweather.com/attribution.html");
+        }
+    }
+
+    private async Task<string> GetWeatherCnLocationKeyAsync(string name, double lat, double lon, string apiKey, CancellationToken ct)
+    {
+        if (_weatherCnLocationCache.TryGetValue(name, out var cached) && cached.ExpiresAt > DateTimeOffset.UtcNow) return cached.Key;
+        var query = $"{lat.ToString("0.000", CultureInfo.InvariantCulture)},{lon.ToString("0.000", CultureInfo.InvariantCulture)}";
+        var url = $"https://openapi.weathercn.com/locations/v1/cities/geoposition/search.json?q={Uri.EscapeDataString(query)}&language=zh-cn";
+        using var document = await FetchAsync(url, ct, request => request.Headers.TryAddWithoutValidation("X-Gw-API-Key", apiKey));
+        var key = S(A(document.RootElement, 0), "Key");
+        if (string.IsNullOrWhiteSpace(key)) throw new InvalidOperationException("WeatherCN location lookup did not return a Location Key.");
+        _weatherCnLocationCache[name] = (key, DateTimeOffset.UtcNow.AddHours(24));
+        return key;
+    }
+
+    private static double? WeatherCnMetric(JsonElement element, string name) => N(P(P(element, name), "Metric"), "Value");
+
+    private static int? MapWeatherCnCode(int? icon)
+    {
+        if (icon is null) return null;
+        var code = icon.Value;
+        if (code is >= 1 and <= 6) return 0;
+        if (code is 7 or 8 or 38) return 3;
+        if (code == 11) return 45;
+        if (code is >= 12 and <= 14 or 18 or 39 or 40) return 61;
+        if (code is 15 or 16 or 17 or 41 or 42) return 95;
+        if (code is >= 19 and <= 29 or 43 or 44) return 71;
+        if (code == 32) return 45;
+        if (code is >= 33 and <= 37) return 0;
+        return 3;
+    }
+
+    private async Task<WeatherSnapshot?> GetWeatherCnAsync(string name, double lat, double lon, string apiKey, CancellationToken ct)
+    {
+        var locationKey = await GetWeatherCnLocationKeyAsync(name, lat, lon, apiKey, ct);
+        var root = "https://openapi.weathercn.com";
+        var currentTask = FetchAsync($"{root}/currentconditions/v1/{locationKey}.json?language=zh-cn&details=true", ct, request => request.Headers.TryAddWithoutValidation("X-Gw-API-Key", apiKey));
+        var hourlyTask = FetchAsync($"{root}/forecasts/v1/hourly/24hour/{locationKey}.json?language=zh-cn&metric=true", ct, request => request.Headers.TryAddWithoutValidation("X-Gw-API-Key", apiKey));
+        var dailyTask = FetchAsync($"{root}/forecasts/v1/daily/10day/{locationKey}.json?language=zh-cn&details=true&metric=true", ct, request => request.Headers.TryAddWithoutValidation("X-Gw-API-Key", apiKey));
+        var airTask = FetchAsync($"{root}/airquality/v1/global/observations/{locationKey}.json?language=zh-cn", ct, request => request.Headers.TryAddWithoutValidation("X-Gw-API-Key", apiKey));
+        using var currentDoc = await currentTask;
+        using var hourlyDoc = await hourlyTask;
+        using var dailyDoc = await dailyTask;
+        JsonDocument? airDoc = null;
+        try { airDoc = await airTask; }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
+        catch (Exception ex) { _logger.LogWarning("WeatherCN air-quality request failed for {Location}: {ErrorType}; weather remains available", name, ex.GetType().Name); }
+        using (airDoc)
+        {
+            var current = A(currentDoc.RootElement, 0);
+            var hourly = hourlyDoc.RootElement;
+            var daily = P(dailyDoc.RootElement, "DailyForecasts");
+            var air = airDoc?.RootElement ?? default;
+            var now = DateTimeOffset.Now;
+            var hours = new List<WeatherHourSnapshot>();
+            for (var i = 0; i < Length(hourly) && hours.Count < 6; i++)
+            {
+                var hour = A(hourly, i);
+                var time = ParseLocalTime(S(hour, "DateTime")) ?? ParseUnix(P(hour, "EpochDateTime"));
+                if (time is null || time <= now) continue;
+                hours.Add(new WeatherHourSnapshot(time.Value, N(P(hour, "Temperature"), "Value"),
+                    I(hour, "PrecipitationProbability"), MapWeatherCnCode(I(hour, "WeatherIcon"))));
+            }
+            var days = new List<WeatherDaySnapshot>();
+            for (var i = 1; i < Length(daily) && days.Count < 6; i++)
+            {
+                var day = A(daily, i);
+                var date = ParseLocalTime(S(day, "Date")) ?? ParseUnix(P(day, "EpochDate"));
+                if (date is null) continue;
+                var daytime = P(day, "Day");
+                var precipitation = P(day, "Day");
+                days.Add(new WeatherDaySnapshot(date.Value,
+                    N(P(P(day, "Temperature"), "Maximum"), "Value"),
+                    N(P(P(day, "Temperature"), "Minimum"), "Value"),
+                    MapWeatherCnCode(I(daytime, "Icon")),
+                    I(precipitation, "PrecipitationProbability"),
+                    N(P(P(daytime, "Wind"), "Speed"), "Value")));
+            }
+            var today = A(daily, 0);
+            var sun = P(today, "Sun");
+            var sunrise = ParseLocalTime(S(sun, "Rise"));
+            var sunset = ParseLocalTime(S(sun, "Set"));
+            var aqi = N(air, "Index");
+            return new WeatherSnapshot(name, DateTimeOffset.UtcNow,
+                WeatherCnMetric(current, "Temperature"),
+                WeatherCnMetric(current, "RealFeelTemperature"),
+                N(current, "RelativeHumidity"),
+                N(P(P(P(current, "Wind"), "Speed"), "Metric"), "Value"),
+                N(P(P(current, "Wind"), "Direction"), "Degrees"),
+                N(P(P(P(current, "PrecipitationSummary"), "PastHour"), "Metric"), "Value"),
+                MapWeatherCnCode(I(current, "WeatherIcon")),
+                aqi,
+                N(air, "ParticulateMatter2_5"), N(air, "ParticulateMatter10"),
+                N(air, "Ozone"), N(air, "NitrogenDioxide"),
+                "WeatherCN · 华风爱科",
+                N(P(P(today, "Temperature"), "Maximum"), "Value"),
+                N(P(P(today, "Temperature"), "Minimum"), "Value"),
+                hours.FirstOrDefault()?.PrecipitationProbability, hours, days, sunrise, sunset, "China-MEP", "https://platform.weathercn.com/");
+        }
+    }
+
+    private static string EncodeCaiyunComponent(string value) =>
+        Uri.EscapeDataString(value).Replace("%20", "+", StringComparison.OrdinalIgnoreCase);
+
+    private static int? MapCaiyunCode(string? skycon)
+    {
+        if (string.IsNullOrWhiteSpace(skycon)) return null;
+        return skycon.ToUpperInvariant() switch
+        {
+            "CLEAR_DAY" or "CLEAR_NIGHT" => 0,
+            "PARTLY_CLOUDY_DAY" or "PARTLY_CLOUDY_NIGHT" => 2,
+            "CLOUDY" => 3,
+            "LIGHT_HAZE" or "MODERATE_HAZE" or "HEAVY_HAZE" or "FOG" => 45,
+            "LIGHT_RAIN" => 61,
+            "MODERATE_RAIN" => 63,
+            "HEAVY_RAIN" or "STORM_RAIN" => 65,
+            "LIGHT_SNOW" => 71,
+            "MODERATE_SNOW" => 73,
+            "HEAVY_SNOW" => 75,
+            "DUST" or "SAND" or "WIND" => 45,
+            _ => 3,
+        };
+    }
+
+    private static (double Latitude, double Longitude) ToGcj02(double latitude, double longitude)
+    {
+        if (longitude < 72.004 || longitude > 137.8347 || latitude < 0.8293 || latitude > 55.8271) return (latitude, longitude);
+        const double a = 6378245.0;
+        const double ee = 0.00669342162296594323;
+        static double TransformLat(double x, double y) =>
+            -100 + 2 * x + 3 * y + 0.2 * y * y + 0.1 * x * y + 0.2 * Math.Sqrt(Math.Abs(x))
+            + (20 * Math.Sin(6 * x * Math.PI) + 20 * Math.Sin(2 * x * Math.PI)) * 2 / 3
+            + (20 * Math.Sin(y * Math.PI) + 40 * Math.Sin(y / 3 * Math.PI)) * 2 / 3
+            + (160 * Math.Sin(y / 12 * Math.PI) + 320 * Math.Sin(y * Math.PI / 30)) * 2 / 3;
+        static double TransformLon(double x, double y) =>
+            300 + x + 2 * y + 0.1 * x * x + 0.1 * x * y + 0.1 * Math.Sqrt(Math.Abs(x))
+            + (20 * Math.Sin(6 * x * Math.PI) + 20 * Math.Sin(2 * x * Math.PI)) * 2 / 3
+            + (20 * Math.Sin(x * Math.PI) + 40 * Math.Sin(x / 3 * Math.PI)) * 2 / 3
+            + (150 * Math.Sin(x / 12 * Math.PI) + 300 * Math.Sin(x / 30 * Math.PI)) * 2 / 3;
+        var dLat = TransformLat(longitude - 105, latitude - 35);
+        var dLon = TransformLon(longitude - 105, latitude - 35);
+        var radLat = latitude / 180 * Math.PI;
+        var magic = Math.Sin(radLat);
+        magic = 1 - ee * magic * magic;
+        var sqrtMagic = Math.Sqrt(magic);
+        dLat = dLat * 180 / ((a * (1 - ee)) / (magic * sqrtMagic) * Math.PI);
+        dLon = dLon * 180 / (a / sqrtMagic * Math.Cos(radLat) * Math.PI);
+        return (latitude + dLat, longitude + dLon);
+    }
+
+    private async Task<WeatherSnapshot?> GetCaiyunAsync(string name, double lat, double lon, string appKey, string appSecret, CancellationToken ct)
+    {
+        var coordinate = ToGcj02(lat, lon);
+        var lonText = coordinate.Longitude.ToString("0.####", CultureInfo.InvariantCulture);
+        var latText = coordinate.Latitude.ToString("0.####", CultureInfo.InvariantCulture);
+        var path = $"/v2.6/{Uri.EscapeDataString(appKey)}/{lonText},{latText}/weather";
+        var query = new SortedDictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["alert"] = "false", ["dailysteps"] = "7", ["hourlysteps"] = "24",
+        };
+        var queryString = string.Join("&", query.Select(pair => $"{EncodeCaiyunComponent(pair.Key)}={EncodeCaiyunComponent(pair.Value)}"));
+        var nonce = Guid.NewGuid().ToString("N");
+        var timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString(CultureInfo.InvariantCulture);
+        var signingText = $"GET:{path}:{queryString}:{appKey}:{nonce}:{timestamp}";
+        using var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(appSecret));
+        var signature = Convert.ToBase64String(hmac.ComputeHash(Encoding.UTF8.GetBytes(signingText)))
+            .Replace('+', '-').Replace('/', '_');
+        var url = $"https://api.caiyunapp.com{path}?{queryString}";
+        using var document = await FetchAsync(url, ct, request =>
+        {
+            request.Headers.TryAddWithoutValidation("x-cy-nonce", nonce);
+            request.Headers.TryAddWithoutValidation("x-cy-timestamp", timestamp);
+            request.Headers.TryAddWithoutValidation("x-cy-signature", signature);
+        });
+        var root = document.RootElement;
+        if (!string.Equals(S(root, "status"), "ok", StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException("Caiyun API returned a non-ok status.");
+        var result = P(root, "result");
+        var realtime = P(result, "realtime");
+        var hourly = P(result, "hourly");
+        var daily = P(result, "daily");
+        var now = ParseUnix(P(root, "server_time")) ?? DateTimeOffset.Now;
+        var hours = new List<WeatherHourSnapshot>();
+        var hourTemps = P(hourly, "temperature");
+        var hourPrecip = P(hourly, "precipitation");
+        var hourSky = P(hourly, "skycon");
+        for (var i = 0; i < Length(hourTemps) && hours.Count < 6; i++)
+        {
+            var temp = A(hourTemps, i);
+            var time = ParseLocalTime(S(temp, "datetime")) ?? ParseLocalTime(S(A(hourSky, i), "datetime"));
+            if (time is null || time <= now) continue;
+            hours.Add(new WeatherHourSnapshot(time.Value, N(temp, "value"),
+                Percent(A(hourPrecip, i), "probability"),
+                MapCaiyunCode(S(A(hourSky, i), "value"))));
         }
         var days = new List<WeatherDaySnapshot>();
-        for (var i = 1; i < Length(dailyRoot) && days.Count < 6; i++)
+        var dayTemps = P(daily, "temperature");
+        var dayPrecip = P(daily, "precipitation");
+        var daySky = P(daily, "skycon");
+        for (var i = 1; i < Length(dayTemps) && days.Count < 6; i++)
         {
-            var day = A(dailyRoot, i); var date = ParseLocalTime(S(day, "fxDate"));
-            if (date is null) continue;
-            days.Add(new WeatherDaySnapshot(date.Value, N(day, "tempMax"), N(day, "tempMin"), MapQWeatherCode(S(day, "iconDay")), int.TryParse(S(day, "precip"), out var pop) ? (int?)pop : null, N(day, "windSpeedDay")));
+            var temp = A(dayTemps, i);
+            var time = ParseLocalTime(S(temp, "date")) ?? ParseLocalTime(S(A(daySky, i), "date"));
+            if (time is null) continue;
+            days.Add(new WeatherDaySnapshot(time.Value, N(temp, "max"), N(temp, "min"),
+                MapCaiyunCode(S(A(daySky, i), "value")),
+                Percent(A(dayPrecip, i), "probability"), null));
         }
-        var day0 = A(dailyRoot, 0);
-        var sunrise = ParseClock(S(day0, "fxDate"), S(day0, "sunrise"));
-        var sunset = ParseClock(S(day0, "fxDate"), S(day0, "sunset"));
-        // QWeather's legacy /v7/air/now endpoint was discontinued in 2026.
-        // Keep weather forecasts available; AQI/pollutants remain null until its
-        // newer JWT-authenticated Air Quality v1 API is configured separately.
-        double? windSpeed = double.TryParse(S(now, "windSpeed"), NumberStyles.Float, CultureInfo.InvariantCulture, out var speed) ? speed : N(now, "windSpeed");
-        return new WeatherSnapshot(name, DateTimeOffset.UtcNow, N(now, "temp"), N(now, "feelsLike"), double.TryParse(S(now, "humidity"), NumberStyles.Float, CultureInfo.InvariantCulture, out var humidity) ? humidity : N(now, "humidity"), windSpeed, double.TryParse(S(now, "wind360"), NumberStyles.Float, CultureInfo.InvariantCulture, out var direction) ? direction : N(now, "wind360"), null, MapQWeatherCode(S(now, "icon")), null, null, null, null, null, "QWeather", N(day0, "tempMax"), N(day0, "tempMin"), hours.FirstOrDefault()?.PrecipitationProbability, hours, days, sunrise, sunset);
+        var air = P(realtime, "air_quality");
+        var aqi = P(air, "aqi");
+        var sunrise = ParseLocalTime(S(A(P(daily, "astro"), 0), "sunrise"));
+        var sunset = ParseLocalTime(S(A(P(daily, "astro"), 0), "sunset"));
+        return new WeatherSnapshot(name, DateTimeOffset.UtcNow,
+            N(realtime, "temperature"), N(realtime, "apparent_temperature"),
+            N(realtime, "humidity") is double humidity ? humidity * 100 : null,
+            N(P(realtime, "wind"), "speed") is double wind ? wind * 3.6 : null,
+            N(P(realtime, "wind"), "direction"),
+            N(P(P(realtime, "precipitation"), "local"), "intensity"),
+            MapCaiyunCode(S(realtime, "skycon")),
+            N(aqi, "chn") ?? N(aqi, "usa"), N(air, "pm25"), N(air, "pm10"), N(air, "o3"), N(air, "no2"),
+            "Caiyun · 彩云天气",
+            N(A(dayTemps, 0), "max"), N(A(dayTemps, 0), "min"),
+            hours.FirstOrDefault()?.PrecipitationProbability, hours, days, sunrise, sunset, N(aqi, "chn") is not null ? "China-MEP" : "US-EPA");
     }
+
 }

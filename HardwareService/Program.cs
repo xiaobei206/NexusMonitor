@@ -23,18 +23,18 @@ builder.Services.AddSingleton<WeatherService>();
 builder.Services.AddSingleton<TuringDisplayService>();
 var app=builder.Build();
 app.Use(async (ctx,next)=>{ctx.Response.Headers.Append("X-Content-Type-Options","nosniff");await next();});
-app.MapGet("/api/health",()=>Results.Ok(new{ok=true,service="NexusMonitor Hardware Service",version="2.2.5"}));
+app.MapGet("/api/health",()=>Results.Ok(new{ok=true,service="NexusMonitor Hardware Service",version="2.2.6"}));
 app.MapGet("/api/snapshot",(HardwareMonitor hw,NetworkMonitor net,StorageMonitor storage)=>Results.Ok(hw.Snapshot(net,storage)));
 app.MapGet("/api/storage/status",(StorageMonitor storage)=>Results.Ok(storage.GetStatus()));
 app.MapGet("/api/devices",(NetworkMonitor net,StorageMonitor storage,HardwareMonitor hw)=>Results.Ok(new{networks=net.Read(),snapshot=hw.Snapshot(net,storage)}));
 app.MapGet("/api/weather", async (string? location, WeatherService weather, CancellationToken ct) =>
 {
-    var result = await weather.GetAsync(location ?? "suzhou", "open-meteo", null, ct);
+    var result = await weather.GetAsync(location ?? "suzhou", "open-meteo", null, null, null, false, ct);
     return result is null ? Results.StatusCode(StatusCodes.Status503ServiceUnavailable) : Results.Ok(result);
 });
 app.MapPost("/api/weather", async (WeatherRequest request, WeatherService weather, CancellationToken ct) =>
 {
-    var result = await weather.GetAsync(request.Location, request.Source, request.ApiKey, ct);
+    var result = await weather.GetAsync(request.Location, request.Source, request.ApiKey, request.ApiSecret, request.ApiHost, request.ForceRefresh, ct);
     return result is null ? Results.StatusCode(StatusCodes.Status503ServiceUnavailable) : Results.Ok(result);
 });
 app.MapGet("/api/turing/devices",(TuringDisplayService turing)=>Results.Ok(new{devices=turing.Devices(),status=turing.Status}));

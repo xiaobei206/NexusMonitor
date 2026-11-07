@@ -49,7 +49,7 @@ test('orientation resize restores canonical vertical dimensions after horizontal
 });
 
 
-test('vertical HUD uses extra available height on a high-resolution display instead of stopping at 900px', () => {
+test('vertical HUD opens at a balanced 960px height that leaves desktop space visible', () => {
   const monitor = { x: 0, y: 0, width: 2560, height: 1440 };
   const vertical = resizeWidgetForOrientation(
     { x: 2200, y: 18, width: 340, height: 900 },
@@ -57,8 +57,17 @@ test('vertical HUD uses extra available height on a high-resolution display inst
     'vertical',
     'right',
   );
-  assert.deepEqual(vertical.bounds, { x: 2202, y: 0, width: 340, height: 1200 });
+  assert.deepEqual(vertical.bounds, { x: 2202, y: 0, width: 340, height: 960 });
   assert.equal(vertical.minHeight, 700);
+});
+
+test('vertical HUD restores a custom height within supported bounds', () => {
+  const monitor = { x: 0, y: 0, width: 1920, height: 1440 };
+  const current = { x: 1540, y: 80, width: 340, height: 960 };
+  const restored = resizeWidgetForOrientation(current, monitor, 'vertical', null, 18, 820);
+  assert.equal(restored.bounds.height, 820);
+  const clamped = resizeWidgetForOrientation(current, monitor, 'vertical', null, 18, 1500);
+  assert.equal(clamped.bounds.height, 1200);
 });
 
 test('orientation resize preserves a genuinely floating HUD center and clamps it to the work area', () => {

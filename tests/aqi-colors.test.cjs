@@ -15,7 +15,10 @@ test('shared US AQI helper contains all six EPA breakpoints and familiar colors'
 });
 
 test('overview, both HUD presentations and Turing Canvas use shared AQI presentation', () => {
-  assert.match(app, /getAqiPresentation\(weather\?\.aqi\)/);
+  assert.match(app, /getAqiPresentation\(weather\?\.aqi, weather\?\.aqiStandard\)/);
+  assert.match(turing, /getAqiPresentation\(value, standard\)/);
+  assert.match(turing, /CN AQI/);
+  assert.match(turing, /aqi\.standardLabel/);
   assert.match(app, /className="aqi-reading"/);
   assert.match(app, /className="aqi-inline"/);
   assert.match(turing, /import \{ getAqiPresentation \} from '\.\/aqi'/);
@@ -32,9 +35,11 @@ test('shared AQI resolver returns the correct color band at every boundary', () 
     [301, '严重污染', '#7E0023'], [500, '严重污染', '#7E0023'],
   ];
   for (const [value, label, color] of cases) {
-    const result = getAqiPresentation(value);
-    assert.equal(result.label, label, `AQI ${value}`);
+    const result = getAqiPresentation(value, 'China-MEP');
+    assert.equal(result.label, label, `China AQI ${value}`);
     assert.equal(result.color, color, `AQI ${value}`);
   }
   assert.equal(getAqiPresentation(null).label, '—');
+  assert.equal(getAqiPresentation(101, 'US-EPA').label, '敏感人群不健康');
+  assert.equal(getAqiPresentation(201, 'US-EPA').label, '非常不健康');
 });

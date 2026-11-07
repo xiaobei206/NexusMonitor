@@ -1,6 +1,6 @@
 {
   "name": "nexus-monitor",
-  "version": "2.2.5",
+  "version": "2.2.6",
   "private": true,
   "description": "A customizable Windows hardware HUD, Turing display and USB extended-display companion with media playback.",
   "author": "NexusMonitor",

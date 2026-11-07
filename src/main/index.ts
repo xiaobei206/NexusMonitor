@@ -1,5 +1,5 @@
-import { app, BrowserWindow, Tray, Menu, ipcMain, nativeImage, dialog, shell, screen, safeStorage } from 'electron';
-import { randomUUID } from 'node:crypto';
+import { app, BrowserWindow, Tray, Menu, ipcMain, nativeImage, dialog, shell, screen, safeStorage, clipboard } from 'electron';
+import { createHash, createPrivateKey, createPublicKey, generateKeyPairSync, randomUUID, sign as cryptoSign } from 'node:crypto';
 import { spawn } from 'node:child_process';
 import type { ChildProcess } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, writeFileSync, readdirSync, copyFileSync, statSync } from 'node:fs';
@@ -53,6 +53,7 @@ let widgetDockEdge: DockEdge | null = null;
 let widgetRestoreBounds: { x: number; y: number; width: number; height: number } | null = null;
 let widgetRestoreMinSize: [number, number] | null = null;
 let widgetEdgeHidden = false;
+let widgetResizeSaveTimer: ReturnType<typeof setTimeout> | null = null;
 let widgetFullscreenMonitor: ChildProcess | null = null;
 let widgetFullscreenActive = false;
 let tray: Tray | null = null;
@@ -66,6 +67,7 @@ let weatherTimer: NodeJS.Timeout | null = null;
 let weatherRetryTimer: NodeJS.Timeout | null = null;
 let lastWeather: unknown = null;
 let currentSettings: Record<string, unknown> = {};
+let qweatherJwtCache: { token: string; expiresAt: number } | null = null;
 let musicState: MusicState = {
   tracks: [], playlists: [], activePlaylistId: null, currentTrackId: null,
   currentTime: 0, duration: 0, volume: 0.7, isPlaying: false, errorMessage: null, shuffle: false, repeat: 'off',
@@ -717,19 +719,32 @@ function widgetAlwaysOnTopEnabled() {
 function publishWidgetEdgeState() {
   if (widgetWindow && !widgetWindow.isDestroyed()) widgetWindow.webContents.send('widget:edge-state', { edge: widgetDockEdge, hidden: widgetEdgeHidden });
 }
-const WEATHER_SOURCES = new Set(['open-meteo', 'qweather', 'weatherapi', 'openweather']);
+const WEATHER_SOURCES = new Set(['open-meteo', 'qweather', 'weathercn', 'caiyun', 'weatherapi', 'openweather']);
+type QWeatherConfig = { developerId: string; projectId: string; credentialId: string; apiHost: string };
 function weatherKeyMap(): Record<string, string> {
   const raw = currentSettings.weatherApiKeysEncrypted;
   return raw && typeof raw === 'object' && !Array.isArray(raw) ? raw as Record<string, string> : {};
 }
-function readWeatherApiKey(source: string): string | null {
-  if (!WEATHER_SOURCES.has(source) || source === 'open-meteo' || !safeStorage.isEncryptionAvailable()) return null;
-  const encrypted = weatherKeyMap()[source];
+function weatherSecretMap(): Record<string, string> {
+  const raw = currentSettings.weatherApiSecretsEncrypted;
+  return raw && typeof raw === 'object' && !Array.isArray(raw) ? raw as Record<string, string> : {};
+}
+function readEncryptedWeatherValue(map: Record<string, string>, source: string): string | null {
+  if (!safeStorage.isEncryptionAvailable()) return null;
+  const encrypted = map[source];
   if (typeof encrypted !== 'string' || !encrypted) return null;
   try { return safeStorage.decryptString(Buffer.from(encrypted, 'base64')); } catch { return null; }
 }
+function readWeatherApiKey(source: string): string | null {
+  if (!WEATHER_SOURCES.has(source) || source === 'open-meteo' || source === 'qweather') return null;
+  return readEncryptedWeatherValue(weatherKeyMap(), source);
+}
+function readWeatherApiSecret(source: string): string | null {
+  if (source !== 'caiyun') return null;
+  return readEncryptedWeatherValue(weatherSecretMap(), source);
+}
 function saveWeatherApiKey(source: string, key: string) {
-  if (!WEATHER_SOURCES.has(source) || source === 'open-meteo') return { ok: false, message: '天气来源不需要或不支持单独设置密钥' };
+  if (!WEATHER_SOURCES.has(source) || source === 'open-meteo' || source === 'qweather') return { ok: false, message: '该天气来源不使用通用 API Key 设置' };
   if (!safeStorage.isEncryptionAvailable()) return { ok: false, message: 'Windows 安全存储不可用，未保存密钥' };
   const keys = { ...weatherKeyMap() };
   if (key.trim()) keys[source] = safeStorage.encryptString(key.trim()).toString('base64');
@@ -738,11 +753,126 @@ function saveWeatherApiKey(source: string, key: string) {
   void refreshWeather();
   return { ok: true, configured: Boolean(keys[source]) };
 }
+function saveWeatherApiSecret(source: string, secret: string) {
+  if (source !== 'caiyun') return { ok: false, message: '只有彩云天气需要单独设置 App Secret' };
+  if (!safeStorage.isEncryptionAvailable()) return { ok: false, message: 'Windows 安全存储不可用，未保存密钥' };
+  const secrets = { ...weatherSecretMap() };
+  if (secret.trim()) secrets[source] = safeStorage.encryptString(secret.trim()).toString('base64');
+  else delete secrets[source];
+  saveSettings({ weatherApiSecretsEncrypted: secrets });
+  void refreshWeather();
+  return { ok: true, configured: Boolean(secrets[source]) };
+}
+function qweatherConfig(): QWeatherConfig {
+  const raw = currentSettings.qweatherConfig;
+  const value = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw as Record<string, unknown> : {};
+  return {
+    developerId: typeof value.developerId === 'string' ? value.developerId.trim() : '',
+    projectId: typeof value.projectId === 'string' ? value.projectId.trim() : '',
+    credentialId: typeof value.credentialId === 'string' ? value.credentialId.trim() : '',
+    apiHost: typeof value.apiHost === 'string' ? value.apiHost.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/+$/, '') : '',
+  };
+}
+function readQWeatherPrivateKey(): string | null {
+  const encrypted = currentSettings.qweatherPrivateKeyEncrypted;
+  if (typeof encrypted !== 'string' || !encrypted || !safeStorage.isEncryptionAvailable()) return null;
+  try { return safeStorage.decryptString(Buffer.from(encrypted, 'base64')); } catch { return null; }
+}
+function qweatherPublicKey(): { publicKey: string; fingerprint: string } | null {
+  const pem = readQWeatherPrivateKey();
+  if (!pem) return null;
+  try {
+    const publicKey = createPublicKey(createPrivateKey(pem)).export({ type: 'spki', format: 'pem' }).toString();
+    const fingerprint = createHash('sha256').update(publicKey.replace(/\s+/g, ''), 'utf8').digest('hex');
+    return { publicKey, fingerprint };
+  } catch { return null; }
+}
+function getQWeatherStatus() {
+  const config = qweatherConfig();
+  const key = qweatherPublicKey();
+  const hostValid = /^(?:[a-z0-9-]+\.)+qweatherapi\.com$/.test(config.apiHost);
+  const fieldsValid = /^Q[A-Za-z0-9]{9}$/.test(config.developerId)
+    && /^[A-Za-z0-9_-]{4,64}$/.test(config.projectId)
+    && /^[A-Za-z0-9_-]{4,64}$/.test(config.credentialId);
+  return {
+    configured: Boolean(key && hostValid && fieldsValid),
+    hasPrivateKey: Boolean(key),
+    publicKey: key?.publicKey ?? '',
+    fingerprint: key?.fingerprint ?? '',
+    config,
+  };
+}
+function generateQWeatherKeyPair() {
+  if (!safeStorage.isEncryptionAvailable()) return { ok: false, message: 'Windows 安全存储不可用，无法安全保存私钥' };
+  if (qweatherPublicKey() && qweatherConfig().credentialId) return { ok: false, message: '已登记的 JWT 密钥不能直接覆盖；请先在控制台创建新凭据，再替换本机密钥' };
+  try {
+    const pair = generateKeyPairSync('ed25519', {
+      privateKeyEncoding: { type: 'pkcs8', format: 'pem' },
+      publicKeyEncoding: { type: 'spki', format: 'pem' },
+    });
+    saveSettings({ qweatherPrivateKeyEncrypted: safeStorage.encryptString(pair.privateKey).toString('base64') });
+    qweatherJwtCache = null;
+    const fingerprint = createHash('sha256').update(pair.publicKey.replace(/\s+/g, ''), 'utf8').digest('hex');
+    return { ok: true, publicKey: pair.publicKey, fingerprint };
+  } catch (error) {
+    return { ok: false, message: error instanceof Error ? error.message : 'Ed25519 密钥生成失败' };
+  }
+}
+function saveQWeatherConfig(payload: Partial<QWeatherConfig>) {
+  const config: QWeatherConfig = {
+    developerId: String(payload.developerId ?? '').trim(),
+    projectId: String(payload.projectId ?? '').trim(),
+    credentialId: String(payload.credentialId ?? '').trim(),
+    apiHost: String(payload.apiHost ?? '').trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/+$/, ''),
+  };
+  if (!/^Q[A-Za-z0-9]{9}$/.test(config.developerId)) return { ok: false, message: 'Developer ID 格式不正确，应为 Q 开头的 10 位 ID' };
+  if (!/^[A-Za-z0-9_-]{4,64}$/.test(config.projectId)) return { ok: false, message: 'Project ID 格式不正确' };
+  if (!/^[A-Za-z0-9_-]{4,64}$/.test(config.credentialId)) return { ok: false, message: 'Credential ID 格式不正确' };
+  if (!/^(?:[a-z0-9-]+\.)+qweatherapi\.com$/.test(config.apiHost)) return { ok: false, message: 'API Host 应填写控制台分配的 *.qweatherapi.com 域名，不要加协议或路径' };
+  if (!readQWeatherPrivateKey()) return { ok: false, message: '请先在本机生成并登记 Ed25519 公钥' };
+  saveSettings({ qweatherConfig: config });
+  qweatherJwtCache = null;
+  void refreshWeather();
+  return { ok: true, configured: getQWeatherStatus().configured };
+}
+function createQWeatherJwt(): string | null {
+  const status = getQWeatherStatus();
+  if (!status.configured) return null;
+  if (qweatherJwtCache && qweatherJwtCache.expiresAt > Date.now() + 10 * 60_000) return qweatherJwtCache.token;
+  const config = status.config;
+  const pem = readQWeatherPrivateKey();
+  if (!pem) return null;
+  try {
+    const privateKey = createPrivateKey(pem);
+    if (privateKey.asymmetricKeyType !== 'ed25519') return null;
+    const issuedAt = Math.floor(Date.now() / 1000) - 30;
+    const header = Buffer.from(JSON.stringify({ alg: 'EdDSA', kid: config.credentialId })).toString('base64url');
+    const payload = Buffer.from(JSON.stringify({
+      iss: config.developerId, sub: config.projectId,
+      iat: issuedAt, exp: issuedAt + 23 * 60 * 60,
+    })).toString('base64url');
+    const signingInput = header + '.' + payload;
+    const signature = cryptoSign(null, Buffer.from(signingInput), privateKey).toString('base64url');
+    const token = signingInput + '.' + signature;
+    qweatherJwtCache = { token, expiresAt: (issuedAt + 23 * 60 * 60) * 1000 };
+    return token;
+  } catch (error) {
+    logThrottled('weather:qweather-jwt', 'QWeather JWT generation failed: ' + (error instanceof Error ? error.message : String(error)), 60_000);
+    return null;
+  }
+}
 function getPublicSettings() {
   const visible = { ...currentSettings };
   delete visible.weatherApiKeysEncrypted;
+  delete visible.weatherApiSecretsEncrypted;
+  delete visible.qweatherPrivateKeyEncrypted;
   const keys = weatherKeyMap();
-  return { ...visible, weatherApiKeyConfigured: Object.fromEntries([...WEATHER_SOURCES].map(source => [source, source === 'open-meteo' || typeof keys[source] === 'string'])) };
+  return {
+    ...visible,
+    weatherApiKeyConfigured: Object.fromEntries([...WEATHER_SOURCES].map(source => [
+      source, source === 'open-meteo' || (source === 'qweather' ? getQWeatherStatus().configured : typeof keys[source] === 'string'),
+    ])),
+  };
 }
 
 function saveSettings(next: Record<string, unknown>) {
@@ -782,11 +912,19 @@ function saveSettings(next: Record<string, unknown>) {
     if (widgetEdgeHidden) revealWidgetFromEdge();
     const currentBounds = widgetWindow.getBounds();
     const display = screen.getDisplayMatching(currentBounds);
+    const positions = currentSettings.widgetDisplayPositions && typeof currentSettings.widgetDisplayPositions === 'object'
+      ? currentSettings.widgetDisplayPositions as Record<string, unknown> : {};
+    const saved = positions[String(display.id)];
+    const savedRecord = saved && typeof saved === 'object' && !Array.isArray(saved) ? saved as Record<string, unknown> : {};
+    const rememberedHeight = typeof savedRecord.height === 'number' && Number.isFinite(savedRecord.height)
+      ? Math.max(700, Math.min(1200, Math.round(savedRecord.height))) : 960;
     const layout = resizeWidgetForOrientation(
       currentBounds,
       display.workArea,
       currentSettings.orientation === 'vertical' ? 'vertical' : 'horizontal',
       widgetDockEdge,
+      18,
+      rememberedHeight,
     );
     widgetRestoreBounds = null;
     widgetRestoreMinSize = null;
@@ -1077,27 +1215,32 @@ async function pollSnapshot() {
   const result = await getSnapshotResult();
   if (result.snapshot && !result.error) sendToWindows('telemetry:update', result.snapshot);
 }
-async function refreshWeather() {
+async function refreshWeather(forceRefresh = false) {
   const district = currentSettings.weatherLocation === 'wujiang' ? 'wujiang' : 'suzhou';
   const source = typeof currentSettings.weatherSource === 'string' && WEATHER_SOURCES.has(currentSettings.weatherSource)
     ? currentSettings.weatherSource : 'open-meteo';
-  const apiKey = readWeatherApiKey(source);
-  if (source !== 'open-meteo' && !apiKey) {
+  const apiKey = source === 'qweather' ? createQWeatherJwt() : readWeatherApiKey(source);
+  const apiSecret = source === 'caiyun' ? readWeatherApiSecret(source) : null;
+  const apiHost = source === 'qweather' ? qweatherConfig().apiHost : null;
+  const credentialsMissing = source === 'qweather'
+    ? !apiKey || !apiHost
+    : source === 'caiyun' ? !apiKey || !apiSecret : source !== 'open-meteo' && !apiKey;
+  if (credentialsMissing) {
     lastWeather = null;
-    logThrottled('weather:key-missing', `Weather source ${source} requires an API key; configure it in Settings`, 60_000);
+    logThrottled('weather:key-missing', 'Weather source ' + source + ' requires credentials; configure them in Settings', 60_000);
     sendToWindows('weather:update', null);
     return;
   }
   const result = await api('/api/weather', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ location: district, source, apiKey }),
+    body: JSON.stringify({ location: district, source, apiKey, apiSecret, apiHost, forceRefresh }),
   });
   if (result) {
     lastWeather = result;
     if (weatherRetryTimer) { clearTimeout(weatherRetryTimer); weatherRetryTimer = null; }
-    logThrottled('weather:success', `Weather updated for ${district} using ${source}`, 15 * 60 * 1000);
+    logThrottled('weather:success', 'Weather updated for ' + district + ' using ' + source, 15 * 60 * 1000);
   } else {
-    logThrottled('weather:unavailable', `Weather API returned no data for ${district} using ${source}; retaining last valid data and retrying`, 30_000);
+    logThrottled('weather:unavailable', 'Weather API returned no data for ' + district + ' using ' + source + '; retaining last valid data and retrying', 30_000);
     if (!lastWeather && !weatherRetryTimer && !quitting) {
       weatherRetryTimer = setTimeout(() => { weatherRetryTimer = null; void refreshWeather(); }, 45_000);
     }
@@ -1433,6 +1576,28 @@ function moveWidgetTo(position: { x: number; y: number }) {
   return true;
 }
 
+function scheduleWidgetDimensionPersistence(win: BrowserWindow) {
+  if (widgetResizeSaveTimer) clearTimeout(widgetResizeSaveTimer);
+  widgetResizeSaveTimer = setTimeout(() => {
+    widgetResizeSaveTimer = null;
+    if (widgetWindow !== win || win.isDestroyed() || currentSettings.orientation !== 'vertical') return;
+    const bounds = win.getBounds();
+    const display = screen.getDisplayMatching(bounds);
+    const positions = currentSettings.widgetDisplayPositions && typeof currentSettings.widgetDisplayPositions === 'object'
+      ? currentSettings.widgetDisplayPositions as Record<string, unknown> : {};
+    const previous = positions[String(display.id)];
+    const previousRecord = previous && typeof previous === 'object' && !Array.isArray(previous)
+      ? previous as Record<string, unknown> : {};
+    saveSettings({
+      widgetLastDisplayId: display.id,
+      widgetDisplayPositions: {
+        ...positions,
+        [String(display.id)]: { ...previousRecord, x: bounds.x, y: bounds.y, width: bounds.width, height: bounds.height, dockEdge: widgetDockEdge },
+      },
+    });
+  }, 350);
+}
+
 function snapWidgetToEdge() {
   if (!widgetWindow || widgetWindow.isDestroyed() || currentSettings.widgetPinned === true) return null;
   if (widgetEdgeHidden) revealWidgetFromEdge();
@@ -1445,12 +1610,14 @@ function snapWidgetToEdge() {
   widgetWindow.setPosition(docked.x, docked.y, false);
   repositionWidgetDetailWindow();
   const savedPositions = currentSettings.widgetDisplayPositions && typeof currentSettings.widgetDisplayPositions === 'object'
-    ? currentSettings.widgetDisplayPositions : {};
+    ? currentSettings.widgetDisplayPositions as Record<string, unknown> : {};
+  const previous = savedPositions[String(display.id)];
+  const previousRecord = previous && typeof previous === 'object' && !Array.isArray(previous) ? previous as Record<string, unknown> : {};
   saveSettings({
     widgetLastDisplayId: display.id,
     widgetDisplayPositions: {
       ...savedPositions,
-      [String(display.id)]: { x: docked.x, y: docked.y, dockEdge: edge },
+      [String(display.id)]: { ...previousRecord, x: docked.x, y: docked.y, width: docked.width, height: docked.height, dockEdge: edge },
     },
   });
   publishWidgetEdgeState();
@@ -1511,14 +1678,8 @@ function toggleWidget(force?: boolean) {
   const display = screen.getAllDisplays().find(item => item.id === rememberedDisplayId) ?? screen.getPrimaryDisplay();
   const area = display.workArea;
   const vertical = currentSettings.orientation === 'vertical';
-  // The previous 112px vertical HUD left only ~88px for content and forced
-  // ordinary labels to wrap aggressively. Use a wider, readable default and
-  // clamp both orientations to the actual monitor work area.
-  const layout = fitWindowToWorkArea(area, vertical
-    ? { width: 340, height: 1200, minWidth: 340, minHeight: 700, margin: 18, horizontalAnchor: 'right', verticalAnchor: 'top' }
-    : { width: 980, height: 112, minWidth: 760, minHeight: 96, margin: 18, horizontalAnchor: 'right', verticalAnchor: 'top' });
-  // Settings are loaded from JSON and intentionally kept as unknown-valued data
-  // in the main process. Validate the persisted display entry before using it.
+  // Restore the user's manually chosen vertical HUD height per display.
+  // New installs start at 960px; remembered sizes are clamped to a safe range.
   const rawDisplayPositions = currentSettings.widgetDisplayPositions;
   const displayPositions = rawDisplayPositions && typeof rawDisplayPositions === 'object' && !Array.isArray(rawDisplayPositions)
     ? rawDisplayPositions as Record<string, unknown>
@@ -1527,6 +1688,12 @@ function toggleWidget(force?: boolean) {
   const savedPositionRecord = rawSavedPosition && typeof rawSavedPosition === 'object' && !Array.isArray(rawSavedPosition)
     ? rawSavedPosition as Record<string, unknown>
     : null;
+  const savedHeight = savedPositionRecord && typeof savedPositionRecord.height === 'number' && Number.isFinite(savedPositionRecord.height)
+    ? Math.max(700, Math.min(1200, Math.round(savedPositionRecord.height)))
+    : 960;
+  const layout = fitWindowToWorkArea(area, vertical
+    ? { width: 340, height: savedHeight, minWidth: 340, minHeight: 700, margin: 18, horizontalAnchor: 'right', verticalAnchor: 'top' }
+    : { width: 980, height: 112, minWidth: 760, minHeight: 96, margin: 18, horizontalAnchor: 'right', verticalAnchor: 'top' });
   const savedPosition = savedPositionRecord
     && typeof savedPositionRecord.x === 'number' && Number.isFinite(savedPositionRecord.x)
     && typeof savedPositionRecord.y === 'number' && Number.isFinite(savedPositionRecord.y)
@@ -1555,10 +1722,11 @@ function toggleWidget(force?: boolean) {
   else void widgetWindow.loadFile(join(app.getAppPath(), 'dist', 'index.html'), { query: { widget: '1' } });
   const thisWidget = widgetWindow;
   widgetWindow.on('move', repositionWidgetDetailWindow);
-  widgetWindow.on('resize', repositionWidgetDetailWindow);
+  widgetWindow.on('resize', () => { repositionWidgetDetailWindow(); if (widgetWindow) scheduleWidgetDimensionPersistence(widgetWindow); });
   widgetWindow.on('closed', () => {
     if (widgetWindow === thisWidget) {
       widgetWindow = null;
+      if (widgetResizeSaveTimer) { clearTimeout(widgetResizeSaveTimer); widgetResizeSaveTimer = null; }
       hideWidgetDetail();
       if (widgetCalendarWindow && !widgetCalendarWindow.isDestroyed()) widgetCalendarWindow.close();
       stopWidgetFullscreenMonitor();
@@ -1784,8 +1952,21 @@ ipcMain.handle('desktop-displays:usb-close', () => { usbDisplayRestorePending = 
 ipcMain.handle('desktop-displays:usb-choose-media', (_event, kind: 'image' | 'video') => chooseUsbDisplayMedia(kind === 'video' ? 'video' : 'image'));
 ipcMain.handle('desktop-displays:usb-read-image', (_event, path: string) => { try { return readUsbDisplayImage(path); } catch (error) { return { ok: false, message: error instanceof Error ? error.message : String(error) }; } });
 ipcMain.handle('desktop-displays:usb-video-url', (_event, path: string) => { try { return getUsbDisplayVideoUrl(path); } catch (error) { return { ok: false, message: error instanceof Error ? error.message : String(error) }; } });
-ipcMain.handle('app:weather-key-status', (_event, source: string) => ({ configured: source === 'open-meteo' || Boolean(readWeatherApiKey(source)) }));
+ipcMain.handle('app:weather-key-status', (_event, source: string) => ({
+  configured: source === 'open-meteo' || (source === 'qweather' ? getQWeatherStatus().configured : Boolean(readWeatherApiKey(source))),
+}));
 ipcMain.handle('app:save-weather-api-key', (_event, payload: { source: string; key: string }) => saveWeatherApiKey(String(payload?.source ?? ''), String(payload?.key ?? '')));
+ipcMain.handle('app:weather-secret-status', (_event, source: string) => ({ configured: Boolean(readWeatherApiSecret(String(source ?? ''))) }));
+ipcMain.handle('app:save-weather-api-secret', (_event, payload: { source: string; secret: string }) => saveWeatherApiSecret(String(payload?.source ?? ''), String(payload?.secret ?? '')));
+ipcMain.handle('app:qweather-status', () => getQWeatherStatus());
+ipcMain.handle('app:qweather-generate-keypair', () => generateQWeatherKeyPair());
+ipcMain.handle('app:qweather-save-config', (_event, payload: Partial<QWeatherConfig>) => saveQWeatherConfig(payload ?? {}));
+ipcMain.handle('app:weather-test', async () => {
+  lastWeather = null;
+  await refreshWeather(true);
+  return lastWeather ? { ok: true, source: (lastWeather as { source?: string }).source ?? '' } : { ok: false, message: '天气请求失败；请检查 API 凭据、Host 和服务商权限' };
+});
+ipcMain.handle('app:copy-text', (_event, value: string) => { clipboard.writeText(String(value ?? '')); return true; });
 ipcMain.handle('app:save-settings', (_event, settings: Record<string, unknown>) => saveSettings(settings));
 ipcMain.handle('app:get-snapshot', async () => (await getSnapshotResult()).snapshot);
 ipcMain.handle('app:get-snapshot-result', () => getSnapshotResult());

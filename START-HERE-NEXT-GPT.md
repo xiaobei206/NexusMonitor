@@ -1,27 +1,32 @@
 # NexusMonitor — 新接手 GPT 请先看这里
 
-**当前主线源码版本：2.2.5；唯一工作基线：GitHub `main`。请首先核对本轮 Windows CI / Release 结果。**
+**当前主线源码版本：2.2.6；唯一工作基线：GitHub main。先核对本版本 Windows CI / Release 状态，不能把源码提交等同于发布。**
 
-- 上一正式发布基线：[NexusMonitor 2.2.4](https://github.com/xiaobei206/NexusMonitor/releases/tag/v2.2.4)
-- 本轮交接：[NexusMonitor-2.2.5-HANDOFF-CN.md](NexusMonitor-2.2.5-HANDOFF-CN.md)
-- 本轮构建报告：[NexusMonitor-2.2.5-BUILD-REPORT.md](NexusMonitor-2.2.5-BUILD-REPORT.md)
-- 唯一跨版本记录：[NexusMonitor-DEVELOPMENT-LOG-CN.md](NexusMonitor-DEVELOPMENT-LOG-CN.md)
+- 上一正式发布：[NexusMonitor 2.2.5](https://github.com/xiaobei206/NexusMonitor/releases/tag/v2.2.5)
+- 当前交接：[NexusMonitor-2.2.6-HANDOFF-CN.md](NexusMonitor-2.2.6-HANDOFF-CN.md)
+- 当前构建报告：[NexusMonitor-2.2.6-BUILD-REPORT.md](NexusMonitor-2.2.6-BUILD-REPORT.md)
+- 唯一跨版本日志：[NexusMonitor-DEVELOPMENT-LOG-CN.md](NexusMonitor-DEVELOPMENT-LOG-CN.md)
 - 架构与硬性约束：[AGENTS.md](AGENTS.md)
-- 下一轮正式行为变更应从 2.2.6 开始（须先确认 2.2.5 发布已完成）。
+- 2.2.6 发布完成后的下一正式行为版本为 2.2.7。
 
-## 本轮目标与代码落点
+## 2.2.6 变更落点
 
-- `src/renderer/styles.css`：提高全局常用字号；竖向 HUD 关键文本与短屏压缩规则。
-- `src/renderer/music-player.css`：音乐库、曲目、播放器弹层、输出设备设置的可读性。
-- `src/main/index.ts` 与 `src/main/widget-docking.ts`：竖向 HUD 首选高度 340×1200；实际尺寸受显示器工作区限制。
-- 回归测试：`tests/ui-readability.test.cjs`、`tests/widget-vertical-layout.test.cjs`、`tests/widget-docking.test.cjs`。
+- HardwareService/Monitoring/WeatherService.cs：QWeather V1、WeatherCN 标准 API、Caiyun V2.6，并保留 Open-Meteo / WeatherAPI / OpenWeather。
+- src/main/index.ts：本机 QWeather Ed25519/JWT、Windows safeStorage 加密、天气凭据 IPC、每显示器 HUD 高度保存。
+- src/renderer/App.tsx：六个天气源选择与配置向导、天气连通性测试、数据来源声明、按 AQI 标准区分标签。
+- src/renderer/aqi.ts：China-MEP 与 US-EPA 分类文字分开处理。
+- src/main/widget-docking.ts：竖向 HUD 默认 960px；切换方向时恢复该显示器已保存高度，夹在 700–1200px 并按工作区裁剪。
+- 回归测试：tests/weather-provider-contract.test.cjs、tests/widget-docking.test.cjs、tests/ui-readability.test.cjs。
 
-## P4 / WASAPI
+## 天气凭据说明
 
-用户在目标电脑确认：选择 `P4 Mono UAC Direct v62` 时，WASAPI 独占开启后无声；关闭独占立即恢复普通输出。用户现阶段接受普通模式，本轮不再冒险改 WASAPI native backend。独占仍为可选项；不可宣称已修复，亦不能仅凭当前观察断言设备在所有配置下都不支持独占。
+- Open-Meteo 无需 Key。
+- QWeather V1：本机生成 Ed25519 密钥；只上传公钥到控制台，再填写 Developer ID、Project ID、Credential ID、API Host。私钥仅保存在本机加密设置中。
+- 华风爱科：标准 API Key 走 X-Gw-API-Key Header，Location Key 缓存 24 小时；标准测试 Key 额度 500 次/日、5 QPS。
+- 彩云：V2.6 App Key + App Secret，按请求 HMAC-SHA256 签名。
+- WeatherAPI 与 OpenWeather 仍按其各自套餐 / 权限使用。没有提供 API 凭据的源不能做实网验收。
 
-## 版本与构建
+## 音频 / 显示边界
 
-- VERSION、package / lockfile、HardwareService、Renderer 和 `NexusMonitor-2.2.5-BUILD-RELEASE.cjs` 应全部同步为 2.2.5。
-- 本轮 workflow 结束后，将真实测试结果和安装包 SHA-256 写回构建报告；禁止沿用 2.2.4 的 238/238 结果。
-- Hosted Windows CI 不等于目标机真实 UI 或 P4 扬声器验收。
+P4 Mono UAC Direct v62 在目标机器启用 WASAPI Exclusive 时无声，关闭后普通输出立即恢复。用户已接受普通播放。本版本不修改 WASAPI native backend，不声称独占已修复或实机通过。Hosted CI 不能替代真实 P4 扬声器、显示器、COM3 Turing 验收。
+

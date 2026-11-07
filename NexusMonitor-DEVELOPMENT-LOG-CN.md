@@ -1,7 +1,35 @@
 # NexusMonitor 统一开发日志（跨版本唯一主记录）
 
-**当前正式版本：2.2.4（已合入 main 并发布；下一轮从 2.2.5 开始）**  
+**当前正式发布：2.2.5；当前 main 开发版本：2.2.6；2.2.6 发布后下一版本从 2.2.7 开始。**  
 **记录规则：** 每个正式版本都追加到本文件；下一版不得新建第二份版本日志。按版本号和日期顺序记录功能、根因、修复、失败尝试、验证范围及未完成事项。历史测试结果不能冒充当前版本测试结果。
+
+## 2.2.6（2026-11-07，源码开发 / Windows CI 结果待回填）
+
+### 用户目标
+- 将 2.2.5 默认 1200px 的竖向悬浮 HUD 调整到更合适的首屏高度，并记住用户手动调整，避免每次启动都重新拖动。
+- 增加华风爱科等备用天气源，优先接入有标准 / 免费测试额度的 API，同时保留 Open-Meteo 免密默认源。
+- 和风天气已转向新版 V1；旧 V7 API / 单一 API Key 认证不能继续作为默认实现。
+
+### 功能实现
+- 天气源扩为 Open-Meteo、QWeather V1、WeatherCN 标准 API、Caiyun V2.6、WeatherAPI、OpenWeather；全部映射到既有 WeatherSnapshot。
+- QWeather V1：本机生成 Ed25519 key pair；私钥通过 Electron safeStorage 加密保存在本机设置；公钥复制到控制台登记。主进程按 Developer ID / Project ID / Credential ID 签发并缓存 EdDSA JWT，HardwareService 只接收 Bearer token 与项目 Host。
+- WeatherCN：使用标准 API X-Gw-API-Key Header；Location Key 按地点缓存 24 小时；请求实况、24 小时逐小时、10 日逐日与 AQI。标准测试 Key 官方额度为每日 500 次、5 QPS。
+- Caiyun：采用 V2.6 综合接口，App Key 留在路径、App Secret 只用于主机端 HMAC-SHA256 签名；Nonce / 时间戳 / 签名随请求发送，一次取实况、小时、逐日与 AQI。中国区域优先 aqi.chn，兼容回退 aqi.usa。
+- WeatherSnapshot 增加 AQI 标准及数据来源声明 URL。Open-Meteo 标为 US-EPA，华风爱科标为 China-MEP，彩云优先 China-MEP；和风按返回的 cn-mee / us-epa 索引选择。主界面、悬浮 HUD、USB 天气卡与 Turing 3.5 寸天气时钟均按标准区分 CN / US 标签和分类文字；Turing Canvas 显示数据来源名称。
+- HUD：竖向默认 340×960 逻辑像素；用户手动调整高度防抖保存到 widgetDisplayPositions，启动及方向切换时恢复；限制 700–1200px，并裁剪到显示器 work area。
+
+### 安全与额度
+- QWeather 私钥、Caiyun App Secret、WeatherCN / WeatherAPI / OpenWeather Keys 全部通过 Electron safeStorage 加密；不发送给 Renderer，不写入明文日志。
+- Open-Meteo 仍是免密默认值；其他源需要用户自己的账号凭据。代码接入不代表自动注册或获得免费额度。
+- WeatherCN 四个 API 请求按 15 分钟刷新频率理论约 384 次/日（定位缓存命中后），接近每日 500 次标准测试额度；手动测试也会增加用量。不能将试用额度描述为永久无限免费。
+- 本版本不修改音乐播放或 WASAPI native backend。
+
+### 测试与验收边界
+- 新增 Weather Provider 合同回归，覆盖 QWeather V1 + JWT、WeatherCN Header 与定位缓存、Caiyun V2.6 签名、天气源选择、AQI 标准与 HUD 高度保存。设置页“测试连接”强制绕过 12 分钟缓存；失败时不以旧缓存冒充连通成功，普通自动刷新仍保留缓存。
+- Windows CI / .NET / NSIS / Release 结果以 2.2.6 构建报告为准；不沿用 2.2.5 Run #195 结果。
+- 没有用户自己的新 Provider 凭据，不能声称它们已通过真实账户权限 / 实时网络验证。
+- 目标机需检查 HUD 高度跨重启与多显示器记忆、三个新 Provider 实测、AQI 标签、USB 5 寸屏、Turing COM3。
+- P4 Exclusive 旧问题保持原样：不修改 native backend。
 
 ## 版本总览与跨版本教训
 

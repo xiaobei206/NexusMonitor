@@ -12,7 +12,7 @@ public sealed record VolumeSnapshot(string Name, string Label, long TotalBytes, 
 public sealed record StorageStatus(bool WmiAvailable, string? LastError, DateTime? LastAttemptAt, int DiskCount, int VolumeCount, int StorageHardwareCount, bool DiskPerformanceAvailable = false, string? DiskPerformanceError = null, int DiskPerformanceInstanceCount = 0, int DiskPerformanceMatchedDiskCount = 0);
 public sealed record ServiceInfo(string Status, string Version, bool Elevated, bool? PawnIoInstalled = null, bool? PawnIoRunning = null, string? GpuTemperatureProbeStatus = null);
 public sealed record SystemSnapshot(DateTime Timestamp, long UptimeSeconds, CpuSnapshot Cpu, IReadOnlyList<GpuSnapshot> Gpus, MemorySnapshot Memory, IReadOnlyList<NetworkSnapshot> Networks, IReadOnlyList<DiskSnapshot> Disks, IReadOnlyList<VolumeSnapshot> Volumes, IReadOnlyList<FanSnapshot> Fans, IReadOnlyList<SensorValue> Sensors, ServiceInfo Service, StorageStatus? Storage = null);
-public sealed record WeatherRequest(string Location, string Source, string? ApiKey);
+public sealed record WeatherRequest(string Location, string Source, string? ApiKey, string? ApiSecret = null, string? ApiHost = null, bool ForceRefresh = false);
 public sealed record WeatherHourSnapshot(DateTimeOffset Time, double? Temperature, int? PrecipitationProbability, int? WeatherCode);
 public sealed record WeatherDaySnapshot(DateTimeOffset Date, double? MaxTemperature, double? MinTemperature, int? WeatherCode, int? PrecipitationProbability, double? WindSpeedMax);
 public sealed record WeatherSnapshot(
@@ -37,7 +37,9 @@ public sealed record WeatherSnapshot(
     IReadOnlyList<WeatherHourSnapshot>? HourlyForecast = null,
     IReadOnlyList<WeatherDaySnapshot>? DailyForecast = null,
     DateTimeOffset? Sunrise = null,
-    DateTimeOffset? Sunset = null);
+    DateTimeOffset? Sunset = null,
+    string? AqiStandard = null,
+    string? AttributionUrl = null);
 public sealed record TuringDevice(string Port, string Name, string PnpDeviceId, bool IsTuring, string? SerialNumber = null);
 public sealed record TuringConnectRequest(string? Port, int? Orientation);
 public sealed record TuringOrientationRequest(int Orientation);

@@ -34,11 +34,15 @@ test('Turing exposes a dedicated weather-clock mode and switches renderer entry'
   assert.match(renderer, /未来 3 天/);
 });
 
-test('AQI stays in the temperature/time gap on landscape and adapts separately on portrait', () => {
+test('AQI stays in the temperature/time gap and uses the right national standard on Turing', () => {
   const renderer = read('src/renderer/turing-dashboard.ts');
   assert.match(renderer, /AQI is aligned to the current-conditions block/);
   assert.match(renderer, /drawWeatherClockLandscape/);
   assert.match(renderer, /drawWeatherClockPortrait/);
+  assert.match(renderer, /aqiLabel\(w\?\.aqi, w\?\.aqiStandard\)/);
+  assert.match(renderer, /CN AQI/);
+  assert.match(renderer, /天气数据来源：\$\{w\.source\}/);
+  assert.doesNotMatch(renderer, /fillText\('US AQI'/);
 });
 
 

@@ -35,10 +35,12 @@ test('floating HUD labels use readable metadata text instead of micro text', () 
 });
 
 
-test('vertical HUD uses a wider rail and readable primary values', () => {
-  assert.match(css, /\.widget-shell\.vertical \.widget-bar\{width:340px;min-width:340px;flex:0 0 340px/);
-  assert.match(css, /\.widget-shell\.vertical \.widget-stat-heading>b\{font-size:27px/);
-  assert.match(css, /\.widget-shell\.vertical \.widget-stat-meta\{font-size:14px/);
+test('vertical HUD defaults to a balanced 960px and remembers manual height per display', () => {
+  assert.match(main, /width: 340, height: 960, minWidth: 340, minHeight: 700/);
+  assert.match(main, /scheduleWidgetDimensionPersistence/);
+  assert.match(main, /savedRecord\\.height/);
+  assert.match(docking, /preferredHeight = orientation === 'vertical' \\? Math\\.max\\(700, Math\\.min\\(1200, Math\\.round\\(preferredVerticalHeight\\)\\)\\) : 112/);
+  assert.match(css, /@media\\(max-height:920px\\)[\\s\\S]*?\\.widget-shell\\.vertical \\.widget-vertical-daily\\{display:none\\}/);
 });
 
 test('weather and custom sensor blocks have responsive HUD layouts', () => {
@@ -80,8 +82,10 @@ test('music library and output settings use readable text sizes', () => {
   assert.match(musicCss, /\.nm-library-empty span\{font-size:13px/);
 });
 
-test('vertical HUD grows to 1200px when the display work area permits and adapts on short screens', () => {
-  assert.match(main, /width: 340, height: 1200, minWidth: 340, minHeight: 700/);
-  assert.match(docking, /preferredHeight = orientation === 'vertical' \? 1200 : 112/);
+test('vertical HUD defaults to 960px, remembers manual height per display and adapts on short screens', () => {
+  assert.match(main, /width: 340, height: 960, minWidth: 340, minHeight: 700/);
+  assert.match(main, /scheduleWidgetDimensionPersistence/);
+  assert.match(main, /savedRecord\.height/);
+  assert.match(docking, /preferredHeight = orientation === 'vertical' \? Math\.max\(700, Math\.min\(1200, Math\.round\(preferredVerticalHeight\)\)\) : 112/);
   assert.match(css, /@media\(max-height:920px\)[\s\S]*?\.widget-shell\.vertical \.widget-vertical-daily\{display:none\}/);
 });

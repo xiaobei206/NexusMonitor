@@ -1,4 +1,4 @@
-# NexusMonitor 2.2.5 — Electron Edition (mainline update; Windows CI pending)
+# NexusMonitor 2.2.6 — Electron Edition (mainline update; Windows CI pending)
 
 > **新对话 / 新开发者接手：先读 [START-HERE-NEXT-GPT.md](START-HERE-NEXT-GPT.md) 和根目录 [AGENTS.md](AGENTS.md)。** 入口文档列出阅读顺序、源码目录地图、验证命令与硬件验收边界。
 
@@ -18,18 +18,18 @@ The Electron 45 stable channel was current at the project date, and its release 
 
 - Frameless React dashboard with sidebar, system overview and live telemetry cards
 - Separate transparent HUD with independent topmost control, native right-click menu, position pinning, four-edge snapping, optional 10px edge auto-hide, per-display position memory and best-effort fullscreen yielding on the HUD display
-- Readable global desktop typography; horizontal HUD defaults to 860×112 and vertical HUD to 176×640, both fitted to the display work area
+- Readable global desktop typography; horizontal HUD defaults to 980×112 and vertical HUD opens at 340×960 logical pixels. A manually resized vertical height is remembered per display (700–1200px) and fitted to the work area.
 - Dynamic CPU/GPU/RAM meters and 60-second sparklines
 - Physical-disk overview capacity bars aggregate mounted volumes only when Windows reports an explicit disk/volume mapping; physical capacity and volume capacity are labelled separately.
 - Floating HUD C: storage usage bar alongside existing physical-disk I/O/activity, plus parallel download/upload scales (600 Mbps down / 40 Mbps up) with uncapped numeric readings.
-- Shared six-band US AQI colors across the overview, compact/expanded HUD and Turing dashboard.
+- Provider-aware AQI presentation across the overview, compact/expanded HUD and Turing dashboard: US EPA and China MEP values retain their own category labels and standards.
 - Turing still-wallpaper mode for a local image or local folder slideshow (30/60/90/120 seconds), with contain/cover/stretch fitting and landscape/portrait support; JPG/JPEG/PNG/WEBP/BMP are read locally
 - Dedicated Turing weather-clock mode with independent landscape/portrait layouts, current weather/AQI, six upcoming hours and six future days; 27 bundled full-screen WebP backgrounds (18 sunny scenes across dawn to night, plus cloud/fog/rain/storm/snow/night scenes).
 - Theme studio: Obsidian, Paper / Engineering, Titanium, personal photo background; accent color, opacity, density, module visibility and drag reordering
 - Device selection: multiple network adapters and physical disks; the Turing screen can automatically follow the C: physical disk and busiest active non-tunnel NIC, or pin either manually
 - Turing 3.5-inch USB display page: single-page 480×320 hardware-left / Wujiang-weather-right layout, COM discovery, Revision A handshake, manual brightness, scheduled day/night backlight control and 16×8 differential frame patches
 - USB 5-inch Windows extended-display page: display selection, independent output window, hardware monitoring, static/GIF wallpaper, weather clock, local video and desktop-wallpaper + background-music modes; true USB-panel backlight control is intentionally deferred pending firmware command confirmation
-- Wujiang/Suzhou weather and US AQI from Open-Meteo, with six upcoming hourly records and six future daily records for the Turing weather-clock screen
+- Selectable Wujiang/Suzhou weather providers: Open-Meteo (no key), QWeather V1 (local Ed25519/JWT), WeatherCN / 华风爱科 standard API, Caiyun V2.6 signed App Key + Secret, WeatherAPI and OpenWeather. All providers map into one normalized weather snapshot.
 - Local shortcut list and manifest-based plugin inventory
 - Unified local Music Service: one persistent main-Renderer playback host; Nora-style songs / albums / artists / genres / folders / playlists; tags / artwork / ReplayGain; M3U/M3U8; ten-band EQ with nine presets; local synchronized LRC; sleep timer; six USB output modes; Chromium endpoint routing plus a native WASAPI Exclusive PCM path with AudioWorklet transfer, live underrun stats and normal-output fallback. Current WASAPI route is Renderer Float32 PCM and explicitly not bit-perfect.
 - Vertical HUD mini-player inserted above the existing weather block without reordering the weather, clock or hardware metrics
@@ -75,13 +75,15 @@ NexusMonitor source in this package is provided for the user's development/testi
 
 ## Current source handoff
 
-The current source line is **main / 2.2.5**; v2.2.4 remains the last completed release until the current commit's Windows CI publishes the new version. This personal repository is developed directly on `main`; no feature branches or PRs unless explicitly requested.
+The current source line is **main / 2.2.6**; the previous completed release is [NexusMonitor 2.2.5](https://github.com/xiaobei206/NexusMonitor/releases/tag/v2.2.5). This personal repository is developed directly on main; no feature branches or PRs unless explicitly requested.
 
-- Current handoff: [NexusMonitor-2.2.5-HANDOFF-CN.md](NexusMonitor-2.2.5-HANDOFF-CN.md)
-- Current build report: [NexusMonitor-2.2.5-BUILD-REPORT.md](NexusMonitor-2.2.5-BUILD-REPORT.md)
+- Current handoff: [NexusMonitor-2.2.6-HANDOFF-CN.md](NexusMonitor-2.2.6-HANDOFF-CN.md)
+- Current build report: [NexusMonitor-2.2.6-BUILD-REPORT.md](NexusMonitor-2.2.6-BUILD-REPORT.md)
 - Canonical development log: [NexusMonitor-DEVELOPMENT-LOG-CN.md](NexusMonitor-DEVELOPMENT-LOG-CN.md)
-- This iteration increases shared typography sizes, improves music-library/output-device readability, raises vertical HUD's preferred height to 1200px (clamped by display work area), and adds compact behaviour for short displays.
-- P4 Mono UAC Direct v62 currently outputs no sound with WASAPI Exclusive enabled on the target PC; turning Exclusive off immediately restores ordinary playback. The user accepts ordinary output for now; this iteration does not make risky changes to the native exclusive-output path.
+- 2.2.6 adds three selectable provider adapters: QWeather V1 with locally signed Ed25519 JWT, WeatherCN standard API, and Caiyun V2.6 HMAC-SHA256 authentication. Existing Open-Meteo, WeatherAPI and OpenWeather choices remain.
+- QWeather private keys, WeatherCN / WeatherAPI / OpenWeather API keys and Caiyun App Key / Secret are encrypted with Electron safeStorage. Only public QWeather metadata is shared with renderer windows.
+- The default vertical HUD height is 960 logical pixels. Manual vertical height is remembered per display and restored within the supported 700–1200px range.
+- The 2.2.5 target-PC observation remains unchanged: P4 Mono UAC Direct v62 has no audible output while WASAPI Exclusive is enabled; disabling Exclusive immediately restores ordinary playback. 2.2.6 does not change the native WASAPI path.
 
 ### Historical 2.2.4 release baseline
 
@@ -105,6 +107,6 @@ For an Intel Alder Lake system where IGCL exposes GPU clocks/power but not tempe
 ## Repository history and operating records
 
 - The canonical cross-version development record is `NexusMonitor-DEVELOPMENT-LOG-CN.md`.
-- Current-version handoff and final build / CI boundaries are in `NexusMonitor-2.2.4-HANDOFF-CN.md` and `NexusMonitor-2.2.4-BUILD-REPORT.md`. Version 2.2.4 is merged and released; target-PC acceptance remains documented separately.
+- Current handoff and build / CI boundaries are in `NexusMonitor-2.2.6-HANDOFF-CN.md` and `NexusMonitor-2.2.6-BUILD-REPORT.md`. Previous release baseline: [NexusMonitor 2.2.5](https://github.com/xiaobei206/NexusMonitor/releases/tag/v2.2.5); target-PC acceptance remains documented separately.
 - Each GitHub Actions run retains its complete build/test log; see the linked 2.1.8 run above. Per-user application runtime logs and settings remain local under `%APPDATA%\\NexusMonitor` and are intentionally not committed.
 - Versioned engineering references and the historical patch archive are under `docs/`.
