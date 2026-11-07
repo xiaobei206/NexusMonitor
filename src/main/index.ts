@@ -255,19 +255,18 @@ function loadMusicLibrary() {
     const tracks = Array.isArray(raw.tracks) ? raw.tracks.flatMap((item: any) => {
       if (!item || typeof item.path !== 'string' || !MUSIC_AUDIO_EXTENSIONS.has(extname(item.path).toLowerCase())) return [];
       const target = resolve(item.path);
-      const metadata = readMusicMetadata(target);
       return [{
         id: typeof item.id === 'string' ? item.id : randomUUID(),
         path: target,
-        title: typeof item.title === 'string' ? item.title : metadata.title ?? basename(target, extname(target)),
-        artist: typeof item.artist === 'string' ? item.artist : metadata.artist ?? '未知艺术家',
-        album: typeof item.album === 'string' ? item.album : metadata.album ?? null,
-        genre: typeof item.genre === 'string' ? item.genre : metadata.genre ?? null,
-        year: Number.isFinite(Number(item.year)) ? Number(item.year) : metadata.year ?? null,
-        trackNumber: Number.isFinite(Number(item.trackNumber)) ? Number(item.trackNumber) : metadata.trackNumber ?? null,
-        durationSeconds: Number.isFinite(Number(item.durationSeconds)) ? Number(item.durationSeconds) : metadata.durationSeconds ?? null,
-        sampleRateHz: Number.isFinite(Number(item.sampleRateHz)) ? Number(item.sampleRateHz) : metadata.sampleRateHz ?? null,
-        bitDepth: Number.isFinite(Number(item.bitDepth)) ? Number(item.bitDepth) : metadata.bitDepth ?? null,
+        title: typeof item.title === 'string' ? item.title : basename(target, extname(target)),
+        artist: typeof item.artist === 'string' ? item.artist : '未知艺术家',
+        album: typeof item.album === 'string' ? item.album : null,
+        genre: typeof item.genre === 'string' ? item.genre : null,
+        year: Number.isFinite(Number(item.year)) ? Number(item.year) : null,
+        trackNumber: Number.isFinite(Number(item.trackNumber)) ? Number(item.trackNumber) : null,
+        durationSeconds: Number.isFinite(Number(item.durationSeconds)) ? Number(item.durationSeconds) : null,
+        sampleRateHz: Number.isFinite(Number(item.sampleRateHz)) ? Number(item.sampleRateHz) : null,
+        bitDepth: Number.isFinite(Number(item.bitDepth)) ? Number(item.bitDepth) : null,
         format: typeof item.format === 'string' ? item.format : musicFormatLabel(target),
         artworkPath: typeof item.artworkPath === 'string' && existsSync(item.artworkPath) ? item.artworkPath : null,
         addedAt: typeof item.addedAt === 'string' ? item.addedAt : new Date().toISOString(),
@@ -301,7 +300,7 @@ function loadMusicLibrary() {
 function publicMusicState(): MusicState {
   return {
     ...musicState,
-    tracks: musicState.tracks.map(track => ({ ...track, missing: !existsSync(track.path) })),
+    tracks: musicState.tracks.map(({ artworkPath, ...track }) => ({ ...track, hasArtwork: Boolean(artworkPath && existsSync(artworkPath)), missing: !existsSync(track.path) })),
     playlists: musicState.playlists.map(playlist => ({ ...playlist, trackIds: [...playlist.trackIds] })),
   };
 }
