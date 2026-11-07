@@ -51,16 +51,19 @@ const MUSIC_EQ_FREQUENCIES = [31, 62, 125, 250, 500, 1000, 2000, 4000, 8000, 160
 const FLAT_MUSIC_EQ = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
 const stopWidgetDrag = (event: ReactPointerEvent) => event.stopPropagation();
 
-export function MusicPlaybackRuntime({ state, outputDeviceId = 'default', eqBands = FLAT_MUSIC_EQ, onOutputStatus }: {
+export function MusicPlaybackRuntime({ state, outputDeviceId = 'default', eqBands = FLAT_MUSIC_EQ, replayGainDb = null, replayGainPeak = null, onOutputStatus }: {
   state: MusicState | null;
   outputDeviceId?: string;
   eqBands?: number[];
+  replayGainDb?: number | null;
+  replayGainPeak?: number | null;
   onOutputStatus?: (status: MusicOutputStatus) => void;
 }) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const mediaSourceRef = useRef<MediaElementAudioSourceNode | null>(null);
   const eqFiltersRef = useRef<BiquadFilterNode[]>([]);
+  const replayGainNodeRef = useRef<GainNode | null>(null);
   const lastReportAt = useRef(0);
   const bands = useMemo(
     () => MUSIC_EQ_FREQUENCIES.map((_, index) => {
@@ -70,7 +73,17 @@ export function MusicPlaybackRuntime({ state, outputDeviceId = 'default', eqBand
     [eqBands],
   );
   const bandKey = bands.join(',');
-
+  const replayGainAppliedDb = useMemo(() => {
+    if (replayGainDb == null || !Number.isFinite(replayGainDb)) return 0;
+    const requestedDb = Math.max(-60, Math.min(18, replayGainDb));
+    const peak = Number(replayGainPeak);
+    // Without a valid peak tag, ReplayGain may attenuate but will not boost.
+    const safeDb = Number.isFinite(peak) && peak > 0
+      ? 20 * Math.log10(0.999 / peak)
+      : 0;
+    return Math.min(requestedDb, safeDb);
+  }, [replayGainDb, replayGainPeak]);
+  const hasReplayGain = replayGainDb != null && Number.isFinite(replayGainDb);
   const ensureAudioGraph = useCallback(async () => {
     const audio = audioRef.current;
     if (!audio) throw new Error('播放宿主尚未就绪');
@@ -87,12 +100,16 @@ export function MusicPlaybackRuntime({ state, outputDeviceId = 'default', eqBand
           filter.gain.value = 0;
           return filter;
         });
+        const replayGain = context.createGain();
+        replayGain.gain.value = 1;
         source.connect(filters[0]);
         for (let index = 0; index < filters.length - 1; index++) filters[index].connect(filters[index + 1]);
-        filters[filters.length - 1].connect(context.destination);
+        filters[filters.length - 1].connect(replayGain);
+        replayGain.connect(context.destination);
         audioContextRef.current = context;
         mediaSourceRef.current = source;
         eqFiltersRef.current = filters;
+        replayGainNodeRef.current = replayGain;
       } catch (error) {
         await context.close().catch(() => undefined);
         throw error;
@@ -219,29 +236,33 @@ export function MusicPlaybackRuntime({ state, outputDeviceId = 'default', eqBand
 
   useEffect(() => {
     const hasBoostOrCut = bands.some(value => value !== 0);
-    // Do not create/resume an AudioContext merely because EQ was saved.
+    const needsProcessing = hasBoostOrCut || hasReplayGain;
+    // Do not create/resume an AudioContext merely because an effect setting was saved.
     // Build the graph on active playback, or update it when playback is already using it.
-    if (!audioContextRef.current && !(state?.isPlaying && hasBoostOrCut)) return;
+    if (!audioContextRef.current && !(state?.isPlaying && needsProcessing)) return;
     let alive = true;
-    const applyBands = async () => {
+    const applyProcessing = async () => {
       try {
-        if (!audioContextRef.current && state?.isPlaying && hasBoostOrCut) await ensureAudioGraph();
+        if (!audioContextRef.current && state?.isPlaying && needsProcessing) await ensureAudioGraph();
+        if (!alive) return;
         const context = audioContextRef.current;
         if (!context) return;
         eqFiltersRef.current.forEach((filter, index) => {
           filter.gain.setTargetAtTime(bands[index] ?? 0, context.currentTime, 0.025);
         });
+        const gain = Math.pow(10, replayGainAppliedDb / 20);
+        replayGainNodeRef.current?.gain.setTargetAtTime(gain, context.currentTime, 0.05);
         await applyOutputSink();
       } catch (error) {
         if (alive) window.nexus.reportMusicRuntime({
           error: true, playing: false,
-          errorMessage: `均衡器初始化失败：${error instanceof Error ? error.message : String(error)}`,
+          errorMessage: `音频处理初始化失败：${error instanceof Error ? error.message : String(error)}`,
         });
       }
     };
-    void applyBands();
+    void applyProcessing();
     return () => { alive = false; };
-  }, [bandKey, bands, ensureAudioGraph, applyOutputSink, state?.isPlaying]);
+  }, [bandKey, bands, ensureAudioGraph, applyOutputSink, state?.isPlaying, hasReplayGain, replayGainAppliedDb]);
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -276,7 +297,7 @@ export function MusicPlaybackRuntime({ state, outputDeviceId = 'default', eqBand
         if (shouldPlay) {
           const startPlayback = async () => {
             try {
-              if (bands.some(value => value !== 0) && !audioContextRef.current) await ensureAudioGraph();
+              if ((bands.some(value => value !== 0) || hasReplayGain) && !audioContextRef.current) await ensureAudioGraph();
               if (audioContextRef.current?.state === 'suspended') await audioContextRef.current.resume();
               await audio.play();
             } catch (error) {
@@ -311,7 +332,7 @@ export function MusicPlaybackRuntime({ state, outputDeviceId = 'default', eqBand
     } else {
       audio.pause();
     }
-  }, [state?.isPlaying, state?.currentTrackId, bandKey, ensureAudioGraph]);
+  }, [state?.isPlaying, state?.currentTrackId, bandKey, ensureAudioGraph, hasReplayGain, replayGainAppliedDb]);
 
   useEffect(() => () => {
     const context = audioContextRef.current;
