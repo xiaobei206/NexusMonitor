@@ -1,4 +1,4 @@
-# NexusMonitor 2.2.0 — Electron Edition (development branch)
+# NexusMonitor 2.2.1 — Electron Edition (development branch; 2.2.0 remains the stable main baseline)
 
 > **新对话 / 新开发者接手：先读 [START-HERE-NEXT-GPT.md](START-HERE-NEXT-GPT.md) 和根目录 [AGENTS.md](AGENTS.md)。** 入口文档列出阅读顺序、源码目录地图、验证命令与硬件验收边界。
 
@@ -28,10 +28,10 @@ The Electron 45 stable channel was current at the project date, and its release 
 - Theme studio: Obsidian, Paper / Engineering, Titanium, personal photo background; accent color, opacity, density, module visibility and drag reordering
 - Device selection: multiple network adapters and physical disks; the Turing screen can automatically follow the C: physical disk and busiest active non-tunnel NIC, or pin either manually
 - Turing 3.5-inch USB display page: single-page 480×320 hardware-left / Wujiang-weather-right layout, COM discovery, Revision A handshake, manual brightness, scheduled day/night backlight control and 16×8 differential frame patches
-- USB 5-inch Windows extended-display page: display selection, independent fullscreen output window, hardware monitoring, static/GIF wallpaper, weather clock and local video modes; true USB-panel backlight control is intentionally deferred pending firmware command confirmation
+- USB 5-inch Windows extended-display page: display selection, independent output window, hardware monitoring, static/GIF wallpaper, weather clock, local video and desktop-wallpaper + background-music modes; true USB-panel backlight control is intentionally deferred pending firmware command confirmation
 - Wujiang/Suzhou weather and US AQI from Open-Meteo, with six upcoming hourly records and six future daily records for the Turing weather-clock screen
 - Local shortcut list and manifest-based plugin inventory
-- Unified local MP3 player: main library page, editable playlists, queue controls, app-only volume, shuffle/repeat and a single shared playback engine across the main UI, vertical HUD and non-video USB output modes
+- Unified local Music Service: one persistent main-Renderer playback host; Nora-style songs / albums / artists / genres / folders / playlists; tags / artwork / ReplayGain; M3U/M3U8; ten-band EQ with nine presets; local synchronized LRC; sleep timer; six USB output modes; Chromium endpoint routing plus a native WASAPI Exclusive PCM path with AudioWorklet transfer, live underrun stats and normal-output fallback. Current WASAPI route is Renderer Float32 PCM and explicitly not bit-perfect.
 - Vertical HUD mini-player inserted above the existing weather block without reordering the weather, clock or hardware metrics
 - Main window closes to the system tray; the hidden main renderer stays alive for playback and Turing display refresh
 - Saved USB 5-inch display target reopens on startup before HardwareService startup; delayed display enumeration is retried without guessing a different monitor
@@ -75,10 +75,9 @@ NexusMonitor source in this package is provided for the user's development/testi
 
 ## Current source handoff
 
-For the current version, read `NexusMonitor-2.1.8-HANDOFF-CN.md` first, then the single cross-version history `NexusMonitor-DEVELOPMENT-LOG-CN.md`. All historical release reports and duplicate handoff/prompt documents have been consolidated into those two files. The Turing protocol remains documented in `PROTOCOL_REFERENCE.md`; focused engineering references remain under `docs/`.
+The stable main baseline remains version 2.2.0. The 2.2.1 music platform refactor is in `feature/2.2.1-music-platform`, PR #2 (open, not merged). Start with `START-HERE-NEXT-GPT.md`, then read `NexusMonitor-2.2.1-HANDOFF-CN.md`, `docs/MUSIC-PLATFORM-2.2.1-CN.md`, and `NexusMonitor-DEVELOPMENT-LOG-CN.md`. Always re-check the branch HEAD and Actions.
 
-The 2.1.8 Windows Electron/Renderer/.NET build and NSIS installer are verified by [GitHub Actions run 42239092025](https://github.com/xiaobei206/NexusMonitor/actions/runs/42239092025), and the installer is published under [Release v2.1.8](https://github.com/xiaobei206/NexusMonitor/releases/tag/v2.1.8). This does **not** claim physical COM3, USB 5-inch display, multi-monitor placement or first-launch GUI acceptance; those still require the target Windows machine.
-
+Windows CI Run #162 succeeded on the native WASAPI integration base: 14/14 version gates, 224/224 Node tests, Renderer TypeScript / Vite production build, native N-API WASAPI addon build, PawnIO verification, .NET Release, and Storage Tests. Its log confirms node-gyp 13.1.0 built `nexus_wasapi.node` with Visual Studio 2026 18.11. [Run #162](https://github.com/xiaobei206/NexusMonitor/actions/runs/42353103480). Subsequent commits add one-time enrichment of legacy 2.2.0 music-library entries; check their newer CI before relying on them. PR CI intentionally does not publish the 2.2.1 installer. Physical endpoint / five-inch speaker / codec playback / USB display acceptance remains pending on the target Windows PC.
 
 ## Intel Alder Lake Iris Xe GT temperature experiment
 
@@ -88,6 +87,6 @@ For an Intel Alder Lake system where IGCL exposes GPU clocks/power but not tempe
 ## Repository history and operating records
 
 - The canonical cross-version development record is `NexusMonitor-DEVELOPMENT-LOG-CN.md`.
-- Current-version handoff and verified build status are in `NexusMonitor-2.1.8-HANDOFF-CN.md` and `NexusMonitor-2.1.8-BUILD-REPORT.md`.
+- Current-version handoff and build / CI boundaries are in `NexusMonitor-2.2.1-HANDOFF-CN.md` and `NexusMonitor-2.2.1-BUILD-REPORT.md`. The report is provisional until PR #2 merges and main builds the installer.
 - Each GitHub Actions run retains its complete build/test log; see the linked 2.1.8 run above. Per-user application runtime logs and settings remain local under `%APPDATA%\\NexusMonitor` and are intentionally not committed.
 - Versioned engineering references and the historical patch archive are under `docs/`.

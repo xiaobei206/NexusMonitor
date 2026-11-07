@@ -1,6 +1,6 @@
 # NexusMonitor 统一开发日志（跨版本唯一主记录）
 
-**当前开发分支源码版本：2.2.0（尚未发布）**  
+**当前开发分支源码版本：2.2.1（PR #2；尚未合并 / 发布）**  
 **记录规则：** 每个正式版本都追加到本文件；下一版不得新建第二份版本日志。按版本号和日期顺序记录功能、根因、修复、失败尝试、验证范围及未完成事项。历史测试结果不能冒充当前版本测试结果。
 
 ## 版本总览与跨版本教训
@@ -403,3 +403,71 @@ Property 'volume' does not exist on type 'AudioHTMLAttributes<HTMLAudioElement>'
 复核发现部分辅助文档仍标注 2.0.x，且交接文档把用户机器工作目录写得像通用路径。本轮新增根目录 `START-HERE-NEXT-GPT.md` 和 `AGENTS.md`；README 增加入口；重写安装说明，准确限定插件系统目前是 manifest 清单管理；修订 Turing、HUD、Alder Lake GT 专题的版本/历史表述；同时更新 HANDOFF、构建报告、ZIP 文件尺寸列表和 SHA-256 清单。
 
 该提交只整理文档和交接体系，不修改应用行为、依赖或正式版本号。此前应用完整 Windows 构建与 v2.1.8 发布见 [应用 CI 42239092025](https://github.com/xiaobei206/NexusMonitor/actions/runs/42239092025)；此前文档同步基线 CI [42242756560](https://github.com/xiaobei206/NexusMonitor/actions/runs/42242756560) 已成功。本轮新提交的 workflow 结果必须另行检查，不能用旧运行结果代替。
+
+
+## 2.2.1（音乐平台重构，2026-11-07 起）
+
+### 初始目标与文档先行
+
+- 以 `main` 的 2.2.0 合并提交 `bc0d29f19fbb98f7ea994fbe30dc68dfb35a38c9` 为稳定基线。
+- 新建开发分支 `feature/2.2.1-music-platform`。本阶段优先提交跨对话交接与架构决策文档，避免中断后依赖聊天记录恢复上下文。
+- 新增 `NexusMonitor-2.2.1-HANDOFF-CN.md` 与 `docs/MUSIC-PLATFORM-2.2.1-CN.md`，明确音乐服务唯一播放宿主、Nora / NewAmp 分工、六种 USB 输出模式、音频 endpoint 独立路由、格式实际验收与自动化 / 实机验收边界。
+- 文档提交后仍未表示任何 2.2.1 应用功能已完成；版本号、源码、测试与 CI 结果必须在相应代码阶段实际变更及验证后更新。不得将 2.2.0 历史 CI 结果用作 2.2.1 通过的证据。
+- 代码阶段开始前须复查现有播放器、壁纸音频、显示窗口生命周期、preload / shared types 与源码测试，然后依音乐平台设计文档按小批次实施。当前分支 HEAD 与 Actions 链接须由接手者实时核实。
+
+### 首批代码阶段（2.2.1，2026-11-07）
+
+- `feature/2.2.1-music-platform` 从 `main` 2.2.0 合并提交 `bc0d29f19fbb98f7ea994fbe30dc68dfb35a38c9` 创建；版本已升至 2.2.1，并同步 package / lockfile / `VERSION` / .NET 项目 / API / snapshot / Renderer / 构建入口。
+- 新增 `src/main/music-metadata.ts`，使用本地文件解析器读取常用 tag 与内嵌封面；增加合成 MP3 / FLAC / WAV 标签测试。
+- 曲库导入扩展到 MP3、WAV、FLAC、OGG、OGA、Opus、M4A、M4B、AAC；新导入歌曲存储标签字段，封面复制到应用自身数据目录，renderer 只通过 track ID 请求 artwork URL。**还没有真实格式解码测试，导入与播放要分开验收。**
+- 删除静态 / GIF 壁纸的第二套 audio element，统一使用 Music Service；新增 `music-only` 六模式分支，隐藏 USB output BrowserWindow。
+- 新增 `tests/music-metadata.test.cjs` 与 source-level tests；截至本条记录尚未运行 2.2.1 CI，也未创建合并 PR。不能把 2.2.0 的 188/188 与 Windows build 结果说成当前分支通过。
+- 下一步：建立 Windows CI feedback loop，修复所有测试 / 编译问题；随后实施输出 endpoint 与完整曲库导航，再推进高级音频。
+
+### 曲库 / 输出设备实现与首轮 Windows CI（2026-11-07）
+
+- 曲库 UI 增加歌曲、专辑、艺术家、流派、文件夹、自定义歌单导航；按标签 / 文件路径分组，分组卡片显示内嵌封面，搜索能按标题 / 艺术家 / 专辑 / 流派过滤。
+- 音频输出 endpoint 选择已接入：Chromium 输出选择弹窗、设备列表与 devicechange 刷新、保存设备 ID / 名称、HTMLAudioElement.setSinkId 路由、状态回报和 440 Hz 测试音。设备不可用时保留设定并提示；这不是 WASAPI Exclusive 原生实现，不宣称 bit-perfect。
+- 2026-11-07 Windows CI Run #44 **成功**，HEAD `fafbe3e24c9e5127de6608bb72c9cacd3a65aaea`：版本 14/14；Node 主进程测试 195/195；Renderer TypeScript / Vite 生产构建；PawnIO 官方资源；.NET Release build 0 Warning / 0 Error；Storage Tests。PR 阶段按 workflow 设计跳过 NSIS / Release 发布。CI：<https://github.com/xiaobei206/NexusMonitor/actions/runs/42344000038>。
+- Hosted CI 不证明实际 codec 文件解码、五寸屏喇叭出声、输出 endpoint 热拔插、WASAPI 独占或 USB 显示器目标机行为成功。
+- 后续：继续做音频信号链高级能力与格式验证矩阵；补完成安装包 / Release 的 CI 验收，再安排目标机测试。
+
+### 2.2.1 增强音频功能与 Run #104（2026-11-07）
+
+- EQ / ReplayGain：新增 10-band peaking EQ（31 Hz–16 kHz、±12 dB、默认 flat、lazy AudioContext），以及 ReplayGain Track / Album tags / Peak 解析与 GainNode，Peak safety 限制正向增益；缺 Peak 时仅允许衰减。
+- 本地歌词：新增 LRC parser 与同目录同名 sidecar IPC / UI，支持 BOM、毫秒 offset、多时间戳、1 MiB 文件上限；不联网、不上传。
+- 播放器 sleep timer：15 / 30 / 45 / 60 / 90 分钟，到点暂停唯一的主 Renderer 音频宿主，不关闭程序或副屏。
+- Playlist 文件：新增 M3U/M3U8 parser / serializer，本地相对路径 / Windows absolute path 导入为独立歌单，导出 M3U8 保留本地路径、曲名、艺术家及时长；拒绝网络 URI。
+- 共享播放状态增加可见解码错误；MiniPlayer / Dock / Library 显示错误提示。
+- Windows CI Run #104 **成功**，HEAD `c8d24d28d353834cc04059eb2637a46ef8d94e78`：版本门禁 14/14，Node tests **210/210**，Renderer TypeScript / Vite production build、PawnIO resource validation、.NET Release build 0 Warning / 0 Error、Storage Tests 全通过。<https://github.com/xiaobei206/NexusMonitor/actions/runs/42348842265>。
+- Run #104 之后新增睡眠计时器 / M3U controls CSS 收尾提交 `b3f95d984118f74974f46dc62acde93d69a21908`，须继续运行最终 Windows CI。Run #104 是 PR CI，未构建 / 发布 2.2.1 installer。
+- 当前未完成：WASAPI Exclusive native backend、bit-perfect negotiation、Gapless / Crossfade、逐格式实音解码矩阵、目标 PC 输出 endpoint / 五寸屏喇叭和六模式验收。Chromium setSinkId 不能替代 WASAPI Exclusive；Hosted CI 不能证明实机扬声器出声。
+
+### 2.2.1 最终 CI 确认（2026-11-07）
+
+- 最终 PR tip `3152aa5a16b4ff52d0bf026fcd5e1d962cf19f4c` 的 GitHub Actions Windows CI Run #109 **成功**：版本门禁 14/14、Node tests 210/210、Renderer TypeScript / Vite production build、PawnIO resource verification、.NET Release build 0 Warning / 0 Error、Storage Tests 全部成功。<https://github.com/xiaobei206/NexusMonitor/actions/runs/42349148127>
+- 此结果覆盖 2.2.1 曲库、音频输出 routing、EQ / ReplayGain、LRC、sleep timer、M3U/M3U8、USB 六模式及最新 CSS / 文档提交。
+- PR #2 仍开放，未合并；PR CI 不发布 NSIS installer / GitHub Release。真实 Windows 音频 endpoint、五寸屏扬声器、每种编码播放、USB 设备行为仍需目标机测试。
+- 后续开发重点：NewAmp 双 Deck Gapless / Crossfade 设计与 WASAPI Exclusive 原生 backend 评估；不要直接把当前 Chromium setSinkId 说成独占输出或 bit-perfect。
+
+### 2.2.1 EQ 预设与 Run #114（2026-11-07）
+
+- 十段均衡器新增九组预设：平直、摇滚、流行、人声、古典、爵士、电子、低音增强、高音增强；默认平直，手动改频段后显示自定义曲线。
+- Windows CI Run #114 **成功**，应用 HEAD `f1019858e17e2c82192e08a2c94709793ce6d1e7`：版本门禁 14/14、Node **211/211**、Renderer TypeScript / Vite、PawnIO 资源校验、.NET Release 0 Warning / 0 Error、Storage Tests 全通过。<https://github.com/xiaobei206/NexusMonitor/actions/runs/42349435741>
+- PR #2 保持开放，未合并、未发布 installer。用户目标机的音频设备和副屏验收仍未执行。
+- 后续音频研发重点是评估 NewAmp 的 N-API/miniaudio WASAPI exclusive 与 FFmpeg→PCM ring buffer 管线；独占路径需绕过 WebAudio EQ / ReplayGain / Crossfade，只有真实协商格式和设备播放验证通过后才能称为 bit-perfect。Gapless / Crossfade 需要双 Deck / 连续 PCM transport，不应把普通 ended 自动切歌称为 gapless。
+
+### WASAPI Exclusive native backend 接线与 Run #162（2026-11-07）
+
+- 新增主进程 MusicExclusiveOutput singleton 与受信任 IPC：availability / endpoint list / probe-open / start / pause / close / stats / PCM write；只接受主窗口 webContents 的命令；PCM 单块上限 64 KiB，按 stereo float32 8-byte frame 对齐。
+- 新增 music-pcm-tap.worklet.js AudioWorklet：普通模式透传到 AudioContext sink；独占模式将普通 sink 输出静音，并把 1024-frame stereo Float32 PCM chunks 送至 main process native ring buffer。
+- MusicPlaybackRuntime 接入 WASAPI 开关、端点、sample-rate negotiation；协商 rate 强制匹配 AudioContext.sampleRate，避免 native stream 与 renderer transport 时钟不一致。独占模式 follows play/pause/track switch；关闭 / 运行错误时关闭 native stream、解除 Worklet 静音并恢复普通 output sink。
+- Native C++ pause/resume 修正：暂停时执行 IAudioClient::Stop()，恢复时才 Start()；在暂停线程清空 ring 中旧 PCM；Renderer 不再在 audio paused 时继续转发静音块。Native status 每秒读取，UI 展示 format / rate / bufferedBytes / underruns；设备运行错误会 fallback 普通输出。
+- 格式标签继续增强：Ogg Vorbis identification / OpusHead / MP4 mp4a / ALAC sample entry 读取 channel / sample-rate；WASAPI 协商能分辨未知声道，不会把“声道未知”随意标为已直通。
+- 2.2.0 曲库首启迁移：若旧轨道 record 缺少 2.2.1 channels / ReplayGain / format / artworkPath 等字段，才读取一次本地原文件，补充 metadata / artwork，保留 playlist、currentTrack、volume、currentTime 后回写 music-library.json；后续启动不重复扫文件。该迁移在 Run #162 之后新增，需 Run #164 验证。
+- 2026-11-07 Run #162 成功：14/14 version gates；Node tests 224/224；Renderer TypeScript + Vite production build；PawnIO resource validation；.NET Release；Storage Tests 全部成功。
+- Run #162 原生编译日志确认为成功：Node 24.22.2、node-gyp 13.1.0、Python 3.15.2、Visual Studio 2026 18.11；gyp 结束 ok，成功生成 native/wasapi-output/build/Release/nexus_wasapi.node。<https://github.com/xiaobei206/NexusMonitor/actions/runs/42353103480>
+- Run #162 PR CI 按设计跳过 NSIS / Release。该 hosted build 不验证真实音频端点能否开独占、扬声器是否出声或真实文件 decoder 能力；目标 Windows PC 实机验收待做。
+- 当前最新 HEAD 在本记录更新前为 35e4d5e12829e116d8e2a36966436dbbddc90379，对应 Run #164；必须查看 Run #164 的最终状态，确认旧库一次性迁移和其后测试均通过。随后文档更新会触发另一次 CI。
+- bit-perfect 边界：目前传输路径依旧是 Chromium/WebAudio decode → Float32 PCM → WASAPI native; status/UI 固定 bitPerfect:false。设备支持源 sample-rate/depth 只能称为 format-match candidate；不宣传 bit-perfect。
+- 下阶段：先把最新 CI 绿灯跑完整；接着合并 PR #2 由 main workflow 产出 2.2.1 installer + SHA sidecar，再请用户在本机核实 5 寸屏端点与六模式。Gapless / Crossfade 双 Deck 后续开发，不把 ended 后自动切歌称为 gapless。

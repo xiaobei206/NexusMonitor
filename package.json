@@ -1,6 +1,6 @@
 {
   "name": "nexus-monitor",
-  "version": "2.2.0",
+  "version": "2.2.1",
   "private": true,
   "description": "A customizable Windows hardware HUD, Turing display and USB extended-display companion with media playback.",
   "author": "NexusMonitor",
@@ -18,9 +18,10 @@
     "preview": "vite preview --host 127.0.0.1",
     "service:run": "dotnet run --project HardwareService/HardwareService.csproj",
     "service:publish": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/publish-service.ps1",
-    "package:win": "npm run build && npm run service:publish && electron-builder --win nsis --x64",
+    "package:win": "npm run build && npm run build:wasapi && npm run service:publish && electron-builder --win nsis --x64",
     "package:portable": "npm run build && npm run service:publish && electron-builder --win portable --x64",
-    "build:test-utils": "tsc -p tsconfig.test-utils.json"
+    "build:test-utils": "tsc -p tsconfig.test-utils.json",
+    "build:wasapi": "node scripts/build-wasapi-addon.cjs"
   },
   "dependencies": {
     "lucide-react": "1.61.0",
@@ -59,6 +60,10 @@
       {
         "from": "build/widget-window-monitor.ps1",
         "to": "widget-window-monitor.ps1"
+      },
+      {
+        "from": "native/wasapi-output/build/Release/nexus_wasapi.node",
+        "to": "native/wasapi-output/nexus_wasapi.node"
       }
     ],
     "win": {

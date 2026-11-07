@@ -11,9 +11,22 @@ const api = {
   },
   chooseMusicFiles: () => ipcRenderer.invoke('music:choose-files'),
   chooseMusicFolder: () => ipcRenderer.invoke('music:choose-folder'),
+  importMusicPlaylist: () => ipcRenderer.invoke('music:import-playlist'),
+  exportMusicPlaylist: (playlistId: string) => ipcRenderer.invoke('music:export-playlist', playlistId),
   getMusicTrackUrl: (trackId: string) => ipcRenderer.invoke('music:track-url', trackId),
+  getMusicArtworkUrl: (trackId: string) => ipcRenderer.invoke('music:artwork-url', trackId),
+  getMusicLyrics: (trackId: string) => ipcRenderer.invoke('music:get-lyrics', trackId),
+  getMusicWasapiAvailability: () => ipcRenderer.invoke('music:wasapi-availability'),
+  getMusicWasapiDevices: () => ipcRenderer.invoke('music:wasapi-devices'),
+  openMusicWasapi: (deviceId: string, trackId: string, transportSampleRate: number) => ipcRenderer.invoke('music:wasapi-open', deviceId, trackId, transportSampleRate),
+  startMusicWasapi: () => ipcRenderer.invoke('music:wasapi-start'),
+  pauseMusicWasapi: () => ipcRenderer.invoke('music:wasapi-pause'),
+  clearMusicWasapi: () => ipcRenderer.invoke('music:wasapi-clear'),
+  closeMusicWasapi: () => ipcRenderer.invoke('music:wasapi-close'),
+  getMusicWasapiStatus: () => ipcRenderer.invoke('music:wasapi-status'),
+  writeMusicWasapiPcm: (pcm: ArrayBuffer) => ipcRenderer.send('music:wasapi-pcm', pcm),
   musicCommand: (command: MusicCommand) => ipcRenderer.invoke('music:command', command),
-  reportMusicRuntime: (payload: { currentTime?: number; duration?: number; playing?: boolean; error?: boolean }) => ipcRenderer.send('music:runtime', payload),
+  reportMusicRuntime: (payload: { currentTime?: number; duration?: number; playing?: boolean; error?: boolean; errorMessage?: string }) => ipcRenderer.send('music:runtime', payload),
   onMusicState: (callback: (state: import('../shared/types').MusicState) => void) => {
     const listener = (_event: Electron.IpcRendererEvent, state: import('../shared/types').MusicState) => callback(state);
     ipcRenderer.on('music:state', listener); return () => ipcRenderer.removeListener('music:state', listener);
@@ -89,10 +102,9 @@ const api = {
   getUsbDisplayStatus: () => ipcRenderer.invoke('desktop-displays:usb-status'),
   openUsbDisplay: (displayId: string) => ipcRenderer.invoke('desktop-displays:usb-open', displayId),
   closeUsbDisplay: () => ipcRenderer.invoke('desktop-displays:usb-close'),
-  chooseUsbDisplayMedia: (kind: 'image' | 'video' | 'audio') => ipcRenderer.invoke('desktop-displays:usb-choose-media', kind),
+  chooseUsbDisplayMedia: (kind: 'image' | 'video') => ipcRenderer.invoke('desktop-displays:usb-choose-media', kind),
   readUsbDisplayImage: (path: string) => ipcRenderer.invoke('desktop-displays:usb-read-image', path),
   getUsbDisplayVideoUrl: (path: string) => ipcRenderer.invoke('desktop-displays:usb-video-url', path),
-  getUsbDisplayAudioUrl: (path: string) => ipcRenderer.invoke('desktop-displays:usb-audio-url', path),
   onDesktopDisplaysChanged: (callback: (displays: Array<{id:string;index:number;primary:boolean;width:number;height:number;x:number;y:number;scaleFactor:number;label:string}>) => void) => {
     const listener = (_event: Electron.IpcRendererEvent, displays: Array<{id:string;index:number;primary:boolean;width:number;height:number;x:number;y:number;scaleFactor:number;label:string}>) => callback(displays);
     ipcRenderer.on('desktop-displays:changed', listener); return () => ipcRenderer.removeListener('desktop-displays:changed', listener);

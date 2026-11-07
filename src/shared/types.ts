@@ -43,7 +43,8 @@ export interface AppSettings {
   weatherLocation: 'suzhou' | 'wujiang'; weatherSource?: WeatherSourceId; weatherApiKeyConfigured?: Record<string, boolean>; turingDiskId?: string; turingNetworkId?: string;
   turingDisplayMode?: 'monitor' | 'wallpaper' | 'weather-clock'; turingWallpaperMode?: 'single' | 'slideshow';
   turingAutoBrightnessEnabled?: boolean; turingDayBrightness?: number; turingNightBrightness?: number; turingDayStart?: string; turingNightStart?: string;
-  usbDisplayDisplayId?: string; usbDisplayMode?: 'monitor' | 'static' | 'gif' | 'weather-clock' | 'video'; usbDisplayImagePath?: string; usbDisplayVideoPath?: string; usbDisplayAudioPath?: string; usbDisplayAudioVolume?: number; usbDisplayAudioLoop?: boolean; usbDisplayMediaFit?: 'contain' | 'cover'; usbDisplayMediaOrientation?: 'landscape' | 'portrait';
+  musicOutputDeviceId?: string; musicOutputDeviceLabel?: string; musicEqBands?: number[]; musicReplayGainEnabled?: boolean; musicReplayGainMode?: 'track' | 'album'; musicWasapiEnabled?: boolean; musicWasapiDeviceId?: string; musicWasapiDeviceLabel?: string;
+  usbDisplayDisplayId?: string; usbDisplayMode?: 'monitor' | 'static' | 'gif' | 'weather-clock' | 'video' | 'music-only'; usbDisplayImagePath?: string; usbDisplayVideoPath?: string; usbDisplayMediaFit?: 'contain' | 'cover'; usbDisplayMediaOrientation?: 'landscape' | 'portrait';
   turingWallpaperFile?: string; turingWallpaperDirectory?: string;
   turingWallpaperFit?: 'contain' | 'cover' | 'stretch'; turingWallpaperIntervalSeconds?: 30 | 60 | 90 | 120;
   shortcuts: ShortcutItem[]; compactMode: boolean;
@@ -77,6 +78,7 @@ export interface SnapshotResult {
 }
 
 
+export interface MusicLyricLine { timeSeconds: number; text: string; }
 export type MusicRepeatMode = 'off' | 'all' | 'one';
 export interface MusicTrack {
   id: string;
@@ -84,6 +86,20 @@ export interface MusicTrack {
   title: string;
   artist: string;
   album?: string | null;
+  genre?: string | null;
+  year?: number | null;
+  trackNumber?: number | null;
+  durationSeconds?: number | null;
+  sampleRateHz?: number | null;
+  bitDepth?: number | null;
+  channels?: number | null;
+  replayGainTrackDb?: number | null;
+  replayGainAlbumDb?: number | null;
+  replayGainTrackPeak?: number | null;
+  replayGainAlbumPeak?: number | null;
+  format?: string;
+  artworkPath?: string | null;
+  hasArtwork?: boolean;
   addedAt: string;
   missing?: boolean;
 }
@@ -102,6 +118,7 @@ export interface MusicState {
   duration: number;
   volume: number;
   isPlaying: boolean;
+  errorMessage?: string | null;
   shuffle: boolean;
   repeat: MusicRepeatMode;
 }

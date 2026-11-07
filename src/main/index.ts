@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { spawn } from 'node:child_process';
 import type { ChildProcess } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, writeFileSync, readdirSync, copyFileSync, statSync } from 'node:fs';
-import { join, dirname, resolve, basename, extname } from 'node:path';
+import { join, dirname, resolve, basename, extname, isAbsolute } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { connect } from 'node:net';
 import { createInterface } from 'node:readline';
@@ -18,6 +18,10 @@ import type { DockEdge } from './widget-docking';
 import { calculateWidgetDetailLayout } from './widget-detail-window';
 import { isFullscreenOnWidgetDisplay } from './fullscreen-detection';
 import { resolveUsbDisplayWindowBounds } from './usb-display-window';
+import { musicFormatLabel, readMusicMetadata } from './music-metadata';
+import { MusicExclusiveOutput } from './music-exclusive-output';
+import { parseLrc } from './music-lyrics';
+import { parseM3u, serializeM3u } from './music-playlist';
 
 // Music controls may arrive from a separate HUD/USB BrowserWindow after an explicit
 // user click there. The shared, hidden main-renderer audio element must be allowed to
@@ -64,10 +68,12 @@ let lastWeather: unknown = null;
 let currentSettings: Record<string, unknown> = {};
 let musicState: MusicState = {
   tracks: [], playlists: [], activePlaylistId: null, currentTrackId: null,
-  currentTime: 0, duration: 0, volume: 0.7, isPlaying: false, shuffle: false, repeat: 'off',
+  currentTime: 0, duration: 0, volume: 0.7, isPlaying: false, errorMessage: null, shuffle: false, repeat: 'off',
 };
 let musicLastPersistAt = 0;
-const MUSIC_AUDIO_EXTENSIONS = new Set(['.mp3']);
+const musicExclusiveOutput = new MusicExclusiveOutput();
+const MUSIC_AUDIO_EXTENSIONS = new Set(['.mp3', '.wav', '.flac', '.ogg', '.oga', '.opus', '.m4a', '.m4b', '.aac']);
+const MUSIC_AUDIO_FILTER_EXTENSIONS = [...MUSIC_AUDIO_EXTENSIONS].map(extension => extension.slice(1));
 const MUSIC_FOLDER_SCAN_LIMIT = 5000;
 let quitting = false;
 let appLogger: RotatingLogger | null = null;
@@ -85,7 +91,6 @@ const TURING_WALLPAPER_EXTENSIONS = new Set(['.jpg', '.jpeg', '.png', '.webp', '
 const TURING_WALLPAPER_MAX_BYTES = 40 * 1024 * 1024;
 const USB_DISPLAY_IMAGE_EXTENSIONS = new Set(['.jpg', '.jpeg', '.png', '.webp', '.bmp', '.gif']);
 const USB_DISPLAY_VIDEO_EXTENSIONS = new Set(['.mp4', '.m4v', '.webm', '.mov']);
-const USB_DISPLAY_AUDIO_EXTENSIONS = new Set(['.mp3', '.wav', '.m4a', '.aac', '.ogg', '.flac']);
 const USB_DISPLAY_IMAGE_MAX_BYTES = 80 * 1024 * 1024;
 function listDesktopDisplays() {
   const primaryId = screen.getPrimaryDisplay().id;
@@ -163,6 +168,12 @@ function restoreConfiguredUsbDisplay() {
   // Never guess which external monitor is the 5-inch panel; only restore the saved ID.
   const displayId = String(currentSettings.usbDisplayDisplayId ?? '').trim();
   if (!displayId) { usbDisplayRestorePending = false; return false; }
+  if (String(currentSettings.usbDisplayMode ?? 'monitor') === 'music-only') {
+    usbDisplayRestorePending = false;
+    closeUsbDisplayWindow();
+    log('USB display output remains hidden in desktop wallpaper + music mode');
+    return true;
+  }
   const result = openUsbDisplayWindow(displayId);
   if (result.ok) {
     usbDisplayRestorePending = false;
@@ -172,16 +183,14 @@ function restoreConfiguredUsbDisplay() {
   log(`Saved USB display ${displayId} is not ready yet: ${result.message ?? 'unknown error'}`);
   return false;
 }
-function chooseUsbDisplayMedia(kind: 'image' | 'video' | 'audio') {
+function chooseUsbDisplayMedia(kind: 'image' | 'video') {
   const filters = kind === 'video'
     ? [{ name: 'Video', extensions: ['mp4', 'm4v', 'webm', 'mov'] }]
-    : kind === 'audio'
-      ? [{ name: 'Audio', extensions: ['mp3', 'wav', 'm4a', 'aac', 'ogg', 'flac'] }]
-      : [{ name: 'Images and GIF', extensions: ['jpg', 'jpeg', 'png', 'webp', 'bmp', 'gif'] }];
+    : [{ name: 'Images and GIF', extensions: ['jpg', 'jpeg', 'png', 'webp', 'bmp', 'gif'] }];
   return dialog.showOpenDialog({ properties: ['openFile'], filters }).then(result => {
     if (result.canceled || !result.filePaths[0]) return null;
     const target = resolve(result.filePaths[0]); const extension = extname(target).toLowerCase();
-    const allowed = kind === 'video' ? USB_DISPLAY_VIDEO_EXTENSIONS : kind === 'audio' ? USB_DISPLAY_AUDIO_EXTENSIONS : USB_DISPLAY_IMAGE_EXTENSIONS;
+    const allowed = kind === 'video' ? USB_DISPLAY_VIDEO_EXTENSIONS : USB_DISPLAY_IMAGE_EXTENSIONS;
     if (!allowed.has(extension)) return null;
     return { path: target, name: basename(target) };
   });
@@ -197,12 +206,6 @@ function getUsbDisplayVideoUrl(path: string) {
   const target = resolve(String(path ?? '')); const extension = extname(target).toLowerCase();
   if (!USB_DISPLAY_VIDEO_EXTENSIONS.has(extension)) throw new Error('不支持的视频格式');
   const info = statSync(target); if (!info.isFile() || info.size <= 0) throw new Error('视频文件为空或不存在');
-  return { ok: true, name: basename(target), url: pathToFileURL(target).href };
-}
-function getUsbDisplayAudioUrl(path: string) {
-  const target = resolve(String(path ?? '')); const extension = extname(target).toLowerCase();
-  if (!USB_DISPLAY_AUDIO_EXTENSIONS.has(extension)) throw new Error('不支持的音频格式');
-  const info = statSync(target); if (!info.isFile() || info.size <= 0) throw new Error('音频文件为空或不存在');
   return { ok: true, name: basename(target), url: pathToFileURL(target).href };
 }
 function wallpaperMime(path: string): string {
@@ -250,15 +253,55 @@ function persistMusicState() {
 function loadMusicLibrary() {
   try {
     const raw = JSON.parse(readFileSync(musicLibraryPath(), 'utf8')) as Record<string, unknown>;
+    let upgradedLegacyTracks = 0;
     const tracks = Array.isArray(raw.tracks) ? raw.tracks.flatMap((item: any) => {
       if (!item || typeof item.path !== 'string' || !MUSIC_AUDIO_EXTENSIONS.has(extname(item.path).toLowerCase())) return [];
       const target = resolve(item.path);
+      const id = typeof item.id === 'string' ? item.id : randomUUID();
+      const fileTitle = basename(target, extname(target));
+      const needsMetadataRefresh =
+        !Object.prototype.hasOwnProperty.call(item, 'channels') ||
+        !Object.prototype.hasOwnProperty.call(item, 'replayGainTrackDb') ||
+        !Object.prototype.hasOwnProperty.call(item, 'format') ||
+        !Object.prototype.hasOwnProperty.call(item, 'artworkPath');
+      const metadata = needsMetadataRefresh ? readMusicMetadata(target) : null;
+      if (needsMetadataRefresh) upgradedLegacyTracks++;
+
+      const savedTitle = typeof item.title === 'string' && item.title.trim() ? item.title : null;
+      const title = metadata?.title && (!savedTitle || savedTitle === fileTitle)
+        ? metadata.title
+        : savedTitle ?? metadata?.title ?? fileTitle;
+      const savedArtist = typeof item.artist === 'string' && item.artist.trim() ? item.artist : null;
+      const artist = metadata?.artist && (!savedArtist || savedArtist === '本地音乐' || savedArtist === '未知艺术家')
+        ? metadata.artist
+        : savedArtist ?? metadata?.artist ?? '未知艺术家';
+      let artworkPath = typeof item.artworkPath === 'string' && existsSync(item.artworkPath) ? item.artworkPath : null;
+      if (!artworkPath && metadata?.artwork) {
+        try {
+          const mime = metadata.artwork.mimeType.toLowerCase();
+          const extension = mime === 'image/png' ? 'png' : mime === 'image/webp' ? 'webp' : mime === 'image/gif' ? 'gif' : 'jpg';
+          const directory = join(app.getPath('userData'), 'music-artwork');
+          mkdirSync(directory, { recursive: true });
+          artworkPath = join(directory, `${id}.${extension}`);
+          writeFileSync(artworkPath, metadata.artwork.data);
+        } catch { artworkPath = null; }
+      }
       return [{
-        id: typeof item.id === 'string' ? item.id : randomUUID(),
-        path: target,
-        title: typeof item.title === 'string' ? item.title : basename(target, extname(target)),
-        artist: typeof item.artist === 'string' ? item.artist : '本地音乐',
-        album: typeof item.album === 'string' ? item.album : null,
+        id, path: target, title, artist,
+        album: typeof item.album === 'string' && item.album.trim() ? item.album : metadata?.album ?? null,
+        genre: typeof item.genre === 'string' && item.genre.trim() ? item.genre : metadata?.genre ?? null,
+        year: typeof item.year === 'number' && Number.isFinite(item.year) ? item.year : metadata?.year ?? null,
+        trackNumber: typeof item.trackNumber === 'number' && Number.isFinite(item.trackNumber) ? item.trackNumber : metadata?.trackNumber ?? null,
+        durationSeconds: typeof item.durationSeconds === 'number' && Number.isFinite(item.durationSeconds) ? item.durationSeconds : metadata?.durationSeconds ?? null,
+        sampleRateHz: typeof item.sampleRateHz === 'number' && Number.isFinite(item.sampleRateHz) ? item.sampleRateHz : metadata?.sampleRateHz ?? null,
+        bitDepth: typeof item.bitDepth === 'number' && Number.isFinite(item.bitDepth) ? item.bitDepth : metadata?.bitDepth ?? null,
+        channels: typeof item.channels === 'number' && Number.isFinite(item.channels) && item.channels > 0 && item.channels <= 32 ? item.channels : metadata?.channels ?? null,
+        replayGainTrackDb: typeof item.replayGainTrackDb === 'number' && Number.isFinite(item.replayGainTrackDb) ? item.replayGainTrackDb : metadata?.replayGainTrackDb ?? null,
+        replayGainAlbumDb: typeof item.replayGainAlbumDb === 'number' && Number.isFinite(item.replayGainAlbumDb) ? item.replayGainAlbumDb : metadata?.replayGainAlbumDb ?? null,
+        replayGainTrackPeak: typeof item.replayGainTrackPeak === 'number' && Number.isFinite(item.replayGainTrackPeak) && item.replayGainTrackPeak > 0 ? item.replayGainTrackPeak : metadata?.replayGainTrackPeak ?? null,
+        replayGainAlbumPeak: typeof item.replayGainAlbumPeak === 'number' && Number.isFinite(item.replayGainAlbumPeak) && item.replayGainAlbumPeak > 0 ? item.replayGainAlbumPeak : metadata?.replayGainAlbumPeak ?? null,
+        format: typeof item.format === 'string' ? item.format : musicFormatLabel(target),
+        artworkPath,
         addedAt: typeof item.addedAt === 'string' ? item.addedAt : new Date().toISOString(),
       } satisfies MusicTrack];
     }) : [];
@@ -280,17 +323,39 @@ function loadMusicLibrary() {
       tracks, playlists, activePlaylistId: playlistId, currentTrackId,
       currentTime: Number.isFinite(Number(raw.currentTime)) ? Math.max(0, Number(raw.currentTime)) : 0,
       duration: 0, volume: Number.isFinite(rawVolume) ? Math.max(0, Math.min(1, rawVolume)) : 0.7,
-      isPlaying: false, shuffle: raw.shuffle === true, repeat,
+      isPlaying: false, errorMessage: null, shuffle: raw.shuffle === true, repeat,
     };
-    musicLastPersistAt = Date.now();
+    if (upgradedLegacyTracks > 0) {
+      try {
+        persistMusicState();
+        log(`Enriched ${upgradedLegacyTracks} legacy music track(s) with embedded tags and artwork`);
+      } catch (error) {
+        musicLastPersistAt = Date.now();
+        log(`Could not persist music metadata enrichment: ${error instanceof Error ? error.message : String(error)}`);
+      }
+    } else {
+      musicLastPersistAt = Date.now();
+    }
   } catch {
-    musicState = { tracks: [], playlists: [], activePlaylistId: null, currentTrackId: null, currentTime: 0, duration: 0, volume: 0.7, isPlaying: false, shuffle: false, repeat: 'off' };
+    musicState = { tracks: [], playlists: [], activePlaylistId: null, currentTrackId: null, currentTime: 0, duration: 0, volume: 0.7, isPlaying: false, errorMessage: null, shuffle: false, repeat: 'off' };
+  }
+}
+function readMusicLyrics(trackId: string) {
+  const track = musicState.tracks.find(item => item.id === String(trackId));
+  if (!track || !existsSync(track.path)) return [];
+  const sidecar = join(dirname(track.path), `${basename(track.path, extname(track.path))}.lrc`);
+  try {
+    const info = statSync(sidecar);
+    if (!info.isFile() || info.size <= 0 || info.size > 1024 * 1024) return [];
+    return parseLrc(readFileSync(sidecar, 'utf8'));
+  } catch {
+    return [];
   }
 }
 function publicMusicState(): MusicState {
   return {
     ...musicState,
-    tracks: musicState.tracks.map(track => ({ ...track, missing: !existsSync(track.path) })),
+    tracks: musicState.tracks.map(({ artworkPath, ...track }) => ({ ...track, hasArtwork: Boolean(artworkPath && existsSync(artworkPath)), missing: !existsSync(track.path) })),
     playlists: musicState.playlists.map(playlist => ({ ...playlist, trackIds: [...playlist.trackIds] })),
   };
 }
@@ -301,7 +366,7 @@ function musicQueueIds() {
   const ids = active ? active.trackIds : musicState.tracks.map(track => track.id);
   return ids.filter(id => musicState.tracks.some(track => track.id === id));
 }
-function importMusicPaths(paths: string[]) {
+function importMusicPaths(paths: string[], addToActivePlaylist = true) {
   const existing = new Set(musicState.tracks.map(track => resolve(track.path).toLowerCase()));
   let added = 0, skipped = 0;
   for (const rawPath of paths) {
@@ -310,12 +375,31 @@ function importMusicPaths(paths: string[]) {
       if (!MUSIC_AUDIO_EXTENSIONS.has(extname(target).toLowerCase()) || !existsSync(target) || existing.has(target.toLowerCase())) { skipped++; continue; }
       const fileInfo = statSync(target);
       if (!fileInfo.isFile() || fileInfo.size <= 0) { skipped++; continue; }
+      const metadata = readMusicMetadata(target);
+      const id = randomUUID();
+      let artworkPath: string | null = null;
+      if (metadata.artwork) {
+        try {
+          const extension = metadata.artwork.mimeType.toLowerCase() === 'image/png' ? 'png' : metadata.artwork.mimeType.toLowerCase() === 'image/webp' ? 'webp' : metadata.artwork.mimeType.toLowerCase() === 'image/gif' ? 'gif' : 'jpg';
+          const directory = join(app.getPath('userData'), 'music-artwork');
+          mkdirSync(directory, { recursive: true });
+          artworkPath = join(directory, `${id}.${extension}`);
+          writeFileSync(artworkPath, metadata.artwork.data);
+        } catch { artworkPath = null; }
+      }
       const track: MusicTrack = {
-        id: randomUUID(), path: target, title: basename(target, extname(target)),
-        artist: '本地音乐', album: null, addedAt: new Date().toISOString(),
+        id, path: target, title: metadata.title ?? basename(target, extname(target)),
+        artist: metadata.artist ?? '未知艺术家', album: metadata.album ?? null,
+        genre: metadata.genre ?? null, year: metadata.year ?? null, trackNumber: metadata.trackNumber ?? null,
+        durationSeconds: metadata.durationSeconds ?? null, sampleRateHz: metadata.sampleRateHz ?? null,
+        bitDepth: metadata.bitDepth ?? null, channels: metadata.channels ?? null,
+        replayGainTrackDb: metadata.replayGainTrackDb ?? null, replayGainAlbumDb: metadata.replayGainAlbumDb ?? null,
+        replayGainTrackPeak: metadata.replayGainTrackPeak ?? null, replayGainAlbumPeak: metadata.replayGainAlbumPeak ?? null,
+        format: musicFormatLabel(target), artworkPath,
+        addedAt: new Date().toISOString(),
       };
       musicState.tracks.push(track);
-      if (musicState.activePlaylistId) {
+      if (addToActivePlaylist && musicState.activePlaylistId) {
         const playlist = musicState.playlists.find(item => item.id === musicState.activePlaylistId);
         if (playlist) playlist.trackIds.push(track.id);
       }
@@ -324,6 +408,41 @@ function importMusicPaths(paths: string[]) {
   }
   if (added) persistAndPublishMusicState();
   return { added, skipped };
+}
+function importMusicPlaylist(filePath: string) {
+  try {
+    const info = statSync(filePath);
+    if (!info.isFile() || info.size <= 0 || info.size > 8 * 1024 * 1024) {
+      return { ok: false, added: 0, skipped: 0, message: 'M3U 文件为空或超过 8 MiB 限制' };
+    }
+    const entries = parseM3u(readFileSync(filePath, 'utf8'));
+    const candidatePaths = entries.map(entry => isAbsolute(entry.location)
+      ? resolve(entry.location)
+      : resolve(dirname(filePath), entry.location));
+    const imported = importMusicPaths(candidatePaths, false);
+    const seen = new Set<string>();
+    const trackIds: string[] = [];
+    for (const candidate of candidatePaths) {
+      const key = candidate.toLowerCase();
+      if (seen.has(key)) continue;
+      const track = musicState.tracks.find(item => resolve(item.path).toLowerCase() === key);
+      if (track) { seen.add(key); trackIds.push(track.id); }
+    }
+    if (!trackIds.length) {
+      return { ok: false, added: imported.added, skipped: imported.skipped, message: 'M3U 中没有找到可用的本地音乐文件' };
+    }
+    const playlist: MusicPlaylist = {
+      id: randomUUID(),
+      name: basename(filePath, extname(filePath)).slice(0, 80) || '导入歌单',
+      trackIds,
+      createdAt: new Date().toISOString(),
+    };
+    musicState = { ...musicState, playlists: [...musicState.playlists, playlist], activePlaylistId: playlist.id };
+    persistAndPublishMusicState();
+    return { ok: true, added: imported.added, skipped: imported.skipped, playlistId: playlist.id, name: playlist.name };
+  } catch (error) {
+    return { ok: false, added: 0, skipped: 0, message: error instanceof Error ? error.message : String(error) };
+  }
 }
 function scanMusicFolder(rootPath: string) {
   const pending = [resolve(rootPath)];
@@ -375,6 +494,9 @@ function advanceMusicTrack(ended: boolean) {
   if (nextTrackId === ids[currentIndex] && mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('music:engine-command', { type: 'seek', seconds: 0, resume: true });
 }
 function handleMusicCommand(command: MusicCommand) {
+  if (['play', 'toggle', 'next', 'previous', 'play-track', 'seek'].includes(command.type)) {
+    musicState = { ...musicState, errorMessage: null };
+  }
   switch (command.type) {
     case 'play': case 'toggle':
       if (musicState.isPlaying && command.type === 'toggle') musicState = { ...musicState, isPlaying: false };
@@ -610,6 +732,11 @@ function getPublicSettings() {
 function saveSettings(next: Record<string, unknown>) {
   const previous = { ...currentSettings };
   currentSettings = { ...currentSettings, ...next };
+  if (previous.usbDisplayMode !== currentSettings.usbDisplayMode && currentSettings.usbDisplayMode === 'music-only') {
+    usbDisplayRestorePending = false;
+    closeUsbDisplayWindow();
+    log('USB display output hidden; shared Music Service remains active');
+  }
   const file = getSettingsPath();
   mkdirSync(dirname(file), { recursive: true });
   writeFileSync(file, JSON.stringify(currentSettings, null, 2), 'utf8');
@@ -1047,7 +1174,7 @@ function createMainWindow() {
       mainWindow?.hide();
     }
   });
-  mainWindow.on('closed', () => { mainWindow = null; mainWindowNativeReady = false; mainWindowRendererReady = false; });
+  mainWindow.on('closed', () => { musicExclusiveOutput.close(); mainWindow = null; mainWindowNativeReady = false; mainWindowRendererReady = false; });
 }
 function clearWidgetDetailTimers() {
   if (widgetDetailHideTimer) clearTimeout(widgetDetailHideTimer);
@@ -1484,6 +1611,7 @@ if (!hasSingleInstanceLock) {
 }
 
 app.on('before-quit', () => {
+  musicExclusiveOutput.close();
   quitting = true;
   if (usbDisplayWindow && !usbDisplayWindow.isDestroyed()) usbDisplayWindow.destroy();
   usbDisplayWindow = null; usbDisplayTargetId = null;
@@ -1514,10 +1642,70 @@ ipcMain.handle('music:track-url', (_event, trackId: string) => {
   const track = musicState.tracks.find(item => item.id === String(trackId));
   return track && existsSync(track.path) ? pathToFileURL(track.path).href : null;
 });
+ipcMain.handle('music:artwork-url', (_event, trackId: string) => {
+  const track = musicState.tracks.find(item => item.id === String(trackId));
+  return track?.artworkPath && existsSync(track.artworkPath) ? pathToFileURL(track.artworkPath).href : null;
+});
+ipcMain.handle('music:wasapi-availability', (event) => {
+  if (!mainWindow || event.sender !== mainWindow.webContents) return { available: false, message: 'Untrusted audio control sender.' };
+  return musicExclusiveOutput.availability();
+});
+ipcMain.handle('music:wasapi-devices', (event) => {
+  if (!mainWindow || event.sender !== mainWindow.webContents) throw new Error('Untrusted audio control sender.');
+  return musicExclusiveOutput.listDevices();
+});
+ipcMain.handle('music:wasapi-open', async (event, deviceId: string, trackId: string, transportSampleRate: number) => {
+  if (!mainWindow || event.sender !== mainWindow.webContents) throw new Error('Untrusted audio control sender.');
+  const track = musicState.tracks.find(item => item.id === String(trackId));
+  if (!track || !existsSync(track.path)) throw new Error('Select an existing library track before opening exclusive output.');
+  if (!Number.isInteger(transportSampleRate) || transportSampleRate < 8000 || transportSampleRate > 384000) {
+    throw new Error('Invalid renderer PCM transport sample rate.');
+  }
+  return musicExclusiveOutput.openForTrack(String(deviceId ?? ''), track, transportSampleRate);
+});
+ipcMain.handle('music:wasapi-start', (event) => {
+  if (!mainWindow || event.sender !== mainWindow.webContents) throw new Error('Untrusted audio control sender.');
+  musicExclusiveOutput.start();
+  return true;
+});
+ipcMain.handle('music:wasapi-pause', (event) => {
+  if (!mainWindow || event.sender !== mainWindow.webContents) throw new Error('Untrusted audio control sender.');
+  musicExclusiveOutput.pause();
+  return true;
+});
+ipcMain.handle('music:wasapi-clear', (event) => {
+  if (!mainWindow || event.sender !== mainWindow.webContents) throw new Error('Untrusted audio control sender.');
+  musicExclusiveOutput.clear();
+  return true;
+});
+ipcMain.handle('music:wasapi-close', (event) => {
+  if (!mainWindow || event.sender !== mainWindow.webContents) throw new Error('Untrusted audio control sender.');
+  musicExclusiveOutput.close();
+  return true;
+});
+ipcMain.handle('music:wasapi-status', (event) => {
+  if (!mainWindow || event.sender !== mainWindow.webContents) throw new Error('Untrusted audio control sender.');
+  return musicExclusiveOutput.status();
+});
+ipcMain.on('music:wasapi-pcm', (event, payload: Uint8Array | ArrayBuffer) => {
+  if (!mainWindow || event.sender !== mainWindow.webContents) return;
+  try {
+    const data = payload instanceof Uint8Array ? payload : payload instanceof ArrayBuffer ? new Uint8Array(payload) : null;
+    if (!data || data.byteLength === 0) return;
+    if (data.byteLength > 65536 || data.byteLength % 8 !== 0) {
+      log(`Rejected invalid WASAPI PCM chunk (${data.byteLength} bytes)`);
+      return;
+    }
+    musicExclusiveOutput.writeFloat32Pcm(data);
+  } catch (error) {
+    log(`WASAPI PCM transport failed: ${error instanceof Error ? error.message : String(error)}`);
+  }
+});
+ipcMain.handle('music:get-lyrics', (_event, trackId: string) => readMusicLyrics(String(trackId ?? '')));
 ipcMain.handle('music:choose-files', async () => {
   const result = await dialog.showOpenDialog({
     properties: ['openFile', 'multiSelections'],
-    filters: [{ name: 'MP3 音频', extensions: ['mp3'] }],
+    filters: [{ name: '常见音频文件', extensions: MUSIC_AUDIO_FILTER_EXTENSIONS }],
   });
   return result.canceled ? { added: 0, skipped: 0 } : importMusicPaths(result.filePaths);
 });
@@ -1528,13 +1716,40 @@ ipcMain.handle('music:choose-folder', async () => {
   const resultCount = importMusicPaths(paths);
   return { ...resultCount, truncated: paths.length >= MUSIC_FOLDER_SCAN_LIMIT };
 });
+ipcMain.handle('music:import-playlist', async () => {
+  const result = await dialog.showOpenDialog({
+    properties: ['openFile'],
+    filters: [{ name: 'M3U 播放列表', extensions: ['m3u', 'm3u8'] }],
+  });
+  if (result.canceled || !result.filePaths[0]) return { ok: false, added: 0, skipped: 0 };
+  return importMusicPlaylist(result.filePaths[0]);
+});
+ipcMain.handle('music:export-playlist', async (_event, playlistId: string) => {
+  const playlist = musicState.playlists.find(item => item.id === String(playlistId));
+  if (!playlist) return { ok: false, message: '歌单不存在' };
+  const tracks = playlist.trackIds.flatMap(id => {
+    const track = musicState.tracks.find(item => item.id === id);
+    return track && existsSync(track.path) ? [track] : [];
+  });
+  const result = await dialog.showSaveDialog({
+    defaultPath: `${playlist.name}.m3u8`,
+    filters: [{ name: 'M3U8 播放列表', extensions: ['m3u8'] }],
+  });
+  if (result.canceled || !result.filePath) return { ok: false, canceled: true };
+  try {
+    writeFileSync(result.filePath, serializeM3u(tracks), 'utf8');
+    return { ok: true, count: tracks.length, path: result.filePath };
+  } catch (error) {
+    return { ok: false, message: error instanceof Error ? error.message : String(error) };
+  }
+});
 ipcMain.handle('music:command', (_event, command: MusicCommand) => handleMusicCommand(command));
-ipcMain.on('music:runtime', (event, payload: { currentTime?: number; duration?: number; playing?: boolean; error?: boolean }) => {
+ipcMain.on('music:runtime', (event, payload: { currentTime?: number; duration?: number; playing?: boolean; error?: boolean; errorMessage?: string }) => {
   // Only the hidden-capable main renderer owns the single HTMLAudioElement.
   if (!mainWindow || event.sender !== mainWindow.webContents) return;
   if (payload?.error === true) {
-    musicState = { ...musicState, isPlaying: false };
-    log('Music playback failed; the current track remains selected and paused');
+    musicState = { ...musicState, isPlaying: false, errorMessage: payload.errorMessage?.trim() || '音频播放失败，请检查文件格式或文件是否完整' };
+    log(`Music playback failed: ${musicState.errorMessage}`);
     publishMusicState();
     return;
   }
@@ -1550,10 +1765,9 @@ ipcMain.handle('desktop-displays:list', () => listDesktopDisplays());
 ipcMain.handle('desktop-displays:usb-status', () => getUsbDisplayStatus());
 ipcMain.handle('desktop-displays:usb-open', (_event, displayId: string) => openUsbDisplayWindow(String(displayId ?? '')));
 ipcMain.handle('desktop-displays:usb-close', () => { usbDisplayRestorePending = false; closeUsbDisplayWindow(); return getUsbDisplayStatus(); });
-ipcMain.handle('desktop-displays:usb-choose-media', (_event, kind: 'image' | 'video' | 'audio') => chooseUsbDisplayMedia(kind === 'video' ? 'video' : kind === 'audio' ? 'audio' : 'image'));
+ipcMain.handle('desktop-displays:usb-choose-media', (_event, kind: 'image' | 'video') => chooseUsbDisplayMedia(kind === 'video' ? 'video' : 'image'));
 ipcMain.handle('desktop-displays:usb-read-image', (_event, path: string) => { try { return readUsbDisplayImage(path); } catch (error) { return { ok: false, message: error instanceof Error ? error.message : String(error) }; } });
 ipcMain.handle('desktop-displays:usb-video-url', (_event, path: string) => { try { return getUsbDisplayVideoUrl(path); } catch (error) { return { ok: false, message: error instanceof Error ? error.message : String(error) }; } });
-ipcMain.handle('desktop-displays:usb-audio-url', (_event, path: string) => { try { return getUsbDisplayAudioUrl(path); } catch (error) { return { ok: false, message: error instanceof Error ? error.message : String(error) }; } });
 ipcMain.handle('app:weather-key-status', (_event, source: string) => ({ configured: source === 'open-meteo' || Boolean(readWeatherApiKey(source)) }));
 ipcMain.handle('app:save-weather-api-key', (_event, payload: { source: string; key: string }) => saveWeatherApiKey(String(payload?.source ?? ''), String(payload?.key ?? '')));
 ipcMain.handle('app:save-settings', (_event, settings: Record<string, unknown>) => saveSettings(settings));

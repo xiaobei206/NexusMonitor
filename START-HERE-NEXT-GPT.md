@@ -1,23 +1,33 @@
 # NexusMonitor — 新接手 GPT 请先看这里
 
-以当前任务对应的 GitHub 开发分支源码为准。2.2.0 当前开发分支为 `feature/2.2.0-music-and-window-lifecycle`，工作入口是 PR #1；`main` 是稳定基线，不要把开发分支误切回 main。每次新对话必须重新读取 PR HEAD、`VERSION`、依赖版本和最新 Actions 状态。
+当前稳定基线为 `main` / 2.2.0；2.2.1 音乐平台重构在 `feature/2.2.1-music-platform`。开始任何工作前，必须重新读取该分支 HEAD、`VERSION`、依赖版本与最新 Actions 状态，不能根据旧对话认定工作已完成。
+
+## 当前任务入口（NexusMonitor 2.2.1）
+
+1. 阅读 [NexusMonitor-2.2.1-HANDOFF-CN.md](NexusMonitor-2.2.1-HANDOFF-CN.md) 与 [音乐平台重构设计](docs/MUSIC-PLATFORM-2.2.1-CN.md)；文档明确的架构决策优先于聊天摘要。
+2. 检查 `feature/2.2.1-music-platform` 最新 HEAD / Actions，以及 `main` 当前 HEAD、PR / Release 状态；对照 `VERSION` 和 `package.json`。
+3. 本轮基线：main 的 2.2.0 合并提交 `bc0d29f19fbb98f7ea994fbe30dc68dfb35a38c9`；目标版本 `VERSION=2.2.1`。当前分支已开始接入代码，必须检查最新源码与 Actions。
+4. 音乐重构前先核对旧音乐路径与新 Music Service 的具体调用，遵循设计文档中的六种输出模式、唯一音频宿主和音频 endpoint 要求。
 
 ## 接手顺序
 
-1. 检查仓库 https://github.com/xiaobei206/NexusMonitor；若继续 2.2.0，先检查 PR #1 与分支 `feature/2.2.0-music-and-window-lifecycle` 的最新 HEAD / Actions；不要直接在 main 上开发。
-2. 依次阅读：本文件 → `NexusMonitor-2.2.0-HANDOFF-CN.md` → `NexusMonitor-DEVELOPMENT-LOG-CN.md` → `README.md` → `NexusMonitor-2.2.0-BUILD-REPORT.md`。
-3. 再读 `docs/VERSIONING_CN.md`、`VERSION`、`package.json`、`package-lock.json`、`scripts/validate-release-version.cjs`、当前版本的 `NexusMonitor-*-BUILD-RELEASE.cjs` 和 `.github/workflows/windows-ci.yml`。
-4. 按本轮任务阅读专题文档，再对照源码与 `tests/`。文档和源码冲突时，以当前源码、测试为准，并修正文档。
-5. 用户要求实际开发时，不要只给计划：修改、测试、提交推送，检查新提交的 CI，并如实区分自动化与实机验收。
+1. 检查 PR #2、分支 `feature/2.2.1-music-platform`、最新 HEAD 和 GitHub Actions；不要回到旧 PR #1 / 2.2.0 开发分支。
+2. 阅读：本文件 → `NexusMonitor-2.2.1-HANDOFF-CN.md` → `docs/MUSIC-PLATFORM-2.2.1-CN.md` → `NexusMonitor-DEVELOPMENT-LOG-CN.md` → README。
+3. 再检查 `VERSION`、`package.json` / `package-lock.json`、`scripts/validate-release-version.cjs`、`NexusMonitor-2.2.1-BUILD-RELEASE.cjs`、`.github/workflows/windows-ci.yml`。
+4. 文档和源码冲突时以当前源码 / 测试 / 最新 CI 为准，并修正文档。不能把历史 CI 或旧 HEAD 当成本次验证。
+5. 用户要求实际开发时，继续实施、测试、提交和检查 Actions；明确区分 Hosted CI 与用户 Windows 目标机验收。
 
-## 已有基线（接手时重新核对）
+## 2.2.1 基线与当前交付状态（每次接手须重新核实）
 
-- 当前开发分支版本为 2.2.0，PR #1 为 Draft，尚未合并 `main` / 尚未正式发布。功能代码 Run #23（`e45c93bd4e8e2faf17270fdbcda382a8f66e9086`）与文档同步 Run #24（`d6a6f6ab9ac996f0d74d688d155d07b14a2ada6c`）均已成功；每次接手仍须读取最新 HEAD 与 Actions。最终以当前分支 `VERSION` 和 GitHub HEAD 为准。
-- 技术栈：Electron 45.2.1、React 19、TypeScript 7、Vite 8、.NET 10 HardwareService、LibreHardwareMonitorLib。
-- 应用源码 / v2.1.8 Release 验证提交：`6ff189829829b1b16802b276f5ad4784674b4d46`；[成功 CI 42239092025](https://github.com/xiaobei206/NexusMonitor/actions/runs/42239092025)。
-- 之前的文档同步提交 `09b6739cd1aa876e9e410b149651fcb385393439` 的 CI 也已成功：[42242756560](https://github.com/xiaobei206/NexusMonitor/actions/runs/42242756560)。
-- [v2.1.8 Release](https://github.com/xiaobei206/NexusMonitor/releases/tag/v2.1.8)。
-- **仍待真实 Windows 硬件验收：** COM3 Turing 屏刷新/拔插重连；ESP32-P4 五寸副屏在实际多屏、负坐标和 DPI 下的边界；冷启动、HUD 展开与长期运行；MP3 实际输出、托盘隐藏期间持续播放与播放边界。云端 CI 不能代替这些测试。
+- 稳定 main 基线为 2.2.0；当前开发分支 feature/2.2.1-music-platform，PR #2 开放、尚未合并。
+- 已实现：本地多格式标签 / 封面 / ReplayGain；旧曲库一次性元数据补齐；歌曲 / 专辑 / 艺术家 / 流派 / 文件夹 / 歌单曲库；M3U/M3U8；统一 Music Service；六种副屏模式；Windows Chromium endpoint setSinkId；十段 EQ 与九组预设；ReplayGain；本地 LRC；睡眠定时；播放错误状态。
+- WASAPI Exclusive native backend 已接线：主进程 N-API addon、endpoint probe/open、AudioWorklet Float32 PCM transfer、native ring buffer、pause/resume/clear、runtime stats 与异常 fallback。当前路径仍是 Chromium/WebAudio→Float32 PCM→WASAPI，bit-perfect 永远标记为 false；格式匹配只表示候选，不是 bit-perfect 验收。
+- Run #162 **完整成功**：<https://github.com/xiaobei206/NexusMonitor/actions/runs/42353103480>。14/14 version gates、Node 224/224、Renderer/Vite production build、WASAPI native addon、PawnIO、.NET Release、Storage Tests 全通过。Run #162 的 node-gyp log 确认 Node 24.22.2 + node-gyp 13.1.0 + Python 3.15.2 + VS 2026 18.11，产物 native/wasapi-output/build/Release/nexus_wasapi.node 已成功生成。
+- Run #162 之后增加了旧库一次性元数据补齐逻辑及新回归测试；当前 HEAD 为 35e4d5e12829e116d8e2a36966436dbbddc90379，对应 Run #164。必须检查 Run #164 最终结论和当前最新 HEAD，不可把 #162 当作最新提交全部通过。
+- PR #2 尚未合并；PR CI 不会生成安装包 / GitHub Release。待 CI 全绿后合并 main，由 main workflow 生成 2.2.1 NSIS installer 与 SHA-256。
+- 未完成：Gapless / Crossfade 双 Deck；支持格式的真实音频文件播放矩阵；目标 PC 上 5 寸屏喇叭、WASAPI endpoint 拔插、独占占用与长时间欠载验收；六种 USB 模式 / 热插拔实机验收。
+- 注意：导入白名单不等于解码通过；WASAPI Exclusive 不等于 bit-perfect；Hosted CI 不代替用户 Windows 目标设备验收。
+
 
 ## 文件结构地图
 
@@ -44,6 +54,7 @@ npm.cmd ci --include=dev --no-audit --no-fund
 node .\scripts\validate-release-version.cjs
 npm.cmd run test:main
 npm.cmd run build:renderer
+npm.cmd run build:wasapi
 dotnet build .\HardwareService\HardwareService.csproj -c Release
 npm.cmd run test:storage
 ```

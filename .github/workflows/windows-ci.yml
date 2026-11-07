@@ -63,6 +63,10 @@ jobs:
         if: steps.source.outputs.has_source == 'true'
         run: npm.cmd run build:renderer
 
+      - name: Build native WASAPI output module
+        if: steps.source.outputs.has_source == 'true'
+        run: npm.cmd run build:wasapi
+
       - name: Prepare verified PawnIO MCHBAR resource
         if: steps.source.outputs.has_source == 'true'
         shell: pwsh

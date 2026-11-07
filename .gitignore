@@ -15,3 +15,7 @@ HardwareService/Resources/PawnIO/
 .env
 .env.*
 !.env.example
+
+# Generated native Windows audio module
+native/wasapi-output/build/
+*.node
