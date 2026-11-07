@@ -608,7 +608,7 @@ export function MusicPlaybackRuntime({ state, outputDeviceId = 'default', eqBand
 type MediaDevicesWithOutputPicker = MediaDevices & {
   selectAudioOutput?: (options?: { deviceId?: string }) => Promise<MediaDeviceInfo>;
 };
-type SinkableAudioContext = AudioContext & { setSinkId?: (deviceId: string) => Promise<void> };
+type SinkableAudioContext = AudioContext & { setSinkId?: (deviceId: string) => Promise<void>; sinkId?: string };
 
 function MusicOutputDevicePicker({ settings, updateSettings, status }: {
   settings: AppSettings;
