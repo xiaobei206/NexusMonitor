@@ -253,28 +253,55 @@ function persistMusicState() {
 function loadMusicLibrary() {
   try {
     const raw = JSON.parse(readFileSync(musicLibraryPath(), 'utf8')) as Record<string, unknown>;
+    let upgradedLegacyTracks = 0;
     const tracks = Array.isArray(raw.tracks) ? raw.tracks.flatMap((item: any) => {
       if (!item || typeof item.path !== 'string' || !MUSIC_AUDIO_EXTENSIONS.has(extname(item.path).toLowerCase())) return [];
       const target = resolve(item.path);
+      const id = typeof item.id === 'string' ? item.id : randomUUID();
+      const fileTitle = basename(target, extname(target));
+      const needsMetadataRefresh =
+        !Object.prototype.hasOwnProperty.call(item, 'channels') ||
+        !Object.prototype.hasOwnProperty.call(item, 'replayGainTrackDb') ||
+        !Object.prototype.hasOwnProperty.call(item, 'format') ||
+        !Object.prototype.hasOwnProperty.call(item, 'artworkPath');
+      const metadata = needsMetadataRefresh ? readMusicMetadata(target) : null;
+      if (needsMetadataRefresh) upgradedLegacyTracks++;
+
+      const savedTitle = typeof item.title === 'string' && item.title.trim() ? item.title : null;
+      const title = metadata?.title && (!savedTitle || savedTitle === fileTitle)
+        ? metadata.title
+        : savedTitle ?? metadata?.title ?? fileTitle;
+      const savedArtist = typeof item.artist === 'string' && item.artist.trim() ? item.artist : null;
+      const artist = metadata?.artist && (!savedArtist || savedArtist === '本地音乐' || savedArtist === '未知艺术家')
+        ? metadata.artist
+        : savedArtist ?? metadata?.artist ?? '未知艺术家';
+      let artworkPath = typeof item.artworkPath === 'string' && existsSync(item.artworkPath) ? item.artworkPath : null;
+      if (!artworkPath && metadata?.artwork) {
+        try {
+          const mime = metadata.artwork.mimeType.toLowerCase();
+          const extension = mime === 'image/png' ? 'png' : mime === 'image/webp' ? 'webp' : mime === 'image/gif' ? 'gif' : 'jpg';
+          const directory = join(app.getPath('userData'), 'music-artwork');
+          mkdirSync(directory, { recursive: true });
+          artworkPath = join(directory, `${id}.${extension}`);
+          writeFileSync(artworkPath, metadata.artwork.data);
+        } catch { artworkPath = null; }
+      }
       return [{
-        id: typeof item.id === 'string' ? item.id : randomUUID(),
-        path: target,
-        title: typeof item.title === 'string' ? item.title : basename(target, extname(target)),
-        artist: typeof item.artist === 'string' ? item.artist : '未知艺术家',
-        album: typeof item.album === 'string' ? item.album : null,
-        genre: typeof item.genre === 'string' ? item.genre : null,
-        year: typeof item.year === 'number' && Number.isFinite(item.year) ? item.year : null,
-        trackNumber: typeof item.trackNumber === 'number' && Number.isFinite(item.trackNumber) ? item.trackNumber : null,
-        durationSeconds: typeof item.durationSeconds === 'number' && Number.isFinite(item.durationSeconds) ? item.durationSeconds : null,
-        sampleRateHz: typeof item.sampleRateHz === 'number' && Number.isFinite(item.sampleRateHz) ? item.sampleRateHz : null,
-        bitDepth: typeof item.bitDepth === 'number' && Number.isFinite(item.bitDepth) ? item.bitDepth : null,
-        channels: typeof item.channels === 'number' && Number.isFinite(item.channels) && item.channels > 0 && item.channels <= 32 ? item.channels : null,
-        replayGainTrackDb: typeof item.replayGainTrackDb === 'number' && Number.isFinite(item.replayGainTrackDb) ? item.replayGainTrackDb : null,
-        replayGainAlbumDb: typeof item.replayGainAlbumDb === 'number' && Number.isFinite(item.replayGainAlbumDb) ? item.replayGainAlbumDb : null,
-        replayGainTrackPeak: typeof item.replayGainTrackPeak === 'number' && Number.isFinite(item.replayGainTrackPeak) && item.replayGainTrackPeak > 0 ? item.replayGainTrackPeak : null,
-        replayGainAlbumPeak: typeof item.replayGainAlbumPeak === 'number' && Number.isFinite(item.replayGainAlbumPeak) && item.replayGainAlbumPeak > 0 ? item.replayGainAlbumPeak : null,
+        id, path: target, title, artist,
+        album: typeof item.album === 'string' && item.album.trim() ? item.album : metadata?.album ?? null,
+        genre: typeof item.genre === 'string' && item.genre.trim() ? item.genre : metadata?.genre ?? null,
+        year: typeof item.year === 'number' && Number.isFinite(item.year) ? item.year : metadata?.year ?? null,
+        trackNumber: typeof item.trackNumber === 'number' && Number.isFinite(item.trackNumber) ? item.trackNumber : metadata?.trackNumber ?? null,
+        durationSeconds: typeof item.durationSeconds === 'number' && Number.isFinite(item.durationSeconds) ? item.durationSeconds : metadata?.durationSeconds ?? null,
+        sampleRateHz: typeof item.sampleRateHz === 'number' && Number.isFinite(item.sampleRateHz) ? item.sampleRateHz : metadata?.sampleRateHz ?? null,
+        bitDepth: typeof item.bitDepth === 'number' && Number.isFinite(item.bitDepth) ? item.bitDepth : metadata?.bitDepth ?? null,
+        channels: typeof item.channels === 'number' && Number.isFinite(item.channels) && item.channels > 0 && item.channels <= 32 ? item.channels : metadata?.channels ?? null,
+        replayGainTrackDb: typeof item.replayGainTrackDb === 'number' && Number.isFinite(item.replayGainTrackDb) ? item.replayGainTrackDb : metadata?.replayGainTrackDb ?? null,
+        replayGainAlbumDb: typeof item.replayGainAlbumDb === 'number' && Number.isFinite(item.replayGainAlbumDb) ? item.replayGainAlbumDb : metadata?.replayGainAlbumDb ?? null,
+        replayGainTrackPeak: typeof item.replayGainTrackPeak === 'number' && Number.isFinite(item.replayGainTrackPeak) && item.replayGainTrackPeak > 0 ? item.replayGainTrackPeak : metadata?.replayGainTrackPeak ?? null,
+        replayGainAlbumPeak: typeof item.replayGainAlbumPeak === 'number' && Number.isFinite(item.replayGainAlbumPeak) && item.replayGainAlbumPeak > 0 ? item.replayGainAlbumPeak : metadata?.replayGainAlbumPeak ?? null,
         format: typeof item.format === 'string' ? item.format : musicFormatLabel(target),
-        artworkPath: typeof item.artworkPath === 'string' && existsSync(item.artworkPath) ? item.artworkPath : null,
+        artworkPath,
         addedAt: typeof item.addedAt === 'string' ? item.addedAt : new Date().toISOString(),
       } satisfies MusicTrack];
     }) : [];
@@ -298,7 +325,17 @@ function loadMusicLibrary() {
       duration: 0, volume: Number.isFinite(rawVolume) ? Math.max(0, Math.min(1, rawVolume)) : 0.7,
       isPlaying: false, errorMessage: null, shuffle: raw.shuffle === true, repeat,
     };
-    musicLastPersistAt = Date.now();
+    if (upgradedLegacyTracks > 0) {
+      try {
+        persistMusicState();
+        log(`Enriched ${upgradedLegacyTracks} legacy music track(s) with embedded tags and artwork`);
+      } catch (error) {
+        musicLastPersistAt = Date.now();
+        log(`Could not persist music metadata enrichment: ${error instanceof Error ? error.message : String(error)}`);
+      }
+    } else {
+      musicLastPersistAt = Date.now();
+    }
   } catch {
     musicState = { tracks: [], playlists: [], activePlaylistId: null, currentTrackId: null, currentTime: 0, duration: 0, volume: 0.7, isPlaying: false, errorMessage: null, shuffle: false, repeat: 'off' };
   }
