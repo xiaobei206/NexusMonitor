@@ -368,4 +368,10 @@ test('native WASAPI pause stops the audio client before a later Start call', () 
   assert.match(cpp, /if \(!engine->running\.load\(std::memory_order_acquire\)\) \{[\s\S]{0,120}audioClient->Start\(\)/);
   assert.match(cpp, /runtimeError = HresultMessage\("IAudioClient::Stop", hr\)/);
   assert.match(cpp, /engine->ring\.Clear\(\);[\s\S]{0,100}WaitForSingleObject\(engine->controlEvent, 100\)/);
+  const player = read('src/renderer/music-player.tsx');
+  assert.match(player, /window\.nexus\.getMusicWasapiStatus\(\)/);
+  assert.match(player, /WASAPI 输出中断/);
+  assert.match(player, /已恢复普通音频输出/);
+  assert.match(player, /bufferedBytes: native\.bufferedBytes/);
+  assert.match(player, /underruns: native\.underruns/);
 });
