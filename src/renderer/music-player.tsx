@@ -4,7 +4,7 @@ import {
   Music2, Play, Pause, SkipBack, SkipForward, ListMusic, Folder, FolderOpen, Plus,
   Trash2, Shuffle, Repeat, Volume2, Search, X, ListPlus, Disc3, ArrowUp, ArrowDown,
 } from 'lucide-react';
-import type { AppSettings, MusicCommand, MusicState, MusicTrack } from '../shared/types';
+import type { AppSettings, MusicCommand, MusicLyricLine, MusicState, MusicTrack } from '../shared/types';
 
 export type MusicOutputStatus = {
   state: 'default' | 'active' | 'unsupported' | 'unavailable';
@@ -530,7 +530,62 @@ export function MusicReplayGainControls({ state, settings, updateSettings }: {
   </section>;
 }
 
-export function MusicMiniPlayer({ state, onCommand }: { state: MusicState | null; onCommand: (command: MusicCommand) => void }) {
+export function MusicLyricsPanel({ state }: { state: MusicState | null }) {
+  const track = activeTrack(state);
+  const [lines, setLines] = useState<MusicLyricLine[]>([]);
+  const [loaded, setLoaded] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
+  useEffect(() => {
+    let alive = true;
+    setLines([]);
+    setLoaded(false);
+    if (!track?.id) {
+      setLoaded(true);
+      return () => { alive = false; };
+    }
+    void window.nexus.getMusicLyrics(track.id).then(result => {
+      if (!alive) return;
+      setLines(Array.isArray(result) ? result : []);
+      setLoaded(true);
+    }).catch(() => {
+      if (alive) { setLines([]); setLoaded(true); }
+    });
+    return () => { alive = false; };
+  }, [track?.id, reloadKey]);
+  const currentIndex = useMemo(() => {
+    const time = Math.max(0, state?.currentTime ?? 0);
+    let low = 0, high = lines.length - 1, found = -1;
+    while (low <= high) {
+      const middle = (low + high) >> 1;
+      if (lines[middle].timeSeconds <= time + 0.04) {
+        found = middle;
+        low = middle + 1;
+      } else high = middle - 1;
+    }
+    return found;
+  }, [lines, state?.currentTime]);
+  const current = currentIndex >= 0 ? lines[currentIndex] : null;
+  const next = currentIndex >= 0 ? lines[currentIndex + 1] ?? null : lines[0] ?? null;
+  return <section className="nm-lyrics-panel">
+    <header>
+      <span><b>同步歌词</b><small>{track?.title ?? '尚未选择歌曲'} · 本地 LRC</small></span>
+      <button type="button" className="btn-secondary" disabled={!track} onClick={() => setReloadKey(value => value + 1)}>重新读取</button>
+    </header>
+    {!track
+      ? <div className="nm-lyrics-empty">播放一首歌曲后显示同名 LRC 歌词。</div>
+      : !loaded
+        ? <div className="nm-lyrics-empty">正在读取本地歌词…</div>
+        : lines.length === 0
+          ? <div className="nm-lyrics-empty">未找到可用歌词。将 UTF-8 的同名 .lrc 文件放在音频文件旁即可；不会联网搜索或上传。</div>
+          : <div className="nm-lyrics-current">
+              <strong>{current?.text || '♪'}</strong>
+              <span>{next?.text || ' '}</span>
+            </div>}
+    <footer>歌词仅从歌曲同目录同名 .lrc 读取；时间戳按播放进度同步。</footer>
+  </section>;
+}
+
+function MusicMiniPlayer({ state, onCommand }: { state: MusicState | null; onCommand: (command: MusicCommand) => void }) {
   const [open, setOpen] = useState(false);
   const root = useRef<HTMLDivElement | null>(null);
   const track = activeTrack(state);
@@ -736,6 +791,7 @@ export function MusicLibraryPage({ state, onCommand, notify, settings, updateSet
     <MusicOutputDevicePicker settings={settings} updateSettings={updateSettings} status={outputStatus}/>
     <MusicEqualizer bands={settings.musicEqBands ?? FLAT_MUSIC_EQ} onChange={bands => updateSettings({ musicEqBands: bands })}/>
     <MusicReplayGainControls state={state} settings={settings} updateSettings={updateSettings}/>
+    <MusicLyricsPanel state={state}/>
     {state?.errorMessage && <div className="nm-playback-error" role="status"><b>播放失败</b><span>{state.errorMessage}</span></div>}
     <div className="nm-library-layout">
       <aside className="nm-playlist-sidebar">
