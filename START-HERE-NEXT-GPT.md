@@ -1,22 +1,23 @@
 # NexusMonitor — 新接手 GPT 请先看这里
 
-**最近正式发布：2.2.7；当前 main 源码版本：2.2.8（等待本版本 Windows CI / Release 核验）。唯一工作基线：GitHub main。2.2.8 发布后，下一正式行为版本从 2.2.9 开始。**
+**当前正式发布：2.2.8；Windows CI Run #209 全部成功。唯一工作基线：GitHub main。下一正式行为版本从 2.2.9 开始。**
 
-- 最近正式 Release：[NexusMonitor 2.2.7](https://github.com/xiaobei206/NexusMonitor/releases/tag/v2.2.7)
-- 最近正式安装包：[NexusMonitor-2.2.7-Setup.exe](https://github.com/xiaobei206/NexusMonitor/releases/download/v2.2.7/NexusMonitor-2.2.7-Setup.exe)
-- 本版交接：[NexusMonitor-2.2.8-HANDOFF-CN.md](NexusMonitor-2.2.8-HANDOFF-CN.md)
-- 本版构建报告：[NexusMonitor-2.2.8-BUILD-REPORT.md](NexusMonitor-2.2.8-BUILD-REPORT.md)
-- 唯一跨版本日志：[NexusMonitor-DEVELOPMENT-LOG-CN.md](NexusMonitor-DEVELOPMENT-LOG-CN.md)
-- 架构与硬性约束：[AGENTS.md](AGENTS.md)
-- 当前版本的 Actions / Release 结果以 GitHub main 最新提交及该提交的 Windows CI 为准；等待期间不得把 2.2.7 的历史成功状态套用到 2.2.8。
+- 当前正式 Release：https://github.com/xiaobei206/NexusMonitor/releases/tag/v2.2.8
+- 当前 Windows 安装包：https://github.com/xiaobei206/NexusMonitor/releases/download/v2.2.8/NexusMonitor-2.2.8-Setup.exe
+- SHA-256：4324a9411b992bd9d148f7f0c405dddbe21e8dc608ebf7d33c6127b5e7abc485
+- Windows CI：Run #209 — success：https://github.com/xiaobei206/NexusMonitor/actions/runs/42496538449
+- 本版交接：NexusMonitor-2.2.8-HANDOFF-CN.md
+- 本版构建报告：NexusMonitor-2.2.8-BUILD-REPORT.md
+- 唯一跨版本日志：NexusMonitor-DEVELOPMENT-LOG-CN.md
+- 架构与硬性约束：AGENTS.md
 
-## 2.2.8 本轮变更目标
+## 2.2.8 已验证变更
 
-- 修复用户手动快进并等待循环数次后出现的 “The element has no supported sources” 播放失败。
-- 为播放请求与当前 track ID / media source URL 加 generation guard；轨道切换时先失效旧请求和卸载旧 source。
-- seek/resume 等待 seeked 事件，避免在曲尾 seek 与 ended/repeat 重启交叠。
-- 保留唯一 main Renderer 音频宿主；HUD / 副屏不创建第二个播放器。
-- CI 尚未验证前不宣称构建成功；即使 CI 成功，也不能替代用户 Windows 实机上的实际音乐循环验收。
+- 修复快进/循环时的活动曲目音源竞态：过期 track URL、play 请求、媒体错误及 seeked 回调不能覆盖当前曲目。
+- 切曲时先使旧请求失效并卸载旧 src。
+- seek/resume 等待 seeked 后恢复；循环重启期间屏蔽瞬时 paused 状态。
+- 主进程音乐回归测试、Renderer TypeScript/Vite、native WASAPI、PawnIO、.NET HardwareService、硬件/存储测试、NSIS 安装包、SHA 与 Release 发布全部通过 Run #209。
+- 实机验收仍未完成：需在用户真实 Windows PC 上验证连续单曲/列表循环、曲尾快进、暂停恢复和音乐格式。
 
 ## 能力与边界基线
 
