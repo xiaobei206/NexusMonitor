@@ -414,7 +414,7 @@ test('repeat playback ignores transient ended/pending play state and cancels sta
   const main = read('src/main/index.ts');
   assert.match(player, /const playbackAttemptIdRef = useRef\(0\)/);
   assert.match(player, /const playbackStartPendingRef = useRef\(false\)/);
-  assert.match(player, /if \(!playbackStartPendingRef\.current && !audio\.ended && audio\.dataset\.trackId === currentTrackIdRef\.current\) payload\.playing = !audio\.paused/);
+  assert.match(player, /if \(!playbackStartPendingRef\.current && !audio\.ended && audio\.dataset\.trackId === currentTrackIdRef\.current\) \{\s*payload\.playing = !audio\.paused;/);
   assert.match(player, /const reportTimeUpdate = \(\) => report\(\)/);
   assert.match(player, /audio\.addEventListener\('timeupdate', reportTimeUpdate\)/);
   assert.match(player, /error instanceof Error && error\.name === 'AbortError'\) return/);
