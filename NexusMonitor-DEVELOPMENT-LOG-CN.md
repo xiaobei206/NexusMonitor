@@ -1,7 +1,31 @@
 # NexusMonitor 统一开发日志（跨版本唯一主记录）
 
-**当前正式发布：2.2.6（Windows CI Run #201 全部通过）；下一正式行为版本从 2.2.7 开始。**  
+**当前正式发布：2.2.7（Windows CI Run #204 全部通过）；下一正式行为版本从 2.2.8 开始。**  
 **记录规则：** 每个正式版本都追加到本文件；下一版不得新建第二份版本日志。按版本号和日期顺序记录功能、根因、修复、失败尝试、验证范围及未完成事项。历史测试结果不能冒充当前版本测试结果。
+
+## 2.2.7（2026-11-08，已发布 / Windows CI Run #204 success）
+
+### 用户反馈与根因
+- 用户在音乐循环播放时看到“播放启动失败：The play() request was interrupted by a call to pause()”。
+- 根因是媒体元素的状态同步竞态：曲尾触发 `ended` 后，主进程在 repeat-one 或单曲队列的 repeat-all 场景保留 `isPlaying: true` 并发出 seek-to-zero / resume；在新播放请求未完成的短暂窗口中，Renderer 从元素读到 `paused` 并将其回传，主进程把状态降为暂停，React 随后调用 `pause()` 打断 pending `play()` promise。
+- 这是播放意图同步/生命周期问题，而非从这条错误本身可以推断出的音乐文件损坏。
+
+### 实现与防回归
+- `src/renderer/music-player.tsx`：所有 HTMLAudioElement `play()` 收敛到一个安全入口；使用单调递增 attempt ID 取消过期请求；只在播放尝试仍有效时回传最终状态；在 ended / play pending 时不发送临时 `playing: false`；合法 pause / track change 引起的 `AbortError` 不再被当成新的播放故障。
+- 手动暂停、切曲与组件清理会让旧播放尝试失效。原有 repeat-one / repeat-all / shuffle 路由与唯一音频引擎保留。
+- `tests/music-player-source.test.cjs` 新增 repeat playback 状态竞态的源合同回归，检查单一 play 入口、过期请求保护、pending 状态、`AbortError` 处理和事件监听包装。
+- 不修改 `src/main/music-exclusive-output.ts` 或 native WASAPI 实现。2.2.5 留下的 P4 独占模式实机问题不属于本次修复范围。
+
+### CI 迭代记录（完整保留失败轮次）
+- Run #203（提交 `bcac4fa`）版本门禁和 Main / Node regression 通过，但 Renderer TypeScript 报 TS2769：布尔参数函数 `report(force?)` 被直接注册为媒体事件 listener，签名与 EventListener 不兼容。
+- 修复为 `reportTimeUpdate = () => report()` 等无参数事件包装，并在测试中覆盖；没有回退音乐修复。
+- Run #204（提交 `2f882c6`）全流程 success：版本门禁 14 项；Main / Node 回归；Renderer TypeScript 与 Vite；native WASAPI 模块构建；PawnIO 官方资源校验；.NET HardwareService；硬件/存储测试；NSIS 安装包；SHA-256；GitHub Release 与 artifact 上传全部成功。
+- 正式 Release：[v2.2.7](https://github.com/xiaobei206/NexusMonitor/releases/tag/v2.2.7)，Run #204：[Windows CI](https://github.com/xiaobei206/NexusMonitor/actions/runs/42494116368)。源码发布提交 `2f882c6348869b3406ab6b93aee7d112ebf7631f)。
+- 安装器 `NexusMonitor-2.2.7-Setup.exe`，160,023,400 bytes。SHA-256：`b370eda5aa93bc7fd9ab8b5f78f8612aa23ea01d734e402ae704497007b89e89`。校验文件随 Release 一并发布。
+
+### 验收边界
+- CI 的源码合同测试、类型构建和安装包均已通过，但 Hosted Windows 不会实际跑用户音乐文件、循环播完整曲目或听目标声卡。因此本版仍需要目标机确认单曲循环、列表多曲循环、单曲列表循环，以及快速暂停/切曲后不会残留误报。
+- 没有改动 native WASAPI，不宣称修复 P4 Exclusive 或完成真实扬声器验收。
 
 ## 2.2.6（2026-11-07，已发布 / Windows CI Run #201 success）
 

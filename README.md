@@ -1,4 +1,4 @@
-# NexusMonitor 2.2.6 — Electron Edition (released; Windows CI passed)
+# NexusMonitor 2.2.7 — Electron Edition (released; Windows CI Run #204 passed)
 
 > **新对话 / 新开发者接手：先读 [START-HERE-NEXT-GPT.md](START-HERE-NEXT-GPT.md) 和根目录 [AGENTS.md](AGENTS.md)。** 入口文档列出阅读顺序、源码目录地图、验证命令与硬件验收边界。
 
@@ -75,15 +75,16 @@ NexusMonitor source in this package is provided for the user's development/testi
 
 ## Current source handoff
 
-The current source line is **main / 2.2.6**; the previous completed release is [NexusMonitor 2.2.5](https://github.com/xiaobei206/NexusMonitor/releases/tag/v2.2.5). This personal repository is developed directly on main; no feature branches or PRs unless explicitly requested.
+The current source line is **main / 2.2.7**; the previous completed release is [NexusMonitor 2.2.6](https://github.com/xiaobei206/NexusMonitor/releases/tag/v2.2.6). This personal repository is developed directly on main; no feature branches or PRs unless explicitly requested.
 
-- Current handoff: [NexusMonitor-2.2.6-HANDOFF-CN.md](NexusMonitor-2.2.6-HANDOFF-CN.md)
-- Current build report: [NexusMonitor-2.2.6-BUILD-REPORT.md](NexusMonitor-2.2.6-BUILD-REPORT.md)
+- Current handoff: [NexusMonitor-2.2.7-HANDOFF-CN.md](NexusMonitor-2.2.7-HANDOFF-CN.md)
+- Current build report: [NexusMonitor-2.2.7-BUILD-REPORT.md](NexusMonitor-2.2.7-BUILD-REPORT.md)
 - Canonical development log: [NexusMonitor-DEVELOPMENT-LOG-CN.md](NexusMonitor-DEVELOPMENT-LOG-CN.md)
 - 2.2.6 adds three selectable provider adapters: QWeather V1 with locally signed Ed25519 JWT, WeatherCN standard API, and Caiyun V2.6 HMAC-SHA256 authentication. Existing Open-Meteo, WeatherAPI and OpenWeather choices remain.
 - QWeather private keys, WeatherCN / WeatherAPI / OpenWeather API keys and Caiyun App Key / Secret are encrypted with Electron safeStorage. Only public QWeather metadata is shared with renderer windows.
 - The default vertical HUD height is 960 logical pixels. Manual vertical height is remembered per display and restored within the supported 700–1200px range.
-- The 2.2.5 target-PC observation remains unchanged: P4 Mono UAC Direct v62 has no audible output while WASAPI Exclusive is enabled; disabling Exclusive immediately restores ordinary playback. 2.2.6 does not change the native WASAPI path.
+- 2.2.7 fixes a music repeat-playback race: transient paused state during an ended→play restart no longer cancels the pending `play()` request or surfaces a normal `AbortError` as a playback failure. All play calls now share a cancellable state-aware path.
+- 2.2.7 does not change the native WASAPI backend. The prior target-PC observation remains: P4 Mono UAC Direct v62 was silent with WASAPI Exclusive enabled and ordinary playback returned after Exclusive was disabled; this new release does not claim to fix that separate issue.
 
 ### Historical 2.2.4 release baseline
 
@@ -107,6 +108,6 @@ For an Intel Alder Lake system where IGCL exposes GPU clocks/power but not tempe
 ## Repository history and operating records
 
 - The canonical cross-version development record is `NexusMonitor-DEVELOPMENT-LOG-CN.md`.
-- Current handoff and build / CI boundaries are in `NexusMonitor-2.2.6-HANDOFF-CN.md` and `NexusMonitor-2.2.6-BUILD-REPORT.md`. 正式发布：[NexusMonitor 2.2.6](https://github.com/xiaobei206/NexusMonitor/releases/tag/v2.2.6)（Windows CI Run #201 success）；target-PC acceptance remains documented separately。
+- Current handoff and build / CI boundaries are in `NexusMonitor-2.2.7-HANDOFF-CN.md` and `NexusMonitor-2.2.7-BUILD-REPORT.md`. 正式发布：[NexusMonitor 2.2.7](https://github.com/xiaobei206/NexusMonitor/releases/tag/v2.2.7)（Windows CI Run #204 success）；target-PC playback acceptance remains documented separately.
 - Each GitHub Actions run retains its complete build/test log; see the linked 2.1.8 run above. Per-user application runtime logs and settings remain local under `%APPDATA%\\NexusMonitor` and are intentionally not committed.
 - Versioned engineering references and the historical patch archive are under `docs/`.

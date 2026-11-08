@@ -1,32 +1,29 @@
 # NexusMonitor — 新接手 GPT 请先看这里
 
-**当前正式发布：2.2.6；Windows CI Run #201 全部成功。唯一工作基线：GitHub main。接手时先核对 main 最新 HEAD；下一个正式行为版本从 2.2.7 开始。**
+**当前正式发布：2.2.7；Windows CI Run #204 全部成功。唯一工作基线：GitHub main。接手时必须核对 main 最新 HEAD；下一正式行为版本从 2.2.8 开始。**
 
-- 当前正式发布：[NexusMonitor 2.2.6](https://github.com/xiaobei206/NexusMonitor/releases/tag/v2.2.6)
-- 当前交接：[NexusMonitor-2.2.6-HANDOFF-CN.md](NexusMonitor-2.2.6-HANDOFF-CN.md)
-- 当前构建报告：[NexusMonitor-2.2.6-BUILD-REPORT.md](NexusMonitor-2.2.6-BUILD-REPORT.md)
+- 当前正式发布：[NexusMonitor 2.2.7](https://github.com/xiaobei206/NexusMonitor/releases/tag/v2.2.7)
+- 安装包：[NexusMonitor-2.2.7-Setup.exe](https://github.com/xiaobei206/NexusMonitor/releases/download/v2.2.7/NexusMonitor-2.2.7-Setup.exe)
+- SHA-256 文件：[NexusMonitor-2.2.7-Setup.exe.sha256](https://github.com/xiaobei206/NexusMonitor/releases/download/v2.2.7/NexusMonitor-2.2.7-Setup.exe.sha256)
+- 当前交接：[NexusMonitor-2.2.7-HANDOFF-CN.md](NexusMonitor-2.2.7-HANDOFF-CN.md)
+- 当前构建报告：[NexusMonitor-2.2.7-BUILD-REPORT.md](NexusMonitor-2.2.7-BUILD-REPORT.md)
 - 唯一跨版本日志：[NexusMonitor-DEVELOPMENT-LOG-CN.md](NexusMonitor-DEVELOPMENT-LOG-CN.md)
 - 架构与硬性约束：[AGENTS.md](AGENTS.md)
-- 2.2.6 已发布；下一正式行为版本为 2.2.7。CI #201：https://github.com/xiaobei206/NexusMonitor/actions/runs/42378652196
+- Run #204：[Windows CI success](https://github.com/xiaobei206/NexusMonitor/actions/runs/42494116368)
+- 2.2.7 的已测源码提交：`2f882c6348869b3406ab6b93aee7d112ebf7631f`；文档同步后的 main HEAD 可能更新。始终以 GitHub 实际 main HEAD 为准。
 
-## 2.2.6 变更落点
+## 2.2.7 本次修复
 
-- HardwareService/Monitoring/WeatherService.cs：QWeather V1、WeatherCN 标准 API、Caiyun V2.6，并保留 Open-Meteo / WeatherAPI / OpenWeather。
-- src/main/index.ts：本机 QWeather Ed25519/JWT、Windows safeStorage 加密、天气凭据 IPC、每显示器 HUD 高度保存。
-- src/renderer/App.tsx：六个天气源选择与配置向导、天气连通性测试、数据来源声明、按 AQI 标准区分标签。
-- src/renderer/aqi.ts：China-MEP 与 US-EPA 分类文字分开处理。
-- src/main/widget-docking.ts：竖向 HUD 默认 960px；切换方向时恢复该显示器已保存高度，夹在 700–1200px 并按工作区裁剪。
-- 回归测试：tests/weather-provider-contract.test.cjs、tests/widget-docking.test.cjs、tests/ui-readability.test.cjs。
+- 音乐单曲循环、列表循环在曲尾重启时，防止短暂 `paused` 状态反向覆盖仍然有效的播放意图。
+- 统一 HTMLAudioElement 的 `play()` 调用，使用 attempt ID 作废已过期的启动请求；播放中途的曲目更换/暂停不应被旧请求覆盖。
+- 处于 ended / play pending 时，运行态同步不再发送误导性的 `playing: false`；由合法 pause 触发的 `AbortError` 不再显示成解码或输出故障。
+- 新增回归测试，锁定状态竞态、播放请求集中入口和事件监听类型。
+- 未修改 native WASAPI backend。Hosted Windows CI 不能替代目标机真正的音频播放验收。
 
-## 天气凭据说明
+## 之前的能力基线
 
-- Open-Meteo 无需 Key。
-- QWeather V1：本机生成 Ed25519 密钥；只上传公钥到控制台，再填写 Developer ID、Project ID、Credential ID、API Host。私钥仅保存在本机加密设置中。
-- 华风爱科：标准 API Key 走 X-Gw-API-Key Header，Location Key 缓存 24 小时；标准测试 Key 额度 500 次/日、5 QPS。
-- 彩云：V2.6 App Key + App Secret，按请求 HMAC-SHA256 签名。
-- WeatherAPI 与 OpenWeather 仍按其各自套餐 / 权限使用。没有提供 API 凭据的源不能做实网验收。
-
-## 音频 / 显示边界
-
-P4 Mono UAC Direct v62 在目标机器启用 WASAPI Exclusive 时无声，关闭后普通输出立即恢复。用户已接受普通播放。本版本不修改 WASAPI native backend，不声称独占已修复或实机通过。Hosted CI 不能替代真实 P4 扬声器、显示器、COM3 Turing 验收。
-
+- 2.2.6 已加入 QWeather V1、华风爱科、彩云天气适配和 AQI 分类规范，保留 Open-Meteo、WeatherAPI、OpenWeather；详情见当前 2.2.7 交接及历史交接。
+- 竖向 HUD 默认高度为 960 逻辑像素，记住每显示器的手动高度（700–1200px）。
+- 音乐服务是唯一 main Renderer 音频引擎，HUD / 副屏仅发控制命令；USB 视频模式不运行音乐迷你播放器。
+- P4 Mono UAC Direct v62 的 WASAPI Exclusive 无声问题是独立的历史目标机问题，本版未改 native backend，勿宣称已修复。
+- 用户项目习惯：直接在 main 开发；所有正式行为版本号递增；版本元数据同步；保留唯一累计开发日志；构建报告、交接文件都含产品名及版本号。Windows PowerShell 使用 `npm.cmd` / `npx.cmd`。
