@@ -20,7 +20,7 @@
 - Run #203（提交 `bcac4fa`）版本门禁和 Main / Node regression 通过，但 Renderer TypeScript 报 TS2769：布尔参数函数 `report(force?)` 被直接注册为媒体事件 listener，签名与 EventListener 不兼容。
 - 修复为 `reportTimeUpdate = () => report()` 等无参数事件包装，并在测试中覆盖；没有回退音乐修复。
 - Run #204（提交 `2f882c6`）全流程 success：版本门禁 14 项；Main / Node 回归；Renderer TypeScript 与 Vite；native WASAPI 模块构建；PawnIO 官方资源校验；.NET HardwareService；硬件/存储测试；NSIS 安装包；SHA-256；GitHub Release 与 artifact 上传全部成功。
-- 正式 Release：[v2.2.7](https://github.com/xiaobei206/NexusMonitor/releases/tag/v2.2.7)，Run #204：[Windows CI](https://github.com/xiaobei206/NexusMonitor/actions/runs/42494116368)。源码发布提交 `2f882c6348869b3406ab6b93aee7d112ebf7631f)。
+- 正式 Release：[v2.2.7](https://github.com/xiaobei206/NexusMonitor/releases/tag/v2.2.7)，Run #204：[Windows CI](https://github.com/xiaobei206/NexusMonitor/actions/runs/42494116368)。源码发布提交 `2f882c6348869b3406ab6b93aee7d112ebf7631f`。
 - 安装器 `NexusMonitor-2.2.7-Setup.exe`，160,023,400 bytes。SHA-256：`b370eda5aa93bc7fd9ab8b5f78f8612aa23ea01d734e402ae704497007b89e89`。校验文件随 Release 一并发布。
 
 ### 验收边界
