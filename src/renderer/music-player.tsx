@@ -321,6 +321,7 @@ export function MusicPlaybackRuntime({ state, outputDeviceId = 'default', eqBand
       window.nexus.reportMusicRuntime(payload);
     };
     const reportPlaybackChange = () => report(true);
+    const reportTimeUpdate = () => report();
     const onEnded = () => { void window.nexus.musicCommand({ type: 'ended' }); };
     const onError = () => {
       const code = audio.error?.code;
@@ -340,14 +341,14 @@ export function MusicPlaybackRuntime({ state, outputDeviceId = 'default', eqBand
         report();
       }
     });
-    audio.addEventListener('timeupdate', report);
+    audio.addEventListener('timeupdate', reportTimeUpdate);
     audio.addEventListener('play', reportPlaybackChange);
     audio.addEventListener('pause', reportPlaybackChange);
     audio.addEventListener('ended', onEnded);
     audio.addEventListener('error', onError);
     return () => {
       offEngine();
-      audio.removeEventListener('timeupdate', report);
+      audio.removeEventListener('timeupdate', reportTimeUpdate);
       audio.removeEventListener('play', reportPlaybackChange);
       audio.removeEventListener('pause', reportPlaybackChange);
       audio.removeEventListener('ended', onEnded);

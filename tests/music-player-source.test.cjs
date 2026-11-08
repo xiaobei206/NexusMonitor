@@ -415,6 +415,8 @@ test('repeat playback ignores transient ended/pending play state and cancels sta
   assert.match(player, /const playbackAttemptIdRef = useRef\(0\)/);
   assert.match(player, /const playbackStartPendingRef = useRef\(false\)/);
   assert.match(player, /if \(!playbackStartPendingRef\.current && !audio\.ended\) payload\.playing = !audio\.paused/);
+  assert.match(player, /const reportTimeUpdate = \(\) => report\(\)/);
+  assert.match(player, /audio\.addEventListener\('timeupdate', reportTimeUpdate\)/);
   assert.match(player, /error instanceof Error && error\.name === 'AbortError'\) return/);
   assert.match(player, /playbackAttemptIdRef\.current \+= 1;\s*playbackStartPendingRef\.current = false;\s*audio\.pause\(\)/);
   assert.equal((player.match(/await audio\.play\(\)/g) || []).length, 1, 'all play requests should share one cancellation guard');
