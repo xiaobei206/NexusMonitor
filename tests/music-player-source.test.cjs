@@ -432,6 +432,7 @@ test('rapid seek and repeat only target the active media source and wait for see
   assert.match(player, /audio\.removeAttribute\('src'\);\s*delete audio\.dataset\.trackId;\s*activeSourceUrlRef\.current = null;\s*audio\.load\(\)/);
   assert.match(player, /const hasCurrentSource = \(\) => isCurrentSourceSelected\(\) && Boolean\(audio\.currentSrc\)/);
   assert.match(player, /if \(!hasCurrentSource\(\)\) return/);
+  assert.match(player, /if \(command\.resume\) playbackStartPendingRef\.current = true/);
   assert.match(player, /const upperBound = Math\.max\(0, audio\.duration - 0\.05\)/);
   assert.match(player, /audio\.addEventListener\('seeked', startAfterSeek, \{ once: true \}\)/);
   assert.match(player, /sourceGeneration !== sourceGenerationRef\.current/);

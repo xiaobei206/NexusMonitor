@@ -363,6 +363,9 @@ export function MusicPlaybackRuntime({ state, outputDeviceId = 'default', eqBand
           audio.src !== activeSourceUrlRef.current || !audio.currentSrc ||
           !Number.isFinite(audio.duration) || audio.duration <= 0) return;
       const sourceGeneration = sourceGenerationRef.current;
+      // During repeat-one / repeat-all restart the element is paused between seek
+      // and play(). Keep that transient state out of the main-process playback intent.
+      if (command.resume) playbackStartPendingRef.current = true;
       const upperBound = Math.max(0, audio.duration - 0.05);
       audio.currentTime = Math.max(0, Math.min(upperBound, command.seconds));
       if (command.resume) {
