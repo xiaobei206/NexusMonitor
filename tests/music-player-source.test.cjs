@@ -408,3 +408,16 @@ test('2.2.0 music library records are enriched once and persisted without resett
   assert.match(main, /activePlaylistId: playlistId, currentTrackId/);
   assert.match(main, /currentTime: Number\.isFinite\(Number\(raw\.currentTime\)\)/);
 });
+
+test('repeat playback ignores transient ended/pending play state and cancels stale play requests safely', () => {
+  const player = read('src/renderer/music-player.tsx');
+  const main = read('src/main/index.ts');
+  assert.match(player, /const playbackAttemptIdRef = useRef\(0\)/);
+  assert.match(player, /const playbackStartPendingRef = useRef\(false\)/);
+  assert.match(player, /if \(!playbackStartPendingRef\.current && !audio\.ended\) payload\.playing = !audio\.paused/);
+  assert.match(player, /error instanceof Error && error\.name === 'AbortError'\) return/);
+  assert.match(player, /playbackAttemptIdRef\.current \+= 1;\s*playbackStartPendingRef\.current = false;\s*audio\.pause\(\)/);
+  assert.equal((player.match(/await audio\.play\(\)/g) || []).length, 1, 'all play requests should share one cancellation guard');
+  assert.match(main, /ended && musicState\.repeat === 'one'/);
+  assert.match(main, /if \(musicState\.repeat === 'all'\) nextIndex = 0/);
+});

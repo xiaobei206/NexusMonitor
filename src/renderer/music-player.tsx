@@ -103,6 +103,8 @@ export function MusicPlaybackRuntime({ state, outputDeviceId = 'default', eqBand
   const exclusiveMutedRef = useRef(false);
   const exclusiveOpenedAtRef = useRef(0);
   const latestPlayingRef = useRef(false);
+  const playbackAttemptIdRef = useRef(0);
+  const playbackStartPendingRef = useRef(false);
   const lastReportAt = useRef(0);
   const bands = useMemo(
     () => MUSIC_EQ_FREQUENCIES.map((_, index) => {
@@ -200,6 +202,35 @@ export function MusicPlaybackRuntime({ state, outputDeviceId = 'default', eqBand
 
   useEffect(() => { latestPlayingRef.current = state?.isPlaying === true; }, [state?.isPlaying]);
 
+  const playAudioSafely = useCallback(async (audio: HTMLAudioElement, errorPrefix = '播放启动失败：') => {
+    const attemptId = ++playbackAttemptIdRef.current;
+    playbackStartPendingRef.current = true;
+    try {
+      if (audioContextRef.current?.state === 'suspended') await audioContextRef.current.resume();
+      if (attemptId !== playbackAttemptIdRef.current || !latestPlayingRef.current) return;
+      await audio.play();
+      if (attemptId !== playbackAttemptIdRef.current) return;
+      const payload: { currentTime: number; duration: number; playing?: boolean } = {
+        currentTime: Number.isFinite(audio.currentTime) ? audio.currentTime : 0,
+        duration: Number.isFinite(audio.duration) ? audio.duration : 0,
+      };
+      if (!audio.ended) payload.playing = !audio.paused;
+      window.nexus.reportMusicRuntime(payload);
+    } catch (error) {
+      if (attemptId !== playbackAttemptIdRef.current) return;
+      // pause()/track changes legitimately reject a pending play() promise. They are
+      // state transitions, not decode or output failures that should surface to users.
+      if (error instanceof Error && error.name === 'AbortError') return;
+      window.nexus.reportMusicRuntime({
+        error: true,
+        playing: false,
+        errorMessage: `${errorPrefix}${error instanceof Error ? error.message : String(error)}`,
+      });
+    } finally {
+      if (attemptId === playbackAttemptIdRef.current) playbackStartPendingRef.current = false;
+    }
+  }, []);
+
   const applyOutputSink = useCallback(async () => {
     const audio = audioRef.current as (HTMLAudioElement & { setSinkId?: (deviceId: string) => Promise<void>; sinkId?: string }) | null;
     if (!audio) return;
@@ -269,24 +300,27 @@ export function MusicPlaybackRuntime({ state, outputDeviceId = 'default', eqBand
     await applyOutputSink();
     const audio = audioRef.current;
     if (shouldResumePlayback && latestPlayingRef.current && audio?.paused) {
-      try { await audio.play(); }
-      catch (error) { window.nexus.reportMusicRuntime({ error: true, playing: false, errorMessage: `普通音频输出恢复失败：${error instanceof Error ? error.message : String(error)}` }); }
+      await playAudioSafely(audio, '普通音频输出恢复失败：');
     }
-  }, [applyOutputSink]);
+  }, [applyOutputSink, playAudioSafely]);
 
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
-    const report = () => {
+    const report = (force = false) => {
       const now = Date.now();
-      if (now - lastReportAt.current < 850) return;
+      if (!force && now - lastReportAt.current < 850) return;
       lastReportAt.current = now;
-      window.nexus.reportMusicRuntime({
+      const payload: { currentTime: number; duration: number; playing?: boolean } = {
         currentTime: Number.isFinite(audio.currentTime) ? audio.currentTime : 0,
         duration: Number.isFinite(audio.duration) ? audio.duration : 0,
-        playing: !audio.paused,
-      });
+      };
+      // The media element is paused while ended/restarting. Do not let this transient
+      // snapshot overwrite the main-process repeat intent before play() settles.
+      if (!playbackStartPendingRef.current && !audio.ended) payload.playing = !audio.paused;
+      window.nexus.reportMusicRuntime(payload);
     };
+    const reportPlaybackChange = () => report(true);
     const onEnded = () => { void window.nexus.musicCommand({ type: 'ended' }); };
     const onError = () => {
       const code = audio.error?.code;
@@ -302,30 +336,20 @@ export function MusicPlaybackRuntime({ state, outputDeviceId = 'default', eqBand
     const offEngine = window.nexus.onMusicEngineCommand(command => {
       if (command.type === 'seek' && Number.isFinite(command.seconds) && audio.duration > 0) {
         audio.currentTime = Math.max(0, Math.min(audio.duration, command.seconds));
-        if (command.resume) {
-          const startPlayback = async () => {
-            try {
-              if (audioContextRef.current?.state === 'suspended') await audioContextRef.current.resume();
-              await audio.play();
-            } catch (error) {
-              window.nexus.reportMusicRuntime({ error: true, playing: false, errorMessage: error instanceof Error ? `播放启动失败：${error.message}` : '播放启动失败' });
-            }
-          };
-          void startPlayback();
-        }
+        if (command.resume) void playAudioSafely(audio);
         report();
       }
     });
     audio.addEventListener('timeupdate', report);
-    audio.addEventListener('play', report);
-    audio.addEventListener('pause', report);
+    audio.addEventListener('play', reportPlaybackChange);
+    audio.addEventListener('pause', reportPlaybackChange);
     audio.addEventListener('ended', onEnded);
     audio.addEventListener('error', onError);
     return () => {
       offEngine();
       audio.removeEventListener('timeupdate', report);
-      audio.removeEventListener('play', report);
-      audio.removeEventListener('pause', report);
+      audio.removeEventListener('play', reportPlaybackChange);
+      audio.removeEventListener('pause', reportPlaybackChange);
       audio.removeEventListener('ended', onEnded);
       audio.removeEventListener('error', onError);
     };
@@ -531,6 +555,8 @@ export function MusicPlaybackRuntime({ state, outputDeviceId = 'default', eqBand
     const audio = audioRef.current;
     if (!audio || !state) return;
     const trackId = state.currentTrackId;
+    playbackAttemptIdRef.current += 1;
+    playbackStartPendingRef.current = false;
     if (!trackId) {
       audio.pause();
       audio.removeAttribute('src');
@@ -561,8 +587,7 @@ export function MusicPlaybackRuntime({ state, outputDeviceId = 'default', eqBand
           const startPlayback = async () => {
             try {
               if ((bands.some(value => value !== 0) || hasReplayGain || exclusiveEnabled) && !audioContextRef.current) await ensureAudioGraph();
-              if (audioContextRef.current?.state === 'suspended') await audioContextRef.current.resume();
-              await audio.play();
+              await playAudioSafely(audio);
             } catch (error) {
               window.nexus.reportMusicRuntime({ error: true, playing: false, errorMessage: error instanceof Error ? `播放启动失败：${error.message}` : '播放启动失败' });
             }
@@ -585,19 +610,22 @@ export function MusicPlaybackRuntime({ state, outputDeviceId = 'default', eqBand
       const startPlayback = async () => {
         try {
           if ((bands.some(value => value !== 0) || hasReplayGain || exclusiveEnabled) && !audioContextRef.current) await ensureAudioGraph();
-          if (audioContextRef.current?.state === 'suspended') await audioContextRef.current.resume();
-          await audio.play();
+          await playAudioSafely(audio);
         } catch (error) {
           window.nexus.reportMusicRuntime({ error: true, playing: false, errorMessage: error instanceof Error ? `播放启动失败：${error.message}` : '播放启动失败' });
         }
       };
       void startPlayback();
     } else {
+      playbackAttemptIdRef.current += 1;
+      playbackStartPendingRef.current = false;
       audio.pause();
     }
-  }, [state?.isPlaying, state?.currentTrackId, bandKey, ensureAudioGraph, hasReplayGain, replayGainAppliedDb, exclusiveEnabled]);
+  }, [state?.isPlaying, state?.currentTrackId, bandKey, ensureAudioGraph, hasReplayGain, replayGainAppliedDb, exclusiveEnabled, playAudioSafely]);
 
   useEffect(() => () => {
+    playbackAttemptIdRef.current += 1;
+    playbackStartPendingRef.current = false;
     const context = audioContextRef.current;
     if (context && context.state !== 'closed') void context.close().catch(() => undefined);
   }, []);
