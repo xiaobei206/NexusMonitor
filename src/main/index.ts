@@ -7,7 +7,8 @@ import { join, dirname, resolve, basename, extname, isAbsolute } from 'node:path
 import { pathToFileURL } from 'node:url';
 import { connect } from 'node:net';
 import { createInterface } from 'node:readline';
-import type { MusicCommand, MusicLyricsResult, MusicPlaylist, MusicRepeatMode, MusicState, MusicTrack, ServiceStatus, SnapshotError, SnapshotResult, SystemSnapshot } from '../shared/types';
+import type { MusicCommand, MusicLyricsResult, MusicPlaybackMode, MusicPlaylist, MusicState, MusicTrack, ServiceStatus, SnapshotError, SnapshotResult, SystemSnapshot } from '../shared/types';
+import { createMusicShuffleQueue, normalizeMusicPlaybackMode, reconcileMusicShuffleCycle, takeNextShuffleTrack, takePreviousShuffleTrack } from './music-playback';
 import { classifyFetchError } from './api-error';
 import { RotatingLogger } from './logger';
 import { restartDelayMs } from './service-backoff';
@@ -70,8 +71,10 @@ let currentSettings: Record<string, unknown> = {};
 let qweatherJwtCache: { token: string; expiresAt: number } | null = null;
 let musicState: MusicState = {
   tracks: [], playlists: [], activePlaylistId: null, currentTrackId: null,
-  currentTime: 0, duration: 0, volume: 0.7, isPlaying: false, errorMessage: null, shuffle: false, repeat: 'off',
+  currentTime: 0, duration: 0, volume: 0.7, isPlaying: false, errorMessage: null, playbackMode: 'sequential',
 };
+let musicShuffleQueue: string[] = [];
+let musicShuffleHistory: string[] = [];
 let musicLastPersistAt = 0;
 const musicExclusiveOutput = new MusicExclusiveOutput();
 const MUSIC_AUDIO_EXTENSIONS = new Set(['.mp3', '.wav', '.flac', '.ogg', '.oga', '.opus', '.m4a', '.m4b', '.aac']);
@@ -240,12 +243,22 @@ function loadSettings() {
   return currentSettings;
 }
 function musicLibraryPath() { return join(app.getPath('userData'), 'music-library.json'); }
+function resetMusicShuffleCycle() {
+  musicShuffleQueue = createMusicShuffleQueue(musicQueueIds(), musicState.currentTrackId);
+  musicShuffleHistory = [];
+}
+function syncMusicShuffleCycle() {
+  if (musicState.playbackMode !== 'shuffle') { musicShuffleQueue = []; musicShuffleHistory = []; return; }
+  const cycle = reconcileMusicShuffleCycle(musicQueueIds(), musicState.currentTrackId, musicShuffleQueue, musicShuffleHistory);
+  musicShuffleQueue = cycle.queue; musicShuffleHistory = cycle.history;
+}
 function persistMusicState() {
+  syncMusicShuffleCycle();
   const persisted = {
     tracks: musicState.tracks, playlists: musicState.playlists,
     activePlaylistId: musicState.activePlaylistId, currentTrackId: musicState.currentTrackId,
     currentTime: musicState.currentTime, volume: musicState.volume,
-    shuffle: musicState.shuffle, repeat: musicState.repeat,
+    playbackMode: musicState.playbackMode, shuffleQueue: musicShuffleQueue, shuffleHistory: musicShuffleHistory,
   };
   const file = musicLibraryPath();
   mkdirSync(dirname(file), { recursive: true });
@@ -320,17 +333,24 @@ function loadMusicLibrary() {
       ? raw.activePlaylistId : null;
     const currentTrackId = typeof raw.currentTrackId === 'string' && trackIds.has(raw.currentTrackId) ? raw.currentTrackId : null;
     const rawVolume = Number(raw.volume);
-    const repeat: MusicRepeatMode = raw.repeat === 'all' || raw.repeat === 'one' ? raw.repeat : 'off';
+    const playbackMode = normalizeMusicPlaybackMode(raw.playbackMode, raw.shuffle, raw.repeat);
     musicState = {
       tracks, playlists, activePlaylistId: playlistId, currentTrackId,
       currentTime: Number.isFinite(Number(raw.currentTime)) ? Math.max(0, Number(raw.currentTime)) : 0,
       duration: 0, volume: Number.isFinite(rawVolume) ? Math.max(0, Math.min(1, rawVolume)) : 0.7,
-      isPlaying: false, errorMessage: null, shuffle: raw.shuffle === true, repeat,
+      isPlaying: false, errorMessage: null, playbackMode,
     };
-    if (upgradedLegacyTracks > 0) {
+    const storedQueue = Array.isArray(raw.shuffleQueue) ? raw.shuffleQueue.filter((id: unknown): id is string => typeof id === 'string') : [];
+    const storedHistory = Array.isArray(raw.shuffleHistory) ? raw.shuffleHistory.filter((id: unknown): id is string => typeof id === 'string') : [];
+    const loadedCycle = playbackMode === 'shuffle' ? reconcileMusicShuffleCycle(musicQueueIds(), currentTrackId, storedQueue, storedHistory) : { queue: [], history: [] };
+    musicShuffleQueue = loadedCycle.queue; musicShuffleHistory = loadedCycle.history;
+    const needsPlaybackMigration = raw.playbackMode !== playbackMode || !Array.isArray(raw.shuffleQueue) || !Array.isArray(raw.shuffleHistory)
+      || Object.prototype.hasOwnProperty.call(raw, 'shuffle') || Object.prototype.hasOwnProperty.call(raw, 'repeat');
+    if (upgradedLegacyTracks > 0 || needsPlaybackMigration) {
       try {
         persistMusicState();
-        log(`Enriched ${upgradedLegacyTracks} legacy music track(s) with embedded tags and artwork`);
+        if (upgradedLegacyTracks > 0) log(`Enriched ${upgradedLegacyTracks} legacy music track(s) with embedded tags and artwork`);
+        if (needsPlaybackMigration) log(`Migrated saved music playback mode to ${playbackMode}`);
       } catch (error) {
         musicLastPersistAt = Date.now();
         log(`Could not persist music metadata enrichment: ${error instanceof Error ? error.message : String(error)}`);
@@ -339,7 +359,8 @@ function loadMusicLibrary() {
       musicLastPersistAt = Date.now();
     }
   } catch {
-    musicState = { tracks: [], playlists: [], activePlaylistId: null, currentTrackId: null, currentTime: 0, duration: 0, volume: 0.7, isPlaying: false, errorMessage: null, shuffle: false, repeat: 'off' };
+    musicState = { tracks: [], playlists: [], activePlaylistId: null, currentTrackId: null, currentTime: 0, duration: 0, volume: 0.7, isPlaying: false, errorMessage: null, playbackMode: 'sequential' };
+    musicShuffleQueue = []; musicShuffleHistory = [];
   }
 }
 const musicLyricsCache = new Map<string, { expiresAt: number; result: MusicLyricsResult }>();
@@ -456,6 +477,7 @@ function importMusicPlaylist(filePath: string) {
       createdAt: new Date().toISOString(),
     };
     musicState = { ...musicState, playlists: [...musicState.playlists, playlist], activePlaylistId: playlist.id };
+    resetMusicShuffleCycle();
     persistAndPublishMusicState();
     return { ok: true, added: imported.added, skipped: imported.skipped, playlistId: playlist.id, name: playlist.name };
   } catch (error) {
@@ -486,26 +508,26 @@ function currentMusicTrackExists() {
 }
 function advanceMusicTrack(ended: boolean) {
   const ids = musicQueueIds();
-  if (!ids.length) { musicState = { ...musicState, currentTrackId: null, currentTime: 0, duration: 0, isPlaying: false }; return; }
-  if (ended && musicState.repeat === 'one' && musicState.currentTrackId) {
+  if (!ids.length) { musicShuffleQueue = []; musicShuffleHistory = []; musicState = { ...musicState, currentTrackId: null, currentTime: 0, duration: 0, isPlaying: false }; return; }
+  if (ended && musicState.playbackMode === 'repeat-one' && musicState.currentTrackId) {
     musicState = { ...musicState, currentTime: 0, isPlaying: true };
     if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('music:engine-command', { type: 'seek', seconds: 0, resume: true });
     return;
   }
-  const currentIndex = ids.indexOf(musicState.currentTrackId ?? '');
-  let nextIndex = currentIndex < 0 ? 0 : currentIndex + 1;
-  if (musicState.shuffle && ids.length > 1) {
-    const candidates = ids.filter(id => id !== musicState.currentTrackId);
-    musicState = { ...musicState, currentTrackId: candidates[Math.floor(Math.random() * candidates.length)] ?? ids[0], currentTime: 0, duration: 0, isPlaying: true };
+  if (musicState.playbackMode === 'shuffle') {
+    const selection = takeNextShuffleTrack(ids, musicState.currentTrackId, musicShuffleQueue, musicShuffleHistory);
+    musicShuffleQueue = selection.queue; musicShuffleHistory = selection.history;
+    if (!selection.trackId) { musicState = { ...musicState, currentTrackId: null, currentTime: 0, duration: 0, isPlaying: false }; return; }
+    const sameTrack = selection.trackId === musicState.currentTrackId;
+    musicState = { ...musicState, currentTrackId: selection.trackId, currentTime: 0, duration: 0, isPlaying: true };
+    if (sameTrack && mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('music:engine-command', { type: 'seek', seconds: 0, resume: true });
     return;
   }
+  const currentIndex = ids.indexOf(musicState.currentTrackId ?? '');
+  let nextIndex = currentIndex < 0 ? 0 : currentIndex + 1;
   if (nextIndex >= ids.length) {
-    if (musicState.repeat === 'all') nextIndex = 0;
-    else {
-      musicState = { ...musicState, isPlaying: false, currentTime: 0 };
-      if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('music:engine-command', { type: 'seek', seconds: 0 });
-      return;
-    }
+    if (musicState.playbackMode === 'repeat-all') nextIndex = 0;
+    else { musicState = { ...musicState, isPlaying: false, currentTime: 0 }; if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('music:engine-command', { type: 'seek', seconds: 0 }); return; }
   }
   const nextTrackId = ids[nextIndex];
   musicState = { ...musicState, currentTrackId: nextTrackId, currentTime: 0, duration: 0, isPlaying: true };
@@ -519,7 +541,13 @@ function handleMusicCommand(command: MusicCommand) {
     case 'play': case 'toggle':
       if (musicState.isPlaying && command.type === 'toggle') musicState = { ...musicState, isPlaying: false };
       else {
-        if (!musicState.currentTrackId) musicState = { ...musicState, currentTrackId: musicQueueIds()[0] ?? null, currentTime: 0 };
+        if (!musicState.currentTrackId) {
+          if (musicState.playbackMode === 'shuffle') {
+            const selection = takeNextShuffleTrack(musicQueueIds(), null, musicShuffleQueue, musicShuffleHistory);
+            musicShuffleQueue = selection.queue; musicShuffleHistory = selection.history;
+            musicState = { ...musicState, currentTrackId: selection.trackId, currentTime: 0 };
+          } else musicState = { ...musicState, currentTrackId: musicQueueIds()[0] ?? null, currentTime: 0 };
+        }
         musicState = { ...musicState, isPlaying: currentMusicTrackExists() };
       }
       break;
@@ -538,12 +566,18 @@ function handleMusicCommand(command: MusicCommand) {
         if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('music:engine-command', { type: 'seek', seconds: 0 });
         break;
       }
-      const ids = musicQueueIds();
-      const index = ids.indexOf(musicState.currentTrackId ?? '');
-      const previousIndex = index > 0 ? index - 1 : musicState.repeat === 'all' && ids.length ? ids.length - 1 : index;
-      const previousTrackId = ids[previousIndex] ?? musicState.currentTrackId;
+      const ids = musicQueueIds(), currentTrackId = musicState.currentTrackId;
+      let previousTrackId: string | null;
+      if (musicState.playbackMode === 'shuffle') {
+        const selection = takePreviousShuffleTrack(currentTrackId, musicShuffleQueue, musicShuffleHistory);
+        previousTrackId = selection.trackId; musicShuffleQueue = selection.queue; musicShuffleHistory = selection.history;
+      } else {
+        const index = ids.indexOf(currentTrackId ?? '');
+        const previousIndex = index > 0 ? index - 1 : musicState.playbackMode === 'repeat-all' && ids.length ? ids.length - 1 : index;
+        previousTrackId = ids[previousIndex] ?? currentTrackId;
+      }
       musicState = { ...musicState, currentTrackId: previousTrackId, currentTime: 0, duration: 0 };
-      if (previousTrackId === musicState.currentTrackId && mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('music:engine-command', { type: 'seek', seconds: 0 });
+      if (previousTrackId === currentTrackId && mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('music:engine-command', { type: 'seek', seconds: 0 });
       break;
     }
     case 'seek': {
@@ -555,16 +589,19 @@ function handleMusicCommand(command: MusicCommand) {
     case 'set-volume':
       musicState = { ...musicState, volume: Math.max(0, Math.min(1, Number.isFinite(command.volume) ? command.volume : musicState.volume)) };
       break;
-    case 'toggle-shuffle':
-      musicState = { ...musicState, shuffle: !musicState.shuffle };
+    case 'set-playback-mode': {
+      const validModes: MusicPlaybackMode[] = ['shuffle','sequential','repeat-one','repeat-all'];
+      if(validModes.includes(command.mode)&&musicState.playbackMode!==command.mode){
+        musicState={...musicState,playbackMode:command.mode};
+        if(command.mode==='shuffle')resetMusicShuffleCycle();else{musicShuffleQueue=[];musicShuffleHistory=[];}
+      }
       break;
-    case 'cycle-repeat':
-      musicState = { ...musicState, repeat: musicState.repeat === 'off' ? 'all' : musicState.repeat === 'all' ? 'one' : 'off' };
-      break;
+    }
     case 'play-track':
       if (musicState.tracks.some(track => track.id === command.trackId && existsSync(track.path))) {
         const alreadySelected = musicState.currentTrackId === command.trackId;
         musicState = { ...musicState, currentTrackId: command.trackId, currentTime: 0, duration: 0, isPlaying: true };
+        if (musicState.playbackMode === 'shuffle') resetMusicShuffleCycle();
         if (alreadySelected && mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('music:engine-command', { type: 'seek', seconds: 0, resume: true });
       }
       break;
@@ -574,6 +611,7 @@ function handleMusicCommand(command: MusicCommand) {
       const currentTrackId = ids.includes(musicState.currentTrackId ?? '') ? musicState.currentTrackId : ids[0] ?? null;
       const alreadySelected = currentTrackId === musicState.currentTrackId;
       musicState = { ...musicState, activePlaylistId: id, currentTrackId, currentTime: 0, duration: 0, isPlaying: false };
+      if (musicState.playbackMode === 'shuffle') resetMusicShuffleCycle();
       if (alreadySelected && currentTrackId && mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('music:engine-command', { type: 'seek', seconds: 0 });
       break;
     }
@@ -582,6 +620,7 @@ function handleMusicCommand(command: MusicCommand) {
       if (name) {
         const playlist: MusicPlaylist = { id: randomUUID(), name, trackIds: [], createdAt: new Date().toISOString() };
         musicState = { ...musicState, playlists: [...musicState.playlists, playlist], activePlaylistId: playlist.id, currentTrackId: null, currentTime: 0, duration: 0, isPlaying: false };
+        resetMusicShuffleCycle();
       }
       break;
     }
@@ -591,8 +630,10 @@ function handleMusicCommand(command: MusicCommand) {
       break;
     }
     case 'delete-playlist': {
+      const wasActive = musicState.activePlaylistId === command.playlistId;
       const playlists = musicState.playlists.filter(item => item.id !== command.playlistId);
-      musicState = { ...musicState, playlists, activePlaylistId: musicState.activePlaylistId === command.playlistId ? null : musicState.activePlaylistId };
+      musicState = { ...musicState, playlists, activePlaylistId: wasActive ? null : musicState.activePlaylistId };
+      if (wasActive && musicState.playbackMode === 'shuffle') resetMusicShuffleCycle();
       break;
     }
     case 'add-to-playlist': {
@@ -621,6 +662,7 @@ function handleMusicCommand(command: MusicCommand) {
           duration: removedCurrent ? 0 : musicState.duration,
           isPlaying: removedCurrent ? false : musicState.isPlaying,
         };
+        if (removedCurrent && musicState.playbackMode === 'shuffle') resetMusicShuffleCycle();
       }
       break;
     }

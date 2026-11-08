@@ -1,3 +1,21 @@
+## 2.2.9（2026-11-09，四态统一播放模式；CI 待确认）
+
+### 用户目标
+- 用户要求把随机播放和循环设置合并为一个按钮及垂直选单，并让主界面和悬浮 mini-player 等所有播放界面共享。
+- 用户确认随机播放应在整轮歌曲播放完毕后再重新洗牌，不在一轮中重复。
+
+### 实现
+- 将 MusicState 的 shuffle / repeat 两个独立字段合并成互斥 playbackMode：shuffle、sequential、repeat-one、repeat-all。
+- 随机播放改成持久化 shuffle bag + 历史记录；每一轮不重复，下一轮自动洗牌；上一首按历史回退并把当前曲目放回后续队列。
+- 旧 music-library.json 自动迁移：旧 shuffle=true 优先迁移为 shuffle；否则 repeat one/all 对应单曲/列表循环；其余映射顺序播放。新格式保存 playbackMode、shuffleQueue、shuffleHistory。
+- 可复用垂直菜单放入主窗口 MusicPlayerDock 与共享 MusicMiniPlayer；竖向 HUD 和非视频 USB 副屏共享同一主进程模式。USB 视频模式和唯一音频引擎边界不变。
+- 新增播放模式迁移、整轮随机不重复、上一首回退和单曲曲库随机回归测试。
+- 不修改音源加载、EQ、ReplayGain、音频路由或 WASAPI native backend。
+
+### CI 与发布
+- 源码已按 2.2.9 同步版本元数据并提交到 main；Windows CI / Release 结果待确认。
+- 尚未声称已生成安装包或完成真实 Windows 音频验收。
+
 # NexusMonitor 统一开发日志（跨版本唯一主记录）
 
 **当前正式发布：2.2.8；Windows CI Run #209 全部成功。下一正式行为版本从 2.2.9 开始。**  

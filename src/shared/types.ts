@@ -80,7 +80,7 @@ export interface SnapshotResult {
 
 export interface MusicLyricLine { timeSeconds: number; text: string; }
 export interface MusicLyricsResult { lines: MusicLyricLine[]; synced: boolean; source: 'local' | 'online' | 'none'; }
-export type MusicRepeatMode = 'off' | 'all' | 'one';
+export type MusicPlaybackMode = 'shuffle' | 'sequential' | 'repeat-one' | 'repeat-all';
 export interface MusicTrack {
   id: string;
   path: string;
@@ -120,11 +120,11 @@ export interface MusicState {
   volume: number;
   isPlaying: boolean;
   errorMessage?: string | null;
-  shuffle: boolean;
-  repeat: MusicRepeatMode;
+  playbackMode: MusicPlaybackMode;
 }
 export type MusicCommand =
-  | { type: 'play' | 'pause' | 'toggle' | 'next' | 'previous' | 'ended' | 'toggle-shuffle' | 'cycle-repeat' }
+  | { type: 'play' | 'pause' | 'toggle' | 'next' | 'previous' | 'ended' }
+  | { type: 'set-playback-mode'; mode: MusicPlaybackMode }
   | { type: 'seek'; seconds: number }
   | { type: 'set-volume'; volume: number }
   | { type: 'play-track'; trackId: string }

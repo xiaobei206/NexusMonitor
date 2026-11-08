@@ -4,7 +4,7 @@ import {
   Music2, Play, Pause, SkipBack, SkipForward, ListMusic, Folder, FolderOpen, Plus,
   Trash2, Shuffle, Repeat, Volume2, Search, X, ListPlus, Disc3, ArrowUp, ArrowDown,
 } from 'lucide-react';
-import type { AppSettings, MusicCommand, MusicLyricsResult, MusicState, MusicTrack } from '../shared/types';
+import type { AppSettings, MusicCommand, MusicLyricsResult, MusicPlaybackMode, MusicState, MusicTrack } from '../shared/types';
 
 export type MusicOutputStatus = {
   state: 'default' | 'active' | 'unsupported' | 'unavailable';
@@ -61,7 +61,32 @@ function TrackArtwork({ trackId, className, fallback }: { trackId: string | null
   }, [trackId]);
   return url ? <img className={`${className} has-image`} src={url} alt="" draggable={false}/> : <span className={className}>{fallback}</span>;
 }
-const repeatLabel = (repeat: MusicState['repeat']) => repeat === 'one' ? '单曲循环' : repeat === 'all' ? '列表循环' : '不循环';
+const MUSIC_PLAYBACK_MODES: Array<{id:MusicPlaybackMode;label:string;description:string}> = [
+  {id:'shuffle',label:'随机播放',description:'本轮每首歌只播放一次，完成后重新洗牌并继续'},
+  {id:'sequential',label:'顺序播放',description:'按当前歌单顺序播放，到最后一首停止'},
+  {id:'repeat-one',label:'单曲循环',description:'当前歌曲播放结束后从头再播'},
+  {id:'repeat-all',label:'列表循环',description:'按当前歌单顺序播放，到最后一首后返回第一首'},
+];
+function PlaybackModeMenu({mode,onChange,compact=false}:{mode:MusicPlaybackMode;onChange:(mode:MusicPlaybackMode)=>void;compact?:boolean}){
+  const [open,setOpen]=useState(false),root=useRef<HTMLDivElement|null>(null);
+  const selected=MUSIC_PLAYBACK_MODES.find(item=>item.id===mode)??MUSIC_PLAYBACK_MODES[1];
+  useEffect(()=>{
+    if(!open)return;
+    const outside=(event:PointerEvent)=>{if(root.current&&!root.current.contains(event.target as Node))setOpen(false);};
+    const escape=(event:KeyboardEvent)=>{if(event.key==='Escape')setOpen(false);};
+    document.addEventListener('pointerdown',outside);document.addEventListener('keydown',escape);
+    return()=>{document.removeEventListener('pointerdown',outside);document.removeEventListener('keydown',escape);};
+  },[open]);
+  const icon=mode==='shuffle'?<Shuffle size={compact?15:16}/>:mode==='sequential'?<ListMusic size={compact?15:16}/>:mode==='repeat-one'?<span className="nm-playback-mode-repeat-icon"><Repeat size={compact?15:16}/><i>1</i></span>:<Repeat size={compact?15:16}/>;
+  return <div ref={root} className={"nm-playback-mode "+(compact?'nm-playback-mode-compact':'nm-playback-mode-dock')} data-no-widget-drag="true">
+    <button type="button" className={"nm-playback-mode-trigger "+(open?'active':'')} title={"播放模式："+selected.label} aria-label={"播放模式："+selected.label} aria-haspopup="menu" aria-expanded={open} data-no-widget-drag="true" onPointerDown={compact?stopWidgetDrag:undefined} onClick={event=>{event.stopPropagation();setOpen(v=>!v);}}>{icon}</button>
+    {open&&<div className="nm-playback-mode-menu" role="menu" aria-label="选择播放模式" onPointerDown={compact?stopWidgetDrag:undefined}>
+      {MUSIC_PLAYBACK_MODES.map(item=><button key={item.id} type="button" role="menuitemradio" aria-checked={mode===item.id} className={mode===item.id?'selected':''} onPointerDown={compact?stopWidgetDrag:undefined} onClick={event=>{event.stopPropagation();onChange(item.id);setOpen(false);}}>
+        <span className="nm-playback-mode-check">{mode===item.id?'✓':''}</span><span><b>{item.label}</b><small>{item.description}</small></span>
+      </button>)}
+    </div>}
+  </div>;
+}
 const MUSIC_EQ_FREQUENCIES = [31, 62, 125, 250, 500, 1000, 2000, 4000, 8000, 16000] as const;
 const FLAT_MUSIC_EQ = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
 const MUSIC_EQ_PRESETS: Record<string, { label: string; bands: number[] }> = {
@@ -1081,6 +1106,7 @@ export function MusicMiniPlayer({ state, onCommand }: { state: MusicState | null
         <ListMusic size={16} className="nm-player-list-indicator"/>
       </button>
       <div className="nm-widget-player-controls">
+        <PlaybackModeMenu mode={state?.playbackMode ?? 'sequential'} onChange={mode => onCommand({ type: 'set-playback-mode', mode })} compact/>
         {button('上一首', <SkipBack size={15}/>, () => onCommand({ type: 'previous' }))}
         {button(state?.isPlaying ? '暂停' : '播放', state?.isPlaying ? <Pause size={17}/> : <Play size={17}/>, () => onCommand({ type: 'toggle' }))}
         {button('下一首', <SkipForward size={15}/>, () => onCommand({ type: 'next' }))}
@@ -1093,11 +1119,9 @@ export function MusicMiniPlayer({ state, onCommand }: { state: MusicState | null
         <button type="button" title="关闭播放器卡片" onClick={() => setOpen(false)}><X size={15}/></button>
       </header>
       <div className="nm-player-popover-controls">
-        {button('随机播放', <Shuffle size={16}/>, () => onCommand({ type: 'toggle-shuffle' }), state?.shuffle === true)}
         {button('上一首', <SkipBack size={18}/>, () => onCommand({ type: 'previous' }))}
         {button(state?.isPlaying ? '暂停' : '播放', state?.isPlaying ? <Pause size={20}/> : <Play size={20}/>, () => onCommand({ type: 'toggle' }), true)}
         {button('下一首', <SkipForward size={18}/>, () => onCommand({ type: 'next' }))}
-        {button(repeatLabel(state?.repeat ?? 'off'), <Repeat size={16}/>, () => onCommand({ type: 'cycle-repeat' }), state?.repeat !== 'off')}
       </div>
       <div className="nm-player-seek">
         <input aria-label="播放进度" type="range" min="0" max={Math.max(1, state?.duration ?? 0)} step="0.1" value={Math.min(state?.currentTime ?? 0, state?.duration ?? 0)}
@@ -1122,11 +1146,10 @@ export function MusicPlayerDock({ state, onCommand, onOpen }: {
     </button>
     <div className="nm-dock-center">
       <div className="nm-dock-controls">
-        <button type="button" title="随机播放" className={state?.shuffle ? 'active' : ''} onClick={() => onCommand({ type: 'toggle-shuffle' })}><Shuffle size={15}/></button>
+        <PlaybackModeMenu mode={state?.playbackMode ?? 'sequential'} onChange={mode => onCommand({ type: 'set-playback-mode', mode })}/>
         <button type="button" title="上一首" onClick={() => onCommand({ type: 'previous' })}><SkipBack size={17}/></button>
         <button type="button" className="nm-dock-play" title={state?.isPlaying ? '暂停' : '播放'} onClick={() => onCommand({ type: 'toggle' })}>{state?.isPlaying ? <Pause size={17}/> : <Play size={17}/>}</button>
         <button type="button" title="下一首" onClick={() => onCommand({ type: 'next' })}><SkipForward size={17}/></button>
-        <button type="button" title={repeatLabel(state?.repeat ?? 'off')} className={state?.repeat !== 'off' ? 'active' : ''} onClick={() => onCommand({ type: 'cycle-repeat' })}><Repeat size={15}/></button>
       </div>
       <div className="nm-dock-seek"><small>{formatTime(state?.currentTime ?? 0)}</small><input aria-label="播放进度" type="range" min="0" max={Math.max(1, state?.duration ?? 0)} step="0.1" value={Math.min(state?.currentTime ?? 0, state?.duration ?? 0)}
         onChange={event => onCommand({ type: 'seek', seconds: Number(event.target.value) })}/><small>{formatTime(state?.duration ?? 0)}</small></div>

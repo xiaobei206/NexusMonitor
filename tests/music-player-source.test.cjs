@@ -40,7 +40,7 @@ test('the main renderer owns the only audio engine and the library is separate f
   assert.match(player, /chooseMusicFiles/);
   assert.match(player, /chooseMusicFolder/);
   assert.match(player, /move-track/);
-  assert.match(player, /repeat/);
+  assert.match(player, /playbackMode/);
   const usb = app.slice(app.indexOf('function UsbDisplayOutput('), app.indexOf('\nexport default function App'));
   assert.match(usb, /mode!=='video'&&<div className="usb-output-music">/);
 });
@@ -420,8 +420,8 @@ test('repeat playback ignores transient ended/pending play state and cancels sta
   assert.match(player, /error instanceof Error && error\.name === 'AbortError'\) return/);
   assert.match(player, /playbackAttemptIdRef\.current \+= 1;\s*playbackStartPendingRef\.current = false;\s*audio\.pause\(\)/);
   assert.equal((player.match(/await audio\.play\(\)/g) || []).length, 1, 'all play requests should share one cancellation guard');
-  assert.match(main, /ended && musicState\.repeat === 'one'/);
-  assert.match(main, /if \(musicState\.repeat === 'all'\) nextIndex = 0/);
+  assert.match(main, /ended && musicState\.playbackMode === 'repeat-one'/);
+  assert.match(main, /musicState\.playbackMode === 'repeat-all'/);
 });
 
 test('rapid seek and repeat only target the active media source and wait for seek completion', () => {
@@ -440,4 +440,18 @@ test('rapid seek and repeat only target the active media source and wait for see
   assert.match(player, /if \(!mediaError \|\| !audio\.dataset\.trackId/);
   assert.equal((player.match(/await audio\.play\(\)/g) || []).length, 1,
     'all play requests must remain behind the active-source guard');
+});
+
+
+test('all visible player surfaces share one four-state playback selector', () => {
+  const player = read('src/renderer/music-player.tsx');
+  const app = read('src/renderer/App.tsx');
+  assert.match(player, /function PlaybackModeMenu/);
+  assert.match(player, /set-playback-mode/);
+  assert.match(player, /id: 'shuffle'.*id: 'sequential'.*id: 'repeat-one'.*id: 'repeat-all'/s);
+  assert.match(player, /<PlaybackModeMenu mode=\{state\?\.playbackMode/);
+  assert.match(app, /<MusicMiniPlayer state=\{musicState\} onCommand=\{musicCommand\}\/>/);
+  assert.match(app, /<MusicPlayerDock state=\{music\.state\} onCommand=\{music\.command\}/);
+  assert.match(app, /mode!=='video'&&<div className="usb-output-music">/);
+  assert.doesNotMatch(player, /toggle-shuffle|cycle-repeat|state\?\.shuffle|state\?\.repeat/);
 });
