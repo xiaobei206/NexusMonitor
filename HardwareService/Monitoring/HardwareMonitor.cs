@@ -188,7 +188,7 @@ public sealed class HardwareMonitor : IDisposable
             var elevated = new WindowsPrincipal(identity).IsInRole(WindowsBuiltInRole.Administrator);
             RefreshPawnIoStatus(DateTime.UtcNow);
             return new SystemSnapshot(DateTime.Now, Environment.TickCount64 / 1000, cpu, gpus, memory, networks, disks, volumes, fans, sensors,
-                new ServiceInfo(_opened ? "online" : "degraded", "2.2.7", elevated, _pawnIoInstalled, _pawnIoRunning, gtProbeStatus), storage.GetStatus());
+                new ServiceInfo(_opened ? "online" : "degraded", "2.2.8", elevated, _pawnIoInstalled, _pawnIoRunning, gtProbeStatus), storage.GetStatus());
         }
     }
 

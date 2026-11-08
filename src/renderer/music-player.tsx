@@ -91,6 +91,12 @@ export function MusicPlaybackRuntime({ state, outputDeviceId = 'default', eqBand
   onWasapiStatus?: (status: MusicWasapiStatus) => void;
 }) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const currentTrackIdRef = useRef<string | null>(null);
+  const currentTimeRef = useRef(0);
+  const activeSourceUrlRef = useRef<string | null>(null);
+  const sourceGenerationRef = useRef(0);
+  currentTrackIdRef.current = state?.currentTrackId ?? null;
+  currentTimeRef.current = state && Number.isFinite(state.currentTime) ? Math.max(0, state.currentTime) : 0;
   const outputDeviceIdRef = useRef(outputDeviceId);
   outputDeviceIdRef.current = outputDeviceId;
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -203,13 +209,22 @@ export function MusicPlaybackRuntime({ state, outputDeviceId = 'default', eqBand
   useEffect(() => { latestPlayingRef.current = state?.isPlaying === true; }, [state?.isPlaying]);
 
   const playAudioSafely = useCallback(async (audio: HTMLAudioElement, errorPrefix = '播放启动失败：') => {
+    const isCurrentSourceSelected = () => {
+      const trackId = currentTrackIdRef.current;
+      return Boolean(trackId && audio.dataset.trackId === trackId && audio.getAttribute('src') &&
+        activeSourceUrlRef.current && audio.src === activeSourceUrlRef.current);
+    };
+    const hasCurrentSource = () => isCurrentSourceSelected() && Boolean(audio.currentSrc);
+    // Ignore stale commands during a source replacement; an empty media element can
+    // throw NotSupportedError even when the selected file uses a supported codec.
+    if (!hasCurrentSource()) return;
     const attemptId = ++playbackAttemptIdRef.current;
     playbackStartPendingRef.current = true;
     try {
       if (audioContextRef.current?.state === 'suspended') await audioContextRef.current.resume();
-      if (attemptId !== playbackAttemptIdRef.current || !latestPlayingRef.current) return;
+      if (attemptId !== playbackAttemptIdRef.current || !latestPlayingRef.current || !hasCurrentSource()) return;
       await audio.play();
-      if (attemptId !== playbackAttemptIdRef.current) return;
+      if (attemptId !== playbackAttemptIdRef.current || !isCurrentSourceSelected()) return;
       const payload: { currentTime: number; duration: number; playing?: boolean } = {
         currentTime: Number.isFinite(audio.currentTime) ? audio.currentTime : 0,
         duration: Number.isFinite(audio.duration) ? audio.duration : 0,
@@ -217,14 +232,11 @@ export function MusicPlaybackRuntime({ state, outputDeviceId = 'default', eqBand
       if (!audio.ended) payload.playing = !audio.paused;
       window.nexus.reportMusicRuntime(payload);
     } catch (error) {
-      if (attemptId !== playbackAttemptIdRef.current) return;
-      // pause()/track changes legitimately reject a pending play() promise. They are
-      // state transitions, not decode or output failures that should surface to users.
+      if (attemptId !== playbackAttemptIdRef.current || !isCurrentSourceSelected()) return;
       if (error instanceof Error && error.name === 'AbortError') return;
       window.nexus.reportMusicRuntime({
-        error: true,
-        playing: false,
-        errorMessage: `${errorPrefix}${error instanceof Error ? error.message : String(error)}`,
+        error: true, playing: false,
+        errorMessage: errorPrefix + (error instanceof Error ? error.message : String(error)),
       });
     } finally {
       if (attemptId === playbackAttemptIdRef.current) playbackStartPendingRef.current = false;
@@ -315,16 +327,26 @@ export function MusicPlaybackRuntime({ state, outputDeviceId = 'default', eqBand
         currentTime: Number.isFinite(audio.currentTime) ? audio.currentTime : 0,
         duration: Number.isFinite(audio.duration) ? audio.duration : 0,
       };
-      // The media element is paused while ended/restarting. Do not let this transient
-      // snapshot overwrite the main-process repeat intent before play() settles.
-      if (!playbackStartPendingRef.current && !audio.ended) payload.playing = !audio.paused;
+      if (!playbackStartPendingRef.current && !audio.ended && audio.dataset.trackId === currentTrackIdRef.current) {
+        payload.playing = !audio.paused;
+      }
       window.nexus.reportMusicRuntime(payload);
     };
     const reportPlaybackChange = () => report(true);
     const reportTimeUpdate = () => report();
-    const onEnded = () => { void window.nexus.musicCommand({ type: 'ended' }); };
+    const onEnded = () => {
+      if (audio.dataset.trackId === currentTrackIdRef.current &&
+          activeSourceUrlRef.current && audio.currentSrc === activeSourceUrlRef.current) {
+        void window.nexus.musicCommand({ type: 'ended' });
+      }
+    };
     const onError = () => {
-      const code = audio.error?.code;
+      const mediaError = audio.error;
+      if (!mediaError || !audio.dataset.trackId || audio.dataset.trackId !== currentTrackIdRef.current ||
+          !activeSourceUrlRef.current || audio.src !== activeSourceUrlRef.current ||
+          (audio.currentSrc !== '' && audio.currentSrc !== activeSourceUrlRef.current)) return;
+      playbackStartPendingRef.current = false;
+      const code = mediaError.code;
       const errorMessage = code === 3
         ? '音频解码失败：文件可能损坏，或该编码不受当前播放器支持'
         : code === 4
@@ -335,11 +357,25 @@ export function MusicPlaybackRuntime({ state, outputDeviceId = 'default', eqBand
       window.nexus.reportMusicRuntime({ error: true, playing: false, errorMessage });
     };
     const offEngine = window.nexus.onMusicEngineCommand(command => {
-      if (command.type === 'seek' && Number.isFinite(command.seconds) && audio.duration > 0) {
-        audio.currentTime = Math.max(0, Math.min(audio.duration, command.seconds));
-        if (command.resume) void playAudioSafely(audio);
-        report();
+      if (command.type !== 'seek' || !Number.isFinite(command.seconds)) return;
+      const trackId = currentTrackIdRef.current;
+      if (!trackId || audio.dataset.trackId !== trackId || !activeSourceUrlRef.current ||
+          audio.src !== activeSourceUrlRef.current || !audio.currentSrc ||
+          !Number.isFinite(audio.duration) || audio.duration <= 0) return;
+      const sourceGeneration = sourceGenerationRef.current;
+      const upperBound = Math.max(0, audio.duration - 0.05);
+      audio.currentTime = Math.max(0, Math.min(upperBound, command.seconds));
+      if (command.resume) {
+        const startAfterSeek = () => {
+          if (sourceGeneration !== sourceGenerationRef.current ||
+              currentTrackIdRef.current !== trackId || audio.dataset.trackId !== trackId ||
+              !activeSourceUrlRef.current || audio.src !== activeSourceUrlRef.current) return;
+          void playAudioSafely(audio);
+        };
+        if (audio.seeking) audio.addEventListener('seeked', startAfterSeek, { once: true });
+        else void playAudioSafely(audio);
       }
+      report(true);
     });
     audio.addEventListener('timeupdate', reportTimeUpdate);
     audio.addEventListener('play', reportPlaybackChange);
@@ -556,52 +592,81 @@ export function MusicPlaybackRuntime({ state, outputDeviceId = 'default', eqBand
     const audio = audioRef.current;
     if (!audio || !state) return;
     const trackId = state.currentTrackId;
+    const sourceGeneration = ++sourceGenerationRef.current;
     playbackAttemptIdRef.current += 1;
-    playbackStartPendingRef.current = false;
+    playbackStartPendingRef.current = true;
+    audio.pause();
+    audio.removeAttribute('src');
+    delete audio.dataset.trackId;
+    activeSourceUrlRef.current = null;
+    audio.load();
     if (!trackId) {
-      audio.pause();
-      audio.removeAttribute('src');
-      delete audio.dataset.trackId;
-      audio.load();
+      playbackStartPendingRef.current = false;
       return;
     }
-    const restoreTime = state.currentTime;
-    const shouldPlay = state.isPlaying;
+
     let cancelled = false;
-    audio.pause();
-    delete audio.dataset.trackId;
+    let metadataRestored = false;
+    const isCurrentSource = () => !cancelled &&
+      sourceGenerationRef.current === sourceGeneration &&
+      currentTrackIdRef.current === trackId;
+
+    const restorePosition = () => {
+      if (!isCurrentSource() || metadataRestored || audio.dataset.trackId !== trackId ||
+          !activeSourceUrlRef.current || audio.src !== activeSourceUrlRef.current ||
+          audio.readyState < HTMLMediaElement.HAVE_METADATA) return;
+      metadataRestored = true;
+      audio.removeEventListener('loadedmetadata', restorePosition);
+      const restoreTime = currentTimeRef.current;
+      if (Number.isFinite(restoreTime) && restoreTime > 0 &&
+          Number.isFinite(audio.duration) && audio.duration > 0) {
+        audio.currentTime = Math.min(restoreTime, Math.max(0, audio.duration - 0.1));
+      }
+      if (!latestPlayingRef.current) {
+        playbackStartPendingRef.current = false;
+        return;
+      }
+      const startPlayback = async () => {
+        try {
+          if ((bands.some(value => value !== 0) || hasReplayGain || exclusiveEnabled) && !audioContextRef.current) {
+            await ensureAudioGraph();
+          }
+          if (!isCurrentSource()) return;
+          await playAudioSafely(audio);
+        } catch (error) {
+          if (!isCurrentSource()) return;
+          playbackStartPendingRef.current = false;
+          window.nexus.reportMusicRuntime({
+            error: true, playing: false,
+            errorMessage: '播放启动失败：' + (error instanceof Error ? error.message : String(error)),
+          });
+        }
+      };
+      void startPlayback();
+    };
+
     void window.nexus.getMusicTrackUrl(trackId).then(url => {
-      if (cancelled) return;
+      if (!isCurrentSource()) return;
       if (!url) {
+        playbackStartPendingRef.current = false;
         window.nexus.reportMusicRuntime({ error: true, playing: false, errorMessage: '音乐文件不存在或已无法访问' });
         return;
       }
       audio.src = url;
+      activeSourceUrlRef.current = audio.src;
       audio.dataset.trackId = trackId;
+      audio.addEventListener('loadedmetadata', restorePosition);
       audio.load();
-      const restorePosition = () => {
-        if (cancelled || audio.dataset.trackId !== trackId) return;
-        if (Number.isFinite(restoreTime) && restoreTime > 0 && audio.duration > 0) {
-          audio.currentTime = Math.min(restoreTime, Math.max(0, audio.duration - 0.1));
-        }
-        if (shouldPlay) {
-          const startPlayback = async () => {
-            try {
-              if ((bands.some(value => value !== 0) || hasReplayGain || exclusiveEnabled) && !audioContextRef.current) await ensureAudioGraph();
-              await playAudioSafely(audio);
-            } catch (error) {
-              window.nexus.reportMusicRuntime({ error: true, playing: false, errorMessage: error instanceof Error ? `播放启动失败：${error.message}` : '播放启动失败' });
-            }
-          };
-          void startPlayback();
-        }
-      };
-      audio.addEventListener('loadedmetadata', restorePosition, { once: true });
-      if (audio.readyState >= 1) restorePosition();
+      if (audio.readyState >= HTMLMediaElement.HAVE_METADATA) restorePosition();
     }).catch(() => {
-      if (!cancelled) window.nexus.reportMusicRuntime({ error: true, playing: false, errorMessage: '读取音频资源失败' });
+      if (!isCurrentSource()) return;
+      playbackStartPendingRef.current = false;
+      window.nexus.reportMusicRuntime({ error: true, playing: false, errorMessage: '读取音频资源失败' });
     });
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+      audio.removeEventListener('loadedmetadata', restorePosition);
+    };
   }, [state?.currentTrackId]);
 
   useEffect(() => {

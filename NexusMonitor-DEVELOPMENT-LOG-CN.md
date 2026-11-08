@@ -1,7 +1,26 @@
 # NexusMonitor 统一开发日志（跨版本唯一主记录）
 
-**当前正式发布：2.2.7（Windows CI Run #204 全部通过）；下一正式行为版本从 2.2.8 开始。**  
+**当前源码版本：2.2.8（Windows CI / Release 验证待完成）；最近正式发布仍为 2.2.7。**  
 **记录规则：** 每个正式版本都追加到本文件；下一版不得新建第二份版本日志。按版本号和日期顺序记录功能、根因、修复、失败尝试、验证范围及未完成事项。历史测试结果不能冒充当前版本测试结果。
+
+## 2.2.8（2026-11-08，源码已提交；CI 验证待完成）
+
+### 用户反馈与源码分析
+- 用户反馈手动快进并等待循环数次后，出现播放失败：The element has no supported sources。
+- 当前没有目标机现场日志，无法声称完整复现了报错调用栈。旧源码存在可确认的风险：seek/resume 在 media seek 尚未完成时立即调用 play()；切曲时 async URL 解析和旧媒体源生命周期没有用 generation/source ID 完整隔离；旧 source 的错误事件没有校验是否仍属于当前轨道。
+
+### 本次修改
+- 增加当前轨道、音源 URL 与 source generation 识别。过期 URL Promise、seeked 处理器和播放尝试不能应用到后来选中的曲目。
+- 轨道变化时使旧播放请求失效，暂停并卸载旧 source，再解析新本地文件 URL；切换中不把暂时 paused 回传成主进程的最终播放状态。
+- 唯一 play() 入口校验 track ID、src/currentSrc 与 source identity，空 source 的过期指令直接忽略。
+- seek/resume 等待 seeked 后再恢复播放，并在 duration 边界留 50ms 余量，降低立即触发 ended 与 repeat 重启重叠的风险。
+- onError 仅在错误属于当前选择的轨道和来源时更新播放故障状态。真实编解码错误继续显示，不把 codec 错误一概吞掉。
+- 新增音乐源码合同回归；保留单 Renderer 单 audio 引擎，未修改 WASAPI native backend / 视频播放。
+
+### 验证状态与边界
+- 本次提交对应的 2.2.8 Windows CI / Release 尚待运行并核对；不把历史 2.2.7 Run #204 当成本版测试结果。
+- 即使托管 CI 全部通过，仍需 Windows 目标机实际拖动进度条、等待多次循环，并检查单曲循环、列表循环和切曲后的播放状态。
+- P4 Mono UAC Direct v62 的 WASAPI Exclusive 历史无声问题独立存在，本版未修改该后端。
 
 ## 2.2.7（2026-11-08，已发布 / Windows CI Run #204 success）
 

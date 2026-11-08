@@ -414,7 +414,7 @@ test('repeat playback ignores transient ended/pending play state and cancels sta
   const main = read('src/main/index.ts');
   assert.match(player, /const playbackAttemptIdRef = useRef\(0\)/);
   assert.match(player, /const playbackStartPendingRef = useRef\(false\)/);
-  assert.match(player, /if \(!playbackStartPendingRef\.current && !audio\.ended\) payload\.playing = !audio\.paused/);
+  assert.match(player, /if \(!playbackStartPendingRef\.current && !audio\.ended && audio\.dataset\.trackId === currentTrackIdRef\.current\) payload\.playing = !audio\.paused/);
   assert.match(player, /const reportTimeUpdate = \(\) => report\(\)/);
   assert.match(player, /audio\.addEventListener\('timeupdate', reportTimeUpdate\)/);
   assert.match(player, /error instanceof Error && error\.name === 'AbortError'\) return/);
@@ -422,4 +422,21 @@ test('repeat playback ignores transient ended/pending play state and cancels sta
   assert.equal((player.match(/await audio\.play\(\)/g) || []).length, 1, 'all play requests should share one cancellation guard');
   assert.match(main, /ended && musicState\.repeat === 'one'/);
   assert.match(main, /if \(musicState\.repeat === 'all'\) nextIndex = 0/);
+});
+
+test('rapid seek and repeat only target the active media source and wait for seek completion', () => {
+  const player = read('src/renderer/music-player.tsx');
+  assert.match(player, /const currentTrackIdRef = useRef<string \| null>\(null\)/);
+  assert.match(player, /const activeSourceUrlRef = useRef<string \| null>\(null\)/);
+  assert.match(player, /const sourceGenerationRef = useRef\(0\)/);
+  assert.match(player, /audio\.removeAttribute\('src'\);\s*delete audio\.dataset\.trackId;\s*activeSourceUrlRef\.current = null;\s*audio\.load\(\)/);
+  assert.match(player, /const hasCurrentSource = \(\) => isCurrentSourceSelected\(\) && Boolean\(audio\.currentSrc\)/);
+  assert.match(player, /if \(!hasCurrentSource\(\)\) return/);
+  assert.match(player, /const upperBound = Math\.max\(0, audio\.duration - 0\.05\)/);
+  assert.match(player, /audio\.addEventListener\('seeked', startAfterSeek, \{ once: true \}\)/);
+  assert.match(player, /sourceGeneration !== sourceGenerationRef\.current/);
+  assert.match(player, /audio\.dataset\.trackId !== currentTrackIdRef\.current/);
+  assert.match(player, /if \(!mediaError \|\| !audio\.dataset\.trackId/);
+  assert.equal((player.match(/await audio\.play\(\)/g) || []).length, 1,
+    'all play requests must remain behind the active-source guard');
 });
