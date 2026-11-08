@@ -448,7 +448,7 @@ test('all visible player surfaces share one four-state playback selector', () =>
   const app = read('src/renderer/App.tsx');
   assert.match(player, /function PlaybackModeMenu/);
   assert.match(player, /set-playback-mode/);
-  assert.match(player, /id: 'shuffle'.*id: 'sequential'.*id: 'repeat-one'.*id: 'repeat-all'/s);
+  assert.match(player, /id\\s*:\\s*'shuffle'.*id\\s*:\\s*'sequential'.*id\\s*:\\s*'repeat-one'.*id\\s*:\\s*'repeat-all'/s);
   assert.match(player, /<PlaybackModeMenu mode=\{state\?\.playbackMode/);
   assert.match(app, /<MusicMiniPlayer state=\{musicState\} onCommand=\{musicCommand\}\/>/);
   assert.match(app, /<MusicPlayerDock state=\{music\.state\} onCommand=\{music\.command\}/);
