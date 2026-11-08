@@ -2,7 +2,7 @@
 
 **版本：** 2.2.9  
 **基线：** NexusMonitor 2.2.8 正式 Release  
-**状态：** 源码提交后等待 Windows CI / Release 验证。  
+**状态：** 已正式发布；Windows CI Run #213 全部成功。  
 **唯一工作基线：** GitHub main
 
 ## 四种播放模式
@@ -20,6 +20,12 @@
 - 共用垂直菜单嵌入主窗口底部 Dock 与 MusicMiniPlayer；后者同时用于竖向悬浮 HUD 和非视频 USB 副屏。视频模式和唯一音频引擎不变。
 - 不改音乐解码、音频宿主、EQ、ReplayGain、输出设备或 WASAPI native backend。
 
-## 验证
+## CI、发布与验收结果
 
-Main / Node 测试、Renderer TypeScript / Vite、版本一致性、native WASAPI、PawnIO、.NET HardwareService、硬件/存储测试及安装包结果，待 Windows CI 确认。CI 不替代用户目标 PC 的实际音频体验验收。
+- **最终验证提交：** [0ef3e902065c8a050ad1efea02c8287c5a163bdd](https://github.com/xiaobei206/NexusMonitor/commit/0ef3e902065c8a050ad1efea02c8287c5a163bdd)
+- **Windows CI：** [Run #213 — success](https://github.com/xiaobei206/NexusMonitor/actions/runs/42501046745)。版本一致性、Main / Node 回归、Renderer TypeScript / Vite、native WASAPI、PawnIO MCHBAR、.NET HardwareService、硬件/存储测试、NSIS 安装包、SHA-256、GitHub Release 与 artifact 上传全部成功。
+- **正式 Release：** [v2.2.9](https://github.com/xiaobei206/NexusMonitor/releases/tag/v2.2.9)
+- **安装包：** [NexusMonitor-2.2.9-Setup.exe](https://github.com/xiaobei206/NexusMonitor/releases/download/v2.2.9/NexusMonitor-2.2.9-Setup.exe)，160,025,547 bytes（152.61 MiB）。
+- **SHA-256：** `05091f0ea3d15981798586043290e0a27c9aa77b2ca15dd8e17657549d66efb2`。校验文件随 Release 一并发布。
+
+CI 通过不等于目标 Windows PC 实机音频已验收。用户安装后仍需确认四种模式的切换同步、随机整轮不重复、上一首/下一首、单曲和列表循环，以及现有 EQ / ReplayGain / WASAPI 输出路径没有回归。

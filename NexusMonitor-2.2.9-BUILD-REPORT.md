@@ -2,7 +2,9 @@
 
 **版本：** 2.2.9  
 **基线：** 2.2.8  
-**状态：** 源码提交后等待 Windows CI / Release 验证；成功后补充 Actions、安装包大小与 SHA-256。
+**状态：** 已正式发布；Windows CI Run #213 全部成功。  
+**Release：** https://github.com/xiaobei206/NexusMonitor/releases/tag/v2.2.9  
+**CI：** https://github.com/xiaobei206/NexusMonitor/actions/runs/42501046745
 
 ## 变更概要
 
@@ -15,10 +17,22 @@
 
 | 检查 | 状态 |
 |---|---|
-| 版本元数据一致性 | 等待 Windows CI |
-| Main / Node 回归测试 | 等待 Windows CI |
-| Renderer TypeScript / Vite | 等待 Windows CI |
-| Native WASAPI / PawnIO / .NET HardwareService | 等待 Windows CI |
-| 硬件 / 存储测试 | 等待 Windows CI |
-| NSIS 安装包、SHA-256、GitHub Release | 等待 Windows CI |
+| 检查 | 结果 |
+|---|---|
+| 版本元数据一致性 | <badge color="success">通过</badge> |
+| Main / Node 回归测试 | <badge color="success">通过</badge> |
+| Renderer TypeScript / Vite | <badge color="success">通过</badge> |
+| Native WASAPI / PawnIO / .NET HardwareService | <badge color="success">通过</badge> |
+| 硬件 / 存储测试 | <badge color="success">通过</badge> |
+| NSIS 安装包、SHA-256、GitHub Release | <badge color="success">通过</badge> |
 | 用户目标机音频实际验收 | 待用户安装后测试 |
+
+## 交付物
+
+- 安装包：**NexusMonitor-2.2.9-Setup.exe**
+- 大小：**160,025,547 bytes（152.61 MiB）**
+- SHA-256：`05091f0ea3d15981798586043290e0a27c9aa77b2ca15dd8e17657549d66efb2`
+- [下载 Windows 安装包](https://github.com/xiaobei206/NexusMonitor/releases/download/v2.2.9/NexusMonitor-2.2.9-Setup.exe)
+- [SHA-256 校验文件](https://github.com/xiaobei206/NexusMonitor/releases/download/v2.2.9/NexusMonitor-2.2.9-Setup.exe.sha256)
+
+Hosted CI 不会实际播放用户本机的曲库，因此真实音频行为仍需用户目标 Windows PC 验收。

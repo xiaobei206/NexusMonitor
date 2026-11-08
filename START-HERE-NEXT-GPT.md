@@ -1,21 +1,22 @@
 # NexusMonitor — 新接手 GPT 请先看这里
 
-**当前正式发布：2.2.8；Windows CI Run #209 全部成功，文档同步 Run #210 也已成功。NexusMonitor 2.2.9 四态统一播放模式已进入 main，Windows CI / Release 验证中。唯一工作基线：GitHub main。**
+**当前正式发布：2.2.9；Windows CI Run #213 全部成功。四态统一播放模式已正式发布。唯一工作基线：GitHub main。下一正式行为版本从 2.2.10 开始。**
 
-- 当前正式 Release：https://github.com/xiaobei206/NexusMonitor/releases/tag/v2.2.8
-- 当前 Windows 安装包：https://github.com/xiaobei206/NexusMonitor/releases/download/v2.2.8/NexusMonitor-2.2.8-Setup.exe
-- SHA-256：4324a9411b992bd9d148f7f0c405dddbe21e8dc608ebf7d33c6127b5e7abc485
-- Windows CI：Run #209 — success：https://github.com/xiaobei206/NexusMonitor/actions/runs/42496538449
-- 本版交接：NexusMonitor-2.2.8-HANDOFF-CN.md
-- 本版构建报告：NexusMonitor-2.2.8-BUILD-REPORT.md
+- 当前正式 Release：https://github.com/xiaobei206/NexusMonitor/releases/tag/v2.2.9
+- 当前 Windows 安装包：https://github.com/xiaobei206/NexusMonitor/releases/download/v2.2.9/NexusMonitor-2.2.9-Setup.exe
+- SHA-256：`05091f0ea3d15981798586043290e0a27c9aa77b2ca15dd8e17657549d66efb2`
+- Windows CI：Run #213 — success：https://github.com/xiaobei206/NexusMonitor/actions/runs/42501046745
+- 本版交接：NexusMonitor-2.2.9-HANDOFF-CN.md
+- 本版构建报告：NexusMonitor-2.2.9-BUILD-REPORT.md
 - 唯一跨版本日志：NexusMonitor-DEVELOPMENT-LOG-CN.md
 - 架构与硬性约束：AGENTS.md
 
-## 2.2.9 当前开发内容（验证中）
+## 2.2.9 已发布功能
 
-- 四态统一播放模式：随机、顺序、单曲循环、列表循环；随机以 shuffle bag 保证整轮无重复后重新洗牌。
-- 主窗口 Dock、悬浮 HUD mini-player、非视频 USB 副屏 mini-player 共用单一 playbackMode 状态。
-- 旧音乐库播放选项自动迁移；CI / Release 结果以本仓库最新 Actions 为准。详见 NexusMonitor-2.2.9-HANDOFF-CN.md 与 NexusMonitor-2.2.9-BUILD-REPORT.md。
+- 四态统一播放模式：随机、顺序、单曲循环、列表循环；随机使用 shuffle bag，整轮不重复，轮次结束后自动重新洗牌。
+- 主窗口底部 Dock、悬浮 HUD mini-player、非视频 USB 副屏 mini-player 共用主进程 playbackMode；菜单为垂直四选一，当前模式有选中标记。
+- 旧音乐库的 shuffle / repeat 设置会自动迁移到新模式字段；随机队列和上一首历史可持久化。
+- Run #213 全流程通过并发布 v2.2.9；用户目标 Windows PC 的真实音乐播放仍待验收。详见 NexusMonitor-2.2.9-HANDOFF-CN.md 与 NexusMonitor-2.2.9-BUILD-REPORT.md。
 
 ## 2.2.8 已验证变更
 

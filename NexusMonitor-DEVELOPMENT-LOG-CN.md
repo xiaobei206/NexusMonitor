@@ -1,4 +1,4 @@
-## 2.2.9（2026-11-09，四态统一播放模式；CI 待确认）
+## 2.2.9（2026-11-09，四态统一播放模式；已正式发布）
 
 ### 用户目标
 - 用户要求把随机播放和循环设置合并为一个按钮及垂直选单，并让主界面和悬浮 mini-player 等所有播放界面共享。
@@ -12,13 +12,17 @@
 - 新增播放模式迁移、整轮随机不重复、上一首回退和单曲曲库随机回归测试。
 - 不修改音源加载、EQ、ReplayGain、音频路由或 WASAPI native backend。
 
-### CI 与发布
-- 源码已按 2.2.9 同步版本元数据并提交到 main；Windows CI / Release 结果待确认。
-- 尚未声称已生成安装包或完成真实 Windows 音频验收。
+### CI 迭代与发布
+- Run #211（提交 `71f79d1`）版本一致性检查与主进程构建通过；新增界面合同测试因对象字段空格格式假设失败。
+- Run #212（提交 `6013b28`）继续失败在同一条界面合同测试：测试正则的反斜杠多转义一层，匹配的是字面量 `\\s`；改用逐个检查四个模式标识的字符串合同，不改播放实现。
+- Run #213（最终验证提交 `0ef3e902065c8a050ad1efea02c8287c5a163bdd`）全流程 success。版本一致性、Main / Node 回归、Renderer TypeScript / Vite、native WASAPI、PawnIO MCHBAR 资源、.NET HardwareService、硬件/存储测试、NSIS 安装包、SHA-256、GitHub Release 发布与 artifact 上传全部通过。
+- 正式 Release：[v2.2.9](https://github.com/xiaobei206/NexusMonitor/releases/tag/v2.2.9)，Windows CI [Run #213](https://github.com/xiaobei206/NexusMonitor/actions/runs/42501046745)。
+- 安装器 `NexusMonitor-2.2.9-Setup.exe`，160,025,547 bytes（152.61 MiB）。SHA-256：`05091f0ea3d15981798586043290e0a27c9aa77b2ca15dd8e17657549d66efb2`。SHA 文件随 Release 一并发布。
+- 仍未完成用户目标 PC 的真实音频验收；Hosted CI 不会实际播放用户自己的曲库。
 
 # NexusMonitor 统一开发日志（跨版本唯一主记录）
 
-**当前正式发布：2.2.8；Windows CI Run #209 全部成功。下一正式行为版本从 2.2.9 开始。**  
+**当前正式发布：2.2.9；Windows CI Run #213 全部成功。下一正式行为版本从 2.2.10 开始。**  
 **记录规则：** 每个正式版本都追加到本文件；历史测试结果不能冒充当前版本测试结果。保留失败尝试、取消的运行、已验证结果与仍需实机验收的事项。
 
 ## 2.2.8（2026-11-08，已正式发布）
