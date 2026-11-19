@@ -64,6 +64,7 @@ npm.cmd run test:storage
 
 ## 发布记录
 
-- Windows Actions / GitHub Release：待实际流水线运行后填写。
-- 安装包大小与 SHA-256：以真实 Release 资产为准。
+- Windows CI：[Run #217 — success](https://github.com/xiaobei206/NexusMonitor/actions/runs/44547086725)；GitHub Release：[v2.2.10](https://github.com/xiaobei206/NexusMonitor/releases/tag/v2.2.10)。
+- 安装包：[NexusMonitor-2.2.10-Setup.exe](https://github.com/xiaobei206/NexusMonitor/releases/download/v2.2.10/NexusMonitor-2.2.10-Setup.exe)（160,061,996 bytes (152.65 MiB)）。
+- SHA-256：`6e368d3c0408be7817eb5e139a5c4181ddca4af8f4ea2654ab888423145a9521`；[校验文件](https://github.com/xiaobei206/NexusMonitor/releases/download/v2.2.10/NexusMonitor-2.2.10-Setup.exe.sha256)。
 - 5 寸屏扬声器、耳机和设备热插拔：待目标 PC 实测。

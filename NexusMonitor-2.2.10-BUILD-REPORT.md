@@ -2,6 +2,13 @@
 
 **基线：** 2.2.9  
 **版本：** 2.2.10  
+**状态：** 已正式发布。  
+**Windows CI：** [Run #217 — success](https://github.com/xiaobei206/NexusMonitor/actions/runs/44547086725)  
+**Release：** [NexusMonitor 2.2.10](https://github.com/xiaobei206/NexusMonitor/releases/tag/v2.2.10)  
+**安装包：** [NexusMonitor-2.2.10-Setup.exe](https://github.com/xiaobei206/NexusMonitor/releases/download/v2.2.10/NexusMonitor-2.2.10-Setup.exe)  
+**大小：** 160,061,996 bytes (152.65 MiB)  
+**SHA-256：** `6e368d3c0408be7817eb5e139a5c4181ddca4af8f4ea2654ab888423145a9521`  
+**校验文件：** [NexusMonitor-2.2.10-Setup.exe.sha256](https://github.com/xiaobei206/NexusMonitor/releases/download/v2.2.10/NexusMonitor-2.2.10-Setup.exe.sha256)  
 **验证边界：** 仅把 Windows CI 实际执行结果标记为自动化验证；目标 PC 音频验收单独记录。
 
 ## 变更概要

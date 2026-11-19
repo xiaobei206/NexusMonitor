@@ -9,11 +9,6 @@
 - 上一正式 Release（基线）：https://github.com/xiaobei206/NexusMonitor/releases/tag/v2.2.9
 - 当前版本交接：NexusMonitor-2.2.10-HANDOFF-CN.md
 - 当前版本构建报告：NexusMonitor-2.2.10-BUILD-REPORT.md
-- 当前 Windows 安装包：https://github.com/xiaobei206/NexusMonitor/releases/download/v2.2.9/NexusMonitor-2.2.9-Setup.exe
-- SHA-256：`05091f0ea3d15981798586043290e0a27c9aa77b2ca15dd8e17657549d66efb2`
-- Windows CI：Run #213 — success：https://github.com/xiaobei206/NexusMonitor/actions/runs/42501046745
-- 本版交接：NexusMonitor-2.2.9-HANDOFF-CN.md
-- 本版构建报告：NexusMonitor-2.2.9-BUILD-REPORT.md
 - 唯一跨版本日志：NexusMonitor-DEVELOPMENT-LOG-CN.md
 - 架构与硬性约束：AGENTS.md
 

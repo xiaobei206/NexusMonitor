@@ -14,7 +14,9 @@
 - USB 输出 Renderer 在调用 `video.play()` 前应用音量和输出设备；JSX 不再强制设置 `muted`。原生视频控件的音量/静音变化同步保存。
 - 音源重叠提示使用非阻塞 status overlay；“暂停音乐”和“静音视频”仅在用户主动点击时执行。
 - 新增 `tests/usb-display-video-audio.test.cjs` 覆盖独立默认值、非强制静音、路由失败保护、并行提示与用户动作。
-- Windows CI 与 Release 状态以 Actions / Release 实际结果为准；CI 通过不等于目标机音频已验收。
+- Windows CI [Run #217 — success](https://github.com/xiaobei206/NexusMonitor/actions/runs/44547086725)：版本门禁、Main / Node 回归、Renderer / Vite、WASAPI、PawnIO、.NET HardwareService、硬件/存储测试、NSIS 安装包、SHA-256、GitHub Release 与 artifact 上传全部通过。
+- 正式 Release：[v2.2.10](https://github.com/xiaobei206/NexusMonitor/releases/tag/v2.2.10)；安装包 160,061,996 bytes (152.65 MiB)；SHA-256 `6e368d3c0408be7817eb5e139a5c4181ddca4af8f4ea2654ab888423145a9521`。
+- CI 通过不等于目标机音频已验收；五寸屏扬声器和目标 PC 输出设备仍需实机验证。
 
 ### 仍需目标机实测
 - 在用户 Windows PC 与 5 寸屏验证 MP4/M4V/WebM 音轨、独立输出设备、设备拔插、两路并行、忽略提醒、原生控制条同步及托盘/重启后行为。
