@@ -17,13 +17,13 @@
 
 | 检查 | 结果 |
 |---|---|
-| 版本元数据门禁 | 待 Windows CI |
-| Main / Node 回归测试 | 待 Windows CI |
-| Renderer TypeScript / Vite | 待 Windows CI |
-| Native WASAPI 构建 | 待 Windows CI |
-| PawnIO / .NET HardwareService | 待 Windows CI |
-| 硬件 / 存储测试 | 待 Windows CI |
-| NSIS 安装包 / SHA-256 / Release | 待 Windows CI |
+| 版本元数据门禁 | 通过 |
+| Main / Node 回归测试 | 通过 |
+| Renderer TypeScript / Vite | 通过 |
+| Native WASAPI 构建 | 通过 |
+| PawnIO / .NET HardwareService | 通过 |
+| 硬件 / 存储测试 | 通过 |
+| NSIS 安装包 / SHA-256 / Release | 通过 |
 | 目标 PC 视频声音与设备实测 | 待用户实机验收 |
 
 ## 重要边界

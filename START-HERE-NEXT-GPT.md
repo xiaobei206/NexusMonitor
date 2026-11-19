@@ -1,7 +1,11 @@
 # NexusMonitor — 新接手 GPT 请先看这里
 
-**当前源码版本：2.2.10；基于上一正式版本 2.2.9。请以本版 Windows CI / Release 页面确认正式发布状态。唯一工作基线：GitHub main。下一正式行为版本从 2.2.11 开始。**
+**当前正式发布：2.2.10；Windows CI Run #217 全部成功。USB 视频独立音频控制与双路并行播放已正式发布。唯一工作基线：GitHub main。下一行为版本从 2.2.11 开始。**
 
+- 当前正式 Release：https://github.com/xiaobei206/NexusMonitor/releases/tag/v2.2.10
+- Windows CI Run #217：https://github.com/xiaobei206/NexusMonitor/actions/runs/44547086725
+- Windows 安装包：https://github.com/xiaobei206/NexusMonitor/releases/download/v2.2.10/NexusMonitor-2.2.10-Setup.exe
+- SHA-256：`6e368d3c0408be7817eb5e139a5c4181ddca4af8f4ea2654ab888423145a9521`（160,061,996 bytes (152.65 MiB)）
 - 上一正式 Release（基线）：https://github.com/xiaobei206/NexusMonitor/releases/tag/v2.2.9
 - 当前版本交接：NexusMonitor-2.2.10-HANDOFF-CN.md
 - 当前版本构建报告：NexusMonitor-2.2.10-BUILD-REPORT.md
@@ -13,7 +17,7 @@
 - 唯一跨版本日志：NexusMonitor-DEVELOPMENT-LOG-CN.md
 - 架构与硬性约束：AGENTS.md
 
-## 2.2.10 当前实现
+## 2.2.10 已正式发布
 
 - USB 视频播放器有独立音量、静音与输出设备设置，不再被 JSX 强制静音。
 - 视频与 Music Service 可以并行发声；重叠时显示非阻塞提醒，忽略提醒不改变任一音源。

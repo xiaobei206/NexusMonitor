@@ -2,7 +2,21 @@
 
 **基线：** NexusMonitor 2.2.9 正式 Release  
 **工作基线：** GitHub `main`  
-**状态：** 此版本由 Windows CI 负责打包和创建 Release；最终运行号与安装包校验值须核对实际 Actions / Release 资产。
+**状态：** 已正式发布。  
+**Release：** [NexusMonitor 2.2.10](https://github.com/xiaobei206/NexusMonitor/releases/tag/v2.2.10)  
+**Windows CI：** [Run #217 — success](https://github.com/xiaobei206/NexusMonitor/actions/runs/44547086725)  
+**安装包：** [NexusMonitor-2.2.10-Setup.exe](https://github.com/xiaobei206/NexusMonitor/releases/download/v2.2.10/NexusMonitor-2.2.10-Setup.exe)  
+**大小：** 160,061,996 bytes (152.65 MiB)  
+**SHA-256：** `6e368d3c0408be7817eb5e139a5c4181ddca4af8f4ea2654ab888423145a9521`  
+**校验文件：** [NexusMonitor-2.2.10-Setup.exe.sha256](https://github.com/xiaobei206/NexusMonitor/releases/download/v2.2.10/NexusMonitor-2.2.10-Setup.exe.sha256)
+
+## 本版本文件索引
+
+- [构建与发布报告](NexusMonitor-2.2.10-BUILD-REPORT.md)
+- [Windows 验收命令与实机清单](NexusMonitor-2.2.10-Windows-验收命令.txt)
+- [累计开发日志](NexusMonitor-DEVELOPMENT-LOG-CN.md)
+- [README 与项目总览](README.md)
+- [视频音频回归测试](tests/usb-display-video-audio.test.cjs)
 
 ## 用户确认的行为
 

@@ -113,7 +113,14 @@ For an Intel Alder Lake system where IGCL exposes GPU clocks/power but not tempe
 - Versioned engineering references and the historical patch archive are under `docs/`.
 
 
-### 2.2.10 video audio design
+### 2.2.10 video audio design (released)
+
+- Release: https://github.com/xiaobei206/NexusMonitor/releases/tag/v2.2.10
+- Windows CI Run #217: https://github.com/xiaobei206/NexusMonitor/actions/runs/44547086725
+- Installer: https://github.com/xiaobei206/NexusMonitor/releases/download/v2.2.10/NexusMonitor-2.2.10-Setup.exe (160,061,996 bytes (152.65 MiB))
+- SHA-256: `6e368d3c0408be7817eb5e139a5c4181ddca4af8f4ea2654ab888423145a9521`; [checksum file](https://github.com/xiaobei206/NexusMonitor/releases/download/v2.2.10/NexusMonitor-2.2.10-Setup.exe.sha256)
+
+
 
 - USB video has its own persisted volume, mute and output-device target, separate from Music Service.
 - Video and library music may play concurrently. A non-blocking notice offers pause-music or mute-video actions; ignoring the notice never pauses either source.
