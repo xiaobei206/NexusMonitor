@@ -1,3 +1,25 @@
+## 2.2.10（USB 视频独立音频控制与并行播放）
+
+### 用户目标与行为约束
+- 修复五寸副屏视频原先因为 `<video muted>` 被强制静音的问题。
+- 视频拥有独立、持久化的音量、静音和输出设备选择，不复用 Music Service 的音量或设备配置。
+- 视频与曲库音乐默认允许同时播放；不自动暂停、不强制静音。
+- 两路声音重叠时显示非阻塞提示：视频启动而音乐已播放时提供“暂停音乐”；音乐启动而视频可听时提供“静音视频”；忽略提示或等待其自动消失，不改变任何音源状态。
+- 所选非默认输出设备无法绑定时暂时静音视频并提示，避免音频意外输出到系统默认设备；系统默认设备作为明确配置时仍可正常使用。
+- 保留唯一 Music Service 音乐引擎和 video 元素独立解码，不向视频窗口植入第二个音乐引擎，也不改动 WASAPI native backend。
+
+### 实现与回归范围
+- `src/shared/types.ts` / `src/renderer/App.tsx`：新增并规范化 `usbDisplayVideoVolume`、`usbDisplayVideoMuted`、`usbDisplayVideoOutputDeviceId`、`usbDisplayVideoOutputDeviceLabel`；旧设置自动获得兼容默认值。
+- 五寸副屏设置页新增视频音量、静音和音频输出设备选择；与音乐播放器设备配置互不覆盖。
+- USB 输出 Renderer 在调用 `video.play()` 前应用音量和输出设备；JSX 不再强制设置 `muted`。原生视频控件的音量/静音变化同步保存。
+- 音源重叠提示使用非阻塞 status overlay；“暂停音乐”和“静音视频”仅在用户主动点击时执行。
+- 新增 `tests/usb-display-video-audio.test.cjs` 覆盖独立默认值、非强制静音、路由失败保护、并行提示与用户动作。
+- Windows CI 与 Release 状态以 Actions / Release 实际结果为准；CI 通过不等于目标机音频已验收。
+
+### 仍需目标机实测
+- 在用户 Windows PC 与 5 寸屏验证 MP4/M4V/WebM 音轨、独立输出设备、设备拔插、两路并行、忽略提醒、原生控制条同步及托盘/重启后行为。
+- Hosted CI 不能验证五寸屏扬声器实际出声。
+
 ## 2.2.9（2026-11-09，四态统一播放模式；已正式发布）
 
 ### 用户目标

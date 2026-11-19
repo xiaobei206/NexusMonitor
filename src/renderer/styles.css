@@ -780,3 +780,30 @@ body{font-size:var(--text-body);line-height:1.5}
   .widget-shell.vertical .widget-vertical-heading>strong{font-size:18px}
   .widget-shell.vertical .widget-vertical-clock>b{font-size:23px}
 }
+
+
+/* 2.2.10: independent USB video audio routing and non-blocking overlap reminders. */
+.usb-video-audio-setting{grid-column:1/-1;display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:10px;width:100%;padding-top:12px;margin-top:2px;border-top:1px solid var(--line)}
+.usb-video-volume-heading{grid-column:1/-1;display:flex;justify-content:space-between;align-items:center;gap:10px}
+.usb-video-volume-heading .field-label{margin:0}
+.usb-video-volume-heading>b{font:600 var(--text-control) var(--mono);color:var(--text)}
+.usb-video-audio-setting .usb-video-volume-range{grid-column:1/-1;width:100%;margin:0;accent-color:var(--accent)}
+.usb-video-audio-setting>.field-label{grid-column:1/-1;margin:2px 0 0}
+.usb-video-output-select{grid-column:1/-1;min-width:0;width:100%}
+.usb-video-mute-button{grid-column:1/-1;justify-self:start;display:inline-flex;align-items:center;gap:7px}
+.usb-video-output-actions{grid-column:1/-1;display:flex;gap:8px;flex-wrap:wrap}
+.usb-video-output-actions button{display:inline-flex;align-items:center;justify-content:center;gap:6px}
+.usb-video-audio-note{grid-column:1/-1;margin:0;line-height:1.5}
+.usb-video-output-warning{position:absolute;z-index:19;left:50%;bottom:clamp(10px,2vh,22px);transform:translateX(-50%);box-sizing:border-box;width:min(94vw,680px);display:flex;flex-direction:column;gap:5px;padding:11px 14px;border:1px solid #e7a34c88;border-radius:10px;background:rgba(18,19,23,.94);color:#ffe3b3;box-shadow:0 10px 32px #0008;backdrop-filter:blur(14px);font:500 clamp(12px,1.35vw,16px)/1.45 'Segoe UI','Microsoft YaHei UI',sans-serif}
+.usb-video-output-warning b{font-size:.88em;letter-spacing:.04em}
+.usb-video-output-warning span{overflow-wrap:anywhere}
+.usb-video-overlap-notice{position:absolute;z-index:20;left:50%;top:clamp(10px,2vh,22px);transform:translateX(-50%);box-sizing:border-box;width:min(94vw,720px);display:flex;flex-direction:column;gap:12px;padding:13px 15px;border:1px solid #6fa8d988;border-radius:12px;background:rgba(7,16,27,.94);color:#edf5ff;box-shadow:0 12px 36px #0009;backdrop-filter:blur(16px);font:500 clamp(12px,1.35vw,16px)/1.45 'Segoe UI','Microsoft YaHei UI',sans-serif}
+.usb-video-overlap-copy{display:flex;flex-direction:column;gap:5px}
+.usb-video-overlap-copy b{font-size:1.08em;color:#9fceff}
+.usb-video-overlap-copy span{color:#d1dfed}
+.usb-video-overlap-actions{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap}
+.usb-video-overlap-actions button{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:34px;padding:6px 11px;border:1px solid #54718c;border-radius:8px;background:#172a3c;color:#edf5ff;font:600 .9em 'Segoe UI','Microsoft YaHei UI',sans-serif;cursor:pointer}
+.usb-video-overlap-actions button:hover{border-color:#8bbfec;background:#203b53}
+.usb-video-overlap-actions button.primary{border-color:#488bd4;background:#246cb6}
+.usb-video-overlap-actions button.primary:hover{background:#2d80d5}
+@media(max-width:600px){.usb-video-overlap-actions{justify-content:stretch}.usb-video-overlap-actions button{flex:1}.usb-video-audio-setting{grid-template-columns:1fr}.usb-video-output-actions button{flex:1}}

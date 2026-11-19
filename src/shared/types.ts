@@ -44,7 +44,7 @@ export interface AppSettings {
   turingDisplayMode?: 'monitor' | 'wallpaper' | 'weather-clock'; turingWallpaperMode?: 'single' | 'slideshow';
   turingAutoBrightnessEnabled?: boolean; turingDayBrightness?: number; turingNightBrightness?: number; turingDayStart?: string; turingNightStart?: string;
   musicOutputDeviceId?: string; musicOutputDeviceLabel?: string; musicEqBands?: number[]; musicReplayGainEnabled?: boolean; musicReplayGainMode?: 'track' | 'album'; musicWasapiEnabled?: boolean; musicWasapiDeviceId?: string; musicWasapiDeviceLabel?: string;
-  usbDisplayDisplayId?: string; usbDisplayMode?: 'monitor' | 'static' | 'gif' | 'weather-clock' | 'video' | 'music-only'; usbDisplayImagePath?: string; usbDisplayVideoPath?: string; usbDisplayMediaFit?: 'contain' | 'cover'; usbDisplayMediaOrientation?: 'landscape' | 'portrait';
+  usbDisplayDisplayId?: string; usbDisplayMode?: 'monitor' | 'static' | 'gif' | 'weather-clock' | 'video' | 'music-only'; usbDisplayImagePath?: string; usbDisplayVideoPath?: string; usbDisplayMediaFit?: 'contain' | 'cover'; usbDisplayMediaOrientation?: 'landscape' | 'portrait'; usbDisplayVideoVolume?: number; usbDisplayVideoMuted?: boolean; usbDisplayVideoOutputDeviceId?: string; usbDisplayVideoOutputDeviceLabel?: string;
   turingWallpaperFile?: string; turingWallpaperDirectory?: string;
   turingWallpaperFit?: 'contain' | 'cover' | 'stretch'; turingWallpaperIntervalSeconds?: 30 | 60 | 90 | 120;
   shortcuts: ShortcutItem[]; compactMode: boolean;

@@ -1,0 +1,23 @@
+NexusMonitor 2.2.10 — Windows 目标机验收命令与清单
+
+在 PowerShell 的仓库根目录执行：
+npm.cmd ci --include=dev --no-audit --no-fund
+node .\scripts\validate-release-version.cjs
+npm.cmd run test:main
+npm.cmd run build:renderer
+npm.cmd run build:wasapi
+dotnet build .\HardwareService\HardwareService.csproj -c Release
+npm.cmd run test:storage
+
+实机功能验收：
+1. 选择有音轨的 MP4/M4V/WebM，确认五寸屏自动播放、声音、循环、暂停和进度条。
+2. 分别修改视频音量与音乐音量，确认互不影响。
+3. 分别选择系统默认、五寸屏扬声器、耳机，确认实际输出端点正确。
+4. 音乐播放后启动视频；确认提醒非阻塞，忽略后两路声音并行。
+5. 视频播放后启动音乐；确认提醒非阻塞，忽略后两路声音并行。
+6. 在提醒中手动暂停音乐或静音视频，确认只影响被选的一路。
+7. 设备拔除或路由失败时，确认副屏提示错误并且非默认路由不会悄悄落回默认设备。
+8. 在原生视频控件中调整音量/静音后，回设置页确认已同步保存。
+9. 检查托盘、重启、六种 USB 显示模式、主界面音乐控制和音频输出设备设置没有回归。
+
+注意：CI 成功不代替五寸屏扬声器与目标 Windows PC 音频实测。

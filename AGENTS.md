@@ -4,7 +4,7 @@ Before editing, read [START-HERE-NEXT-GPT.md](START-HERE-NEXT-GPT.md), then the 
 
 - Current `main`, `VERSION`, source, tests, latest Actions and Release are authoritative. Re-query them for every new task.
 - This is a personal repository. Work directly on `main`; do not create feature branches or pull requests unless the user explicitly asks.
-- Current source line is NexusMonitor 2.2.6, developed directly from the 2.2.5 release baseline. After 2.2.6 is published, the next application behavior change starts at 2.2.7; synchronize every field checked by `scripts/validate-release-version.cjs`. Never use FIX-style version names or overwrite a published release.
+- Current source line is NexusMonitor 2.2.10, developed directly from the 2.2.9 release baseline. After 2.2.10 is published, the next application behavior change starts at 2.2.11; synchronize every field checked by `scripts/validate-release-version.cjs`. Never use FIX-style version names or overwrite a published release.
 - Keep changes narrow, source-backed and regression-tested. Report only tests actually run. Hosted CI is not proof of physical hardware acceptance.
 - Follow `.github/workflows/windows-ci.yml`. On Windows PowerShell use `npm.cmd` / `npx.cmd`.
 - Keep the canonical development log, current handoff/build report, SHA-256 manifest and ZIP contents accurate.
@@ -13,7 +13,7 @@ Before editing, read [START-HERE-NEXT-GPT.md](START-HERE-NEXT-GPT.md), then the 
 ## Music / display invariants
 
 - Music playback is a single main-Renderer audio engine; HUD and secondary-display windows are control surfaces only.
-- Preserve the independent video player. Video mode has no music mini-player.
+- Preserve the independent video player. Video mode has no music mini-player. USB video audio is independent from Music Service: own persisted volume, mute and output-device target (`usbDisplayVideo*`); simultaneous playback is allowed. Never hard-mute video by default or automatically pause either source. Show only a non-blocking, dismissible overlap reminder; ignoring it leaves both sources playing.
 - On the vertical HUD, the music mini-player is immediately above the existing weather block. Keep other metrics, weather layout, bottom clock/calendar and horizontal HUD unchanged unless separately requested.
 - Closing the main window hides it to the tray and must not destroy the persistent Renderer or stop music. USB display restoration must use the saved display ID and never guess a different target.
 - The sixth USB mode `music-only` hides the USB output window so the Windows desktop wallpaper remains visible while Music Service continues. Its action button is the short label `应用模式`; other output modes retain `启动副屏`.

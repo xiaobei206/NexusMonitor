@@ -8,7 +8,7 @@ import {
   Palette, Power, RefreshCw, Settings2, ShieldCheck, SlidersHorizontal, Sparkles,
   Square, Thermometer, Upload, Wifi, X, Zap, Clock3, CloudSun, Check, Plus, Search,
   Laptop, GripVertical, Database, GaugeCircle, Sun, Moon, Cable, RotateCcw, Puzzle, CalendarDays,
-  Image as ImageIcon, FolderOpen, Play, Pause, SkipBack, SkipForward, Film, MonitorPlay, Tv, Music2,
+  Image as ImageIcon, FolderOpen, Play, Pause, SkipBack, SkipForward, Film, MonitorPlay, Tv, Music2, Volume2, VolumeX,
 } from 'lucide-react';
 import type { AppPage, AppSettings, CpuSnapshot, DiskSnapshot, GpuSnapshot, MusicCommand, MusicState, NetworkSnapshot, ServiceStatus, SnapshotResult, SystemSnapshot, ThemeId, WeatherSnapshot, SensorValue } from '../shared/types';
 import { MusicLibraryPage, MusicMiniPlayer, MusicPlaybackRuntime, MusicPlayerDock, useMusicState } from './music-player';
@@ -38,7 +38,7 @@ const defaultSettings: AppSettings = {
   musicEqBands: [0,0,0,0,0,0,0,0,0,0],
   musicReplayGainEnabled: false, musicReplayGainMode: 'track',
   musicWasapiEnabled: false, musicWasapiDeviceId: '', musicWasapiDeviceLabel: '',
-  usbDisplayDisplayId: '', usbDisplayMode: 'monitor', usbDisplayImagePath: '', usbDisplayVideoPath: '', usbDisplayMediaFit: 'cover', shortcuts: [], compactMode: false,
+  usbDisplayDisplayId: '', usbDisplayMode: 'monitor', usbDisplayImagePath: '', usbDisplayVideoPath: '', usbDisplayMediaFit: 'cover', usbDisplayVideoVolume: 0.8, usbDisplayVideoMuted: false, usbDisplayVideoOutputDeviceId: 'default', usbDisplayVideoOutputDeviceLabel: '系统默认输出设备', shortcuts: [], compactMode: false,
   widgetVisibleMetrics: ['cpu','gpu','memory','storage','network','power','weather','sensors'], widgetSensorIds: [],
   widgetAlwaysOnTop: true, widgetPinned: false, widgetAutoHide: false, widgetSmartFullscreen: true,
   thresholds: { loadWarning: 80, loadCritical: 95, tempWarning: 80, tempCritical: 95 },
@@ -64,6 +64,10 @@ function normalizeLoadedSettings(raw: Record<string, unknown>): { settings: AppS
       musicWasapiEnabled: raw.musicWasapiEnabled === true,
       musicWasapiDeviceId: typeof raw.musicWasapiDeviceId === 'string' ? raw.musicWasapiDeviceId : '',
       musicWasapiDeviceLabel: typeof raw.musicWasapiDeviceLabel === 'string' ? raw.musicWasapiDeviceLabel : '',
+      usbDisplayVideoVolume: (() => { const value = Number(raw.usbDisplayVideoVolume); return Number.isFinite(value) ? Math.max(0, Math.min(1, value)) : 0.8; })(),
+      usbDisplayVideoMuted: raw.usbDisplayVideoMuted === true,
+      usbDisplayVideoOutputDeviceId: typeof raw.usbDisplayVideoOutputDeviceId === 'string' && raw.usbDisplayVideoOutputDeviceId ? raw.usbDisplayVideoOutputDeviceId : 'default',
+      usbDisplayVideoOutputDeviceLabel: typeof raw.usbDisplayVideoOutputDeviceLabel === 'string' ? raw.usbDisplayVideoOutputDeviceLabel : '系统默认输出设备',
       // Settings files survive upgrades. Treat malformed or old values as absent
       // instead of letting one null array crash the entire React root on startup.
       selectedNetworks: Array.isArray(raw.selectedNetworks) ? raw.selectedNetworks.filter((id): id is string => typeof id === 'string') : [...defaultSettings.selectedNetworks],
@@ -775,7 +779,7 @@ function MainApp() {
       {['监控中心','设备输出','个性化','扩展管理','管理'].map(group => <div className="nav-group" key={group}><div className="nav-group-title">{group}</div>{navItems.filter(n=>n.group===group).map(item=>{
         const Icon=item.icon; return <button key={item.id} className={`nav-item ${page===item.id?'active':''}`} onClick={()=>setPage(item.id)}><Icon size={17}/><span>{item.label}</span>{page===item.id&&<i/>}</button>;
       })}</div>)}
-      <div className="sidebar-bottom"><div className={`service-chip ${serviceState==='online'?'online':'offline'}`}><span className="pulse-dot"/><div><b>{serviceStatus.phase==='degraded'?'服务响应超时':serviceState==='online'?'本机服务在线':'等待硬件服务'}</b><small>{serviceState==='online'?'LOCAL TELEMETRY':serviceStatus.phase==='restarting'?'RESTARTING':'LOCALHOST :18765'}</small></div></div><div className="sidebar-footer"><span>NEXUS MONITOR</span><span>2.2.9</span></div></div>
+      <div className="sidebar-bottom"><div className={`service-chip ${serviceState==='online'?'online':'offline'}`}><span className="pulse-dot"/><div><b>{serviceStatus.phase==='degraded'?'服务响应超时':serviceState==='online'?'本机服务在线':'等待硬件服务'}</b><small>{serviceState==='online'?'LOCAL TELEMETRY':serviceStatus.phase==='restarting'?'RESTARTING':'LOCALHOST :18765'}</small></div></div><div className="sidebar-footer"><span>NEXUS MONITOR</span><span>2.2.10</span></div></div>
     </aside>
 
     <main className="main-area">
@@ -1166,6 +1170,7 @@ function TuringPage({settings,updateSettings,snapshot,weather,notify,active,sett
 
 type UsbDisplayInfo = { id: string; index: number; primary: boolean; width: number; height: number; x: number; y: number; scaleFactor: number; label: string };
 type UsbDisplayStatus = { open: boolean; targetDisplayId: string | null };
+type MediaDevicesWithOutputPicker = MediaDevices & { selectAudioOutput?: (options?: { deviceId?: string }) => Promise<MediaDeviceInfo> };
 
 function UsbDisplayPage({settings,updateSettings,notify}:any){
   const [displays,setDisplays]=useState<UsbDisplayInfo[]>([]);
@@ -1175,6 +1180,40 @@ function UsbDisplayPage({settings,updateSettings,notify}:any){
   const persistedDisplay=displays.find(display=>display.id===String(settings.usbDisplayDisplayId??''))??null;
   const selectedDisplay=persistedDisplay;
   const activeDisplay=displayStatus.open?displays.find(display=>display.id===displayStatus.targetDisplayId)??selectedDisplay:selectedDisplay;
+  const [videoOutputDevices,setVideoOutputDevices]=useState<MediaDeviceInfo[]>([]);
+  const [videoAudioMessage,setVideoAudioMessage]=useState('');
+  const [videoOutputBusy,setVideoOutputBusy]=useState(false);
+  const videoOutputDeviceId=String(settings.usbDisplayVideoOutputDeviceId||'default');
+  const videoOutputDeviceLabel=String(settings.usbDisplayVideoOutputDeviceLabel||'系统默认输出设备');
+  const refreshVideoOutputDevices=useCallback(async()=>{
+    const media=navigator.mediaDevices;
+    if(!media?.enumerateDevices){setVideoAudioMessage('当前环境无法枚举音频输出设备；可以尝试“选择 Windows 设备”。');return;}
+    try{
+      const found=await media.enumerateDevices();
+      setVideoOutputDevices(found.filter(device=>device.kind==='audiooutput'&&device.deviceId&&device.deviceId!=='default'));
+    }catch(error){setVideoAudioMessage(`读取视频输出设备失败：${error instanceof Error?error.message:String(error)}`);}
+  },[]);
+  useEffect(()=>{
+    if(mode!=='video')return;
+    void refreshVideoOutputDevices();
+    const media=navigator.mediaDevices;if(!media)return;
+    media.addEventListener('devicechange',refreshVideoOutputDevices);
+    return()=>media.removeEventListener('devicechange',refreshVideoOutputDevices);
+  },[mode,refreshVideoOutputDevices]);
+  const chooseVideoOutputFromWindows=async()=>{
+    const media=navigator.mediaDevices as MediaDevicesWithOutputPicker|undefined;
+    if(!media?.selectAudioOutput){setVideoAudioMessage('当前 Chromium 未提供 Windows 输出设备选择弹窗；可尝试已枚举设备列表。');return;}
+    setVideoOutputBusy(true);
+    try{
+      const device=await media.selectAudioOutput(videoOutputDeviceId==='default'?undefined:{deviceId:videoOutputDeviceId});
+      const deviceId=device.deviceId||'default';
+      const label=device.label||'所选 Windows 音频设备';
+      updateSettings({usbDisplayVideoOutputDeviceId:deviceId,usbDisplayVideoOutputDeviceLabel:label});
+      setVideoAudioMessage('已保存视频专属输出设备，正在副屏应用。');
+      await refreshVideoOutputDevices();
+    }catch(error){setVideoAudioMessage(`未能选择视频输出设备：${error instanceof Error?error.message:String(error)}`);}
+    finally{setVideoOutputBusy(false);}
+  };
   const refresh=useCallback(async()=>{
     try{
       const [found,status]=await Promise.all([window.nexus.getDesktopDisplays(),window.nexus.getUsbDisplayStatus()]);
@@ -1226,7 +1265,31 @@ function UsbDisplayPage({settings,updateSettings,notify}:any){
             <div className="usb-shared-music-note"><b>背景音乐由统一音乐服务接管</b><small>在主界面曲库选择歌曲；音乐可继续从独立选择的五寸屏喇叭或其他 Windows 输出设备播放。静态壁纸与 GIF 不再启动第二套播放器。</small></div>
           </div>
         </>}
-        {mode==='video'&&<div className="usb-display-media-picker usb-media-picker-v2"><div><b>视频文件</b><small>{settings.usbDisplayVideoPath?settings.usbDisplayVideoPath.split(/[\\/]/).pop():'尚未选择视频'}</small></div><button className="btn-secondary" onClick={()=>void chooseFile('video')}><FolderOpen size={15}/>选择视频</button><label className="field-label">画面方向</label><div className="segmented"><button className={(settings.usbDisplayMediaOrientation??'landscape')==='landscape'?'selected':''} onClick={()=>updateSettings({usbDisplayMediaOrientation:'landscape'})}>横屏显示</button><button className={settings.usbDisplayMediaOrientation==='portrait'?'selected':''} onClick={()=>updateSettings({usbDisplayMediaOrientation:'portrait'})}>竖屏画面（居中）</button></div><p className="panel-note">支持 MP4 / M4V / WebM；MOV 取决于实际视频编码是否被 Chromium 支持。不会主动转码。竖屏模式会保留纵向画面比例并居中显示。</p></div>}
+        {mode==='video'&&<div className="usb-display-media-picker usb-media-picker-v2">
+          <div><b>视频文件</b><small>{settings.usbDisplayVideoPath?settings.usbDisplayVideoPath.split(/[\\/]/).pop():'尚未选择视频'}</small></div>
+          <button className="btn-secondary" onClick={()=>void chooseFile('video')}><FolderOpen size={15}/>选择视频</button>
+          <label className="field-label">画面方向</label>
+          <div className="segmented"><button className={(settings.usbDisplayMediaOrientation??'landscape')==='landscape'?'selected':''} onClick={()=>updateSettings({usbDisplayMediaOrientation:'landscape'})}>横屏显示</button><button className={settings.usbDisplayMediaOrientation==='portrait'?'selected':''} onClick={()=>updateSettings({usbDisplayMediaOrientation:'portrait'})}>竖屏画面（居中）</button></div>
+          <div className="usb-video-audio-setting">
+            <div className="usb-video-volume-heading"><label className="field-label" htmlFor="usb-video-volume">视频音量</label><b>{Math.round(Number(settings.usbDisplayVideoVolume??0.8)*100)}%</b></div>
+            <input id="usb-video-volume" className="range usb-video-volume-range" type="range" min="0" max="100" step="1" value={Math.round(Number(settings.usbDisplayVideoVolume??0.8)*100)} onChange={event=>updateSettings({usbDisplayVideoVolume:Number(event.target.value)/100})}/>
+            <button type="button" className="btn-secondary usb-video-mute-button" onClick={()=>updateSettings({usbDisplayVideoMuted:settings.usbDisplayVideoMuted!==true})}>{settings.usbDisplayVideoMuted===true?<VolumeX size={15}/>:<Volume2 size={15}/>} {settings.usbDisplayVideoMuted===true?'取消静音视频':'静音视频'}</button>
+            <label className="field-label" htmlFor="usb-video-output-device">视频音频输出设备</label>
+            <select id="usb-video-output-device" className="select-input usb-video-output-select" value={videoOutputDeviceId} onChange={event=>{
+              const deviceId=event.target.value;
+              const device=videoOutputDevices.find(item=>item.deviceId===deviceId);
+              updateSettings({usbDisplayVideoOutputDeviceId:deviceId,usbDisplayVideoOutputDeviceLabel:device?.label||(deviceId==='default'?'系统默认输出设备':'已选择音频设备')});
+              setVideoAudioMessage('已保存视频专属输出设备，正在副屏应用。');
+            }}>
+              <option value="default">系统默认输出设备</option>
+              {videoOutputDeviceId!=='default'&&!videoOutputDevices.some(item=>item.deviceId===videoOutputDeviceId)&&<option value={videoOutputDeviceId}>{videoOutputDeviceLabel}（当前未枚举）</option>}
+              {videoOutputDevices.map((device,index)=><option key={device.deviceId} value={device.deviceId}>{device.label||`音频输出设备 ${index+1}`}</option>)}
+            </select>
+            <div className="usb-video-output-actions"><button type="button" className="btn-secondary" disabled={videoOutputBusy} onClick={()=>void chooseVideoOutputFromWindows()}>选择 Windows 设备</button><button type="button" className="btn-secondary" disabled={videoOutputBusy} onClick={()=>void refreshVideoOutputDevices()}>刷新设备</button></div>
+            <p className="panel-note usb-video-audio-note">{videoAudioMessage||'视频音量、静音和输出设备与音乐播放器独立；两路声音默认可以同时播放。'}</p>
+          </div>
+          <p className="panel-note">支持 MP4 / M4V / WebM；MOV 取决于实际视频编码是否被 Chromium 支持。不会主动转码。竖屏模式会保留纵向画面比例并居中显示。</p>
+        </div>
         {mode==='weather-clock'&&<div className="usb-display-media-picker usb-media-picker-v2"><div><b>天气时钟</b><small>共享当前天气源与位置；AQI / PM2.5 / PM10 有数据就显示。</small></div><div className="weather-mode-preview-note">建议直接使用横屏 960 × 540。主时间 44–56px，温度 42px，AQI 单独高亮。</div></div>}
         {mode==='monitor'&&<div className="usb-display-media-picker usb-media-picker-v2"><div><b>硬件监控</b><small>专门为 960 × 540 重新设计，不复用 3.5 寸 Turing 的小字号布局。</small></div><div className="monitor-mode-preview-note">CPU / GPU 大仪表 · 内存 / 网络 / 存储状态 · 网格曲线 · 温度 / 功耗醒目显示</div></div>}
         <div className="usb-display-brightness-note"><Sun size={17}/><span><b>5 寸屏硬件亮度</b><small>暂时保留为后续硬件能力：你这块屏边缘的拨动键已证明可逐级调整背光，但当前还没有确认 USB 亮度指令，因此不假装用软件黑层替代真正背光。</small></span></div>
@@ -1242,8 +1305,18 @@ function UsbDisplayOutput(){
   const [weather,setWeather]=useState<any>(null);
   const [now,setNow]=useState(new Date());
   const [mediaSource,setMediaSource]=useState('');
+  const videoRef=useRef<HTMLVideoElement|null>(null);
+  const [videoPlaying,setVideoPlaying]=useState(false);
+  const [videoOutputWarning,setVideoOutputWarning]=useState('');
+  const [overlapNotice,setOverlapNotice]=useState<'pause-music'|'mute-video'|'both'|null>(null);
+  const overlapPromptedRef=useRef(false);
+  const previousAudioActivityRef=useRef({musicPlaying:false,videoPlaying:false});
+  const videoRouteFailureRef=useRef(false);
+  const videoAudioSettingsRef=useRef({volume:0.8,muted:false});
   const [samples,setSamples]=useState<Array<{cpu:number;gpu:number;mem:number;rx:number;tx:number}>>([]);
   const mode=settings.usbDisplayMode??'monitor';
+  const configuredVideoVolume=Number(settings.usbDisplayVideoVolume);
+  videoAudioSettingsRef.current={volume:Number.isFinite(configuredVideoVolume)?Math.max(0,Math.min(1,configuredVideoVolume)):0.8,muted:settings.usbDisplayVideoMuted===true};
   useEffect(()=>{
     let alive=true;
     void window.nexus.getSettings().then(value=>{if(alive&&value)setSettings(value);});
@@ -1271,6 +1344,79 @@ function UsbDisplayOutput(){
     }
     return()=>{alive=false;};
   },[mode,settings.usbDisplayImagePath,settings.usbDisplayVideoPath]);
+  useEffect(()=>{
+    if(mode!=='video'){
+      setVideoPlaying(false);setOverlapNotice(null);overlapPromptedRef.current=false;
+      previousAudioActivityRef.current={musicPlaying:Boolean(music.state?.isPlaying),videoPlaying:false};
+      return;
+    }
+    const video=videoRef.current as (HTMLVideoElement & {setSinkId?:(deviceId:string)=>Promise<void>;sinkId?:string})|null;
+    if(!video||!mediaSource)return;
+    let alive=true;
+    const requestedDeviceId=String(settings.usbDisplayVideoOutputDeviceId||'default');
+    const applyOutputAndStart=async()=>{
+      const desired=videoAudioSettingsRef.current;video.volume=desired.volume;
+      if(requestedDeviceId!=='default'){videoRouteFailureRef.current=true;video.muted=true;}
+      try{
+        if(typeof video.setSinkId==='function')await video.setSinkId(requestedDeviceId);
+        else if(requestedDeviceId!=='default')throw new Error('当前 Chromium 不支持 HTMLMediaElement.setSinkId');
+        if(!alive)return;
+        const actualDeviceId=video.sinkId||'default';
+        if(requestedDeviceId!=='default'&&actualDeviceId!==requestedDeviceId)throw new Error(`请求 ${requestedDeviceId}，实际 ${actualDeviceId||'default'}`);
+        videoRouteFailureRef.current=false;setVideoOutputWarning('');
+        const latest=videoAudioSettingsRef.current;video.volume=latest.volume;video.muted=latest.muted;
+        if(video.paused)await video.play();
+      }catch(error){
+        if(!alive)return;
+        const detail=error instanceof Error?error.message:String(error);
+        if(requestedDeviceId==='default'){
+          videoRouteFailureRef.current=false;
+          setVideoOutputWarning(`无法重新绑定系统默认输出设备：${detail}。继续尝试使用当前默认输出。`);
+          const latest=videoAudioSettingsRef.current;video.volume=latest.volume;video.muted=latest.muted;
+          if(video.paused)await video.play().catch(playError=>setVideoOutputWarning(`视频自动播放失败：${playError instanceof Error?playError.message:String(playError)}。请在副屏点击播放。`));
+        }else{
+          videoRouteFailureRef.current=true;video.muted=true;
+          const target=String(settings.usbDisplayVideoOutputDeviceLabel||'所选设备');
+          setVideoOutputWarning(`视频音频无法绑定到“${target}”：${detail}。为避免声音误送到其他设备，视频暂时静音；请重新选择输出设备。`);
+          if(video.paused)await video.play().catch(playError=>setVideoOutputWarning(`视频自动播放失败：${playError instanceof Error?playError.message:String(playError)}。请在副屏点击播放。`));
+        }
+      }
+    };
+    void applyOutputAndStart();
+    return()=>{alive=false;};
+  },[mode,mediaSource,settings.usbDisplayVideoOutputDeviceId,settings.usbDisplayVideoOutputDeviceLabel]);
+
+  useEffect(()=>{
+    if(mode!=='video')return;
+    const video=videoRef.current;if(!video)return;
+    const latest=videoAudioSettingsRef.current;video.volume=latest.volume;
+    if(!videoRouteFailureRef.current)video.muted=latest.muted;
+  },[mode,mediaSource,settings.usbDisplayVideoVolume,settings.usbDisplayVideoMuted]);
+
+  const syncVideoAudioFromElement=(video:HTMLVideoElement)=>{
+    if(videoRouteFailureRef.current)return;
+    const latest=videoAudioSettingsRef.current;
+    if(Math.abs(video.volume-latest.volume)>0.01||video.muted!==latest.muted)void window.nexus.saveSettings({usbDisplayVideoVolume:video.volume,usbDisplayVideoMuted:video.muted});
+  };
+
+  useEffect(()=>{
+    const musicPlaying=music.state?.isPlaying===true;
+    const activeVideo=mode==='video'&&videoPlaying;
+    const previous=previousAudioActivityRef.current;
+    previousAudioActivityRef.current={musicPlaying,videoPlaying:activeVideo};
+    if(!(musicPlaying&&activeVideo)){overlapPromptedRef.current=false;setOverlapNotice(null);return;}
+    const latest=videoAudioSettingsRef.current;
+    if(latest.muted||latest.volume<=0||videoRouteFailureRef.current){setOverlapNotice(null);return;}
+    if(!overlapPromptedRef.current){
+      if(activeVideo&&!previous.videoPlaying&&musicPlaying)setOverlapNotice('pause-music');
+      else if(musicPlaying&&!previous.musicPlaying&&activeVideo)setOverlapNotice('mute-video');
+      else setOverlapNotice('both');
+      overlapPromptedRef.current=true;
+    }
+  },[music.state?.isPlaying,videoPlaying,mode,settings.usbDisplayVideoVolume,settings.usbDisplayVideoMuted]);
+
+  useEffect(()=>{if(!overlapNotice)return;const timer=window.setTimeout(()=>setOverlapNotice(null),9000);return()=>window.clearTimeout(timer);},[overlapNotice]);
+
   const networks=snapshot?.networks??[];
   const rx=networks.filter((item:any)=>item.status==='Up'&&item.isPhysical).reduce((sum:number,item:any)=>sum+(item.rxBytesPerSec??0),0);
   const tx=networks.filter((item:any)=>item.status==='Up'&&item.isPhysical).reduce((sum:number,item:any)=>sum+(item.txBytesPerSec??0),0);
@@ -1282,7 +1428,16 @@ function UsbDisplayOutput(){
   const monitor=<div className="usb-output-monitor usb-output-monitor-v2"><div className="usb-monitor-grid"/><header><div><strong>NEXUS<span>MONITOR</span></strong><small>USB SECONDARY DISPLAY · 960 × 540</small></div><div className="usb-monitor-clock">{now.toLocaleTimeString('zh-CN',{hour12:false})}</div></header><section className="usb-monitor-top"><article className="usb-main-metric cpu"><div className="usb-metric-title"><span>CPU</span><i>PROCESSOR</i></div><div className="usb-metric-core"><BigRing value={cpu.load} color={pctColor(cpu.load)} label="LOAD"/></div><div className="usb-metric-readings"><b>{number(cpu.temperature)}<small>°C</small></b><b>{number(cpu.powerW)}<small> W</small></b><span>{cpu.name||'CPU'}</span></div><MiniAreaChart values={samples.map(v=>v.cpu)} color="#52d5a2"/></article><article className="usb-main-metric gpu"><div className="usb-metric-title"><span>GPU</span><i>GRAPHICS</i></div><div className="usb-metric-core"><BigRing value={gpu.load} color={pctColor(gpu.load)} label="LOAD"/></div><div className="usb-metric-readings"><b>{number(gpu.temperature)}<small>°C</small></b><b>{number(gpu.powerW)}<small> W</small></b><span>{gpu.name||'GPU'}</span></div><MiniAreaChart values={samples.map(v=>v.gpu)} color="#62a8ff"/></article></section><section className="usb-monitor-bottom"><article><div className="usb-stat-head"><span>MEMORY</span><b>{number(memory.percent)}%</b></div><div className="usb-bar"><i style={{width:`${Math.max(0,Math.min(100,Number(memory.percent)||0))}%`,background:pctColor(memory.percent)}}/></div><div className="usb-stat-foot"><span>{prettyBytes(memory.usedBytes)}</span><span>{prettyBytes(memory.totalBytes)}</span></div></article><article><div className="usb-stat-head"><span>NETWORK</span><b>↓ {prettyBytes(rx)}/s</b></div><MiniAreaChart values={samples.map(v=>v.rx)} color="#e5b65b" height={42}/><div className="usb-stat-foot"><span>UPLOAD ↑ {prettyBytes(tx)}/s</span><span>{snapshot?.networks?.find((n:any)=>n.isDefaultRoute&&n.status==='Up')?.name||'AUTO'}</span></div></article><article><div className="usb-stat-head"><span>STORAGE</span><b>{number(disk.temperature)}°C</b></div><div className="usb-bar"><i style={{width:`${Math.max(6,Math.min(100,Number(disk.load)||0))}%`,background:'#b26eff'}}/></div><div className="usb-stat-foot"><span>{disk.model||'Primary disk'}</span><span>{number(disk.load)}% ACTIVE</span></div></article></section><footer><span>{cpu.name||'CPU'} · {gpu.name||'GPU'}</span><span>更新 {snapshot?.timestamp?new Date(snapshot.timestamp).toLocaleTimeString('zh-CN',{hour12:false}):'—'}</span></footer></div>;
   const weatherView=<div className="usb-output-weather usb-output-weather-v2"><div className="usb-weather-grid"/><header><div><span>{weather?.location??'LOCAL WEATHER'}</span><small>WEATHER / AIR QUALITY</small></div><div className="usb-weather-time">{now.toLocaleTimeString('zh-CN',{hour12:false})}</div></header><section className="usb-weather-main"><div className="usb-weather-temp">{number(weather?.temperature)}<em>°C</em></div><div className="usb-weather-summary"><strong>{weatherText(weather?.weatherCode)}</strong><span>体感 {number(weather?.apparentTemperature)}° · 湿度 {number(weather?.humidity)}% · 风速 {number(weather?.windSpeed)} km/h</span></div><div className="usb-aqi-badge" style={{borderColor:aqi.color,boxShadow:`0 0 24px ${aqi.color}22`}}><small>{weather?.aqiStandard === 'China-MEP' ? 'CN AQI' : 'US AQI'}</small><strong style={{color:aqi.textColor}}>{aqi.label==='—'?'—':number(weather?.aqi)}</strong><span style={{color:aqi.textColor}}>{aqi.level}</span></div></section><section className="usb-weather-details"><article><b>{number(weather?.pm25)}</b><span>PM2.5 µg/m³</span></article><article><b>{number(weather?.pm10)}</b><span>PM10 µg/m³</span></article><article><b>{number(weather?.todayMaxTemperature)}° / {number(weather?.todayMinTemperature)}°</b><span>今日最高 / 最低</span></article><article><b>{number(weather?.precipitationProbability)}%</b><span>降水概率</span></article></section><footer><span>{now.toLocaleDateString('zh-CN',{year:'numeric',month:'long',day:'numeric',weekday:'long'})}</span><span>数据源 {weather?.source||'—'}</span></footer></div>;
   const portraitMedia=settings.usbDisplayMediaOrientation==='portrait';
-  return <main className="usb-output-root">{mode==='monitor'?monitor:null}{(mode==='static'||mode==='gif')&&(mediaSource?<img className={`usb-output-media ${settings.usbDisplayMediaFit==='contain'?'contain':'cover'} ${portraitMedia?'portrait':''}`} src={mediaSource}/>:<div className="usb-output-empty">{mode==='gif'?'请选择 GIF 壁纸':'请选择静态壁纸'}</div>)}{mode==='video'&&(mediaSource?<video className={`usb-output-video ${portraitMedia?'portrait':''}`} src={mediaSource} autoPlay loop muted controls/>:<div className="usb-output-empty">请选择本地视频</div>)}{mode==='weather-clock'?weatherView:null}{mode!=='video'&&<div className="usb-output-music"><MusicMiniPlayer state={music.state} onCommand={music.command}/></div>}</main>;
+  return <main className="usb-output-root">{mode==='monitor'?monitor:null}{(mode==='static'||mode==='gif')&&(mediaSource?<img className={`usb-output-media ${settings.usbDisplayMediaFit==='contain'?'contain':'cover'} ${portraitMedia?'portrait':''}`} src={mediaSource}/>:<div className="usb-output-empty">{mode==='gif'?'请选择 GIF 壁纸':'请选择静态壁纸'}</div>)}{mode==='video'&&(mediaSource?<video ref={videoRef} className={`usb-output-video ${portraitMedia?'portrait':''}`} src={mediaSource} loop controls onPlay={()=>setVideoPlaying(true)} onPause={()=>setVideoPlaying(false)} onEnded={()=>setVideoPlaying(false)} onError={()=>{setVideoPlaying(false);setVideoOutputWarning('视频无法播放；请检查文件是否完整以及编码是否受 Chromium 支持。');}} onVolumeChange={event=>syncVideoAudioFromElement(event.currentTarget)}/>:<div className="usb-output-empty">请选择本地视频</div>)}{mode==='video'&&videoOutputWarning&&<div className="usb-video-output-warning" role="status"><b>视频音频状态</b><span>{videoOutputWarning}</span></div>}
+    {mode==='video'&&overlapNotice&&<div className="usb-video-overlap-notice" role="status">
+      <div className="usb-video-overlap-copy"><b>音源同时播放</b><span>{overlapNotice==='pause-music'?'音乐正在播放。要暂停音乐，还是让视频与音乐继续同时播放？':overlapNotice==='mute-video'?'视频正在播放。要静音视频原声，还是保留两路声音？':'视频与音乐均在播放。你可以选择暂停其中一路，也可以不做操作，让两路声音继续播放。'}</span></div>
+      <div className="usb-video-overlap-actions">
+        {(overlapNotice==='pause-music'||overlapNotice==='both')&&<button type="button" onClick={()=>{music.command({type:'pause'});setOverlapNotice(null);}}><Pause size={14}/>暂停音乐</button>}
+        {(overlapNotice==='mute-video'||overlapNotice==='both')&&<button type="button" onClick={()=>{const video=videoRef.current;if(video)video.muted=true;void window.nexus.saveSettings({usbDisplayVideoMuted:true});setOverlapNotice(null);}}><VolumeX size={14}/>静音视频</button>}
+        <button type="button" className="primary" onClick={()=>setOverlapNotice(null)}>{overlapNotice==='mute-video'?'保留两路声音':'继续同时播放'}</button>
+      </div>
+    </div>}
+    {mode==='weather-clock'?weatherView:null}{mode!=='video'&&<div className="usb-output-music"><MusicMiniPlayer state={music.state} onCommand={music.command}/></div>}</main>;
 }
 
 export default function App(){
@@ -1489,6 +1644,6 @@ function SettingsPage({settings,updateSettings,notify}:any){
       <p className="panel-note">每项独立开关。这里控制悬浮窗窄条及展开卡片中的模块；主界面总览的显示项目保持独立设置。单个底层传感器可在“硬件与网络”页面收藏。</p>
       <div className="widget-visibility-grid">{widgetOptions.map(([id,label])=><label className="widget-visibility-option" key={id}><input type="checkbox" checked={widgetVisible.includes(id)} onChange={()=>toggleWidgetMetric(id)}/><span>{label}</span></label>)}</div>
     </section>
-    <section className="panel about-panel"><div className="about-emblem">N</div><div><b>NexusMonitor 2.2.9</b><span>Electron + React UI · .NET 10 Hardware Service</span><small>本机优先，不需要账户；硬件数据通过 127.0.0.1 本地接口传递。</small></div><span className="count-pill">DEVELOPMENT BUILD</span></section>
+    <section className="panel about-panel"><div className="about-emblem">N</div><div><b>NexusMonitor 2.2.10</b><span>Electron + React UI · .NET 10 Hardware Service</span><small>本机优先，不需要账户；硬件数据通过 127.0.0.1 本地接口传递。</small></div><span className="count-pill">DEVELOPMENT BUILD</span></section>
   </>;
 }

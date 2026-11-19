@@ -28,7 +28,7 @@ The Electron 45 stable channel was current at the project date, and its release 
 - Theme studio: Obsidian, Paper / Engineering, Titanium, personal photo background; accent color, opacity, density, module visibility and drag reordering
 - Device selection: multiple network adapters and physical disks; the Turing screen can automatically follow the C: physical disk and busiest active non-tunnel NIC, or pin either manually
 - Turing 3.5-inch USB display page: single-page 480×320 hardware-left / Wujiang-weather-right layout, COM discovery, Revision A handshake, manual brightness, scheduled day/night backlight control and 16×8 differential frame patches
-- USB 5-inch Windows extended-display page: display selection, independent output window, hardware monitoring, static/GIF wallpaper, weather clock, local video and desktop-wallpaper + background-music modes; true USB-panel backlight control is intentionally deferred pending firmware command confirmation
+- USB 5-inch Windows extended-display page: display selection, independent output window, hardware monitoring, static/GIF wallpaper, weather clock, local video with independent volume/mute/output-device routing and non-blocking simultaneous-audio reminders, and desktop-wallpaper + background-music mode; true USB-panel backlight control is intentionally deferred pending firmware command confirmation
 - Selectable Wujiang/Suzhou weather providers: Open-Meteo (no key), QWeather V1 (local Ed25519/JWT), WeatherCN / 华风爱科 standard API, Caiyun V2.6 signed App Key + Secret, WeatherAPI and OpenWeather. All providers map into one normalized weather snapshot.
 - Local shortcut list and manifest-based plugin inventory
 - Unified local Music Service: one persistent main-Renderer playback host; Nora-style songs / albums / artists / genres / folders / playlists; tags / artwork / ReplayGain; M3U/M3U8; ten-band EQ with nine presets; local synchronized LRC; sleep timer; six USB output modes; Chromium endpoint routing plus a native WASAPI Exclusive PCM path with AudioWorklet transfer, live underrun stats and normal-output fallback. Current WASAPI route is Renderer Float32 PCM and explicitly not bit-perfect.
@@ -75,7 +75,7 @@ NexusMonitor source in this package is provided for the user's development/testi
 
 ## Current source handoff
 
-The current source line is **main / 2.2.7**; the previous completed release is [NexusMonitor 2.2.6](https://github.com/xiaobei206/NexusMonitor/releases/tag/v2.2.6). This personal repository is developed directly on main; no feature branches or PRs unless explicitly requested.
+The current source line is **main / 2.2.10**; the previous completed release is [NexusMonitor 2.2.9](https://github.com/xiaobei206/NexusMonitor/releases/tag/v2.2.9). This personal repository is developed directly on main; no feature branches or PRs unless explicitly requested.
 
 - Current handoff: [NexusMonitor-2.2.7-HANDOFF-CN.md](NexusMonitor-2.2.7-HANDOFF-CN.md)
 - Current build report: [NexusMonitor-2.2.7-BUILD-REPORT.md](NexusMonitor-2.2.7-BUILD-REPORT.md)
@@ -111,3 +111,10 @@ For an Intel Alder Lake system where IGCL exposes GPU clocks/power but not tempe
 - Current handoff and build / CI boundaries are in `NexusMonitor-2.2.7-HANDOFF-CN.md` and `NexusMonitor-2.2.7-BUILD-REPORT.md`. 正式发布：[NexusMonitor 2.2.7](https://github.com/xiaobei206/NexusMonitor/releases/tag/v2.2.7)（Windows CI Run #204 success）；target-PC playback acceptance remains documented separately.
 - Each GitHub Actions run retains its complete build/test log; see the linked 2.1.8 run above. Per-user application runtime logs and settings remain local under `%APPDATA%\\NexusMonitor` and are intentionally not committed.
 - Versioned engineering references and the historical patch archive are under `docs/`.
+
+
+### 2.2.10 video audio design
+
+- USB video has its own persisted volume, mute and output-device target, separate from Music Service.
+- Video and library music may play concurrently. A non-blocking notice offers pause-music or mute-video actions; ignoring the notice never pauses either source.
+- The video endpoint is bound before playback starts. If a requested non-default endpoint cannot be verified, video audio is held muted and a warning is shown rather than silently sending audio to another endpoint.

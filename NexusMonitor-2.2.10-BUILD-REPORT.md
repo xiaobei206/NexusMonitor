@@ -1,0 +1,33 @@
+# NexusMonitor 2.2.10 — Windows 构建与发布报告
+
+**基线：** 2.2.9  
+**版本：** 2.2.10  
+**验证边界：** 仅把 Windows CI 实际执行结果标记为自动化验证；目标 PC 音频验收单独记录。
+
+## 变更概要
+
+- USB 视频移除 JSX 中的强制静音行为，按独立音量/静音配置播放。
+- 增加视频专属输出设备选择，并在开始播放前绑定设备。
+- 默认视频音频为系统默认输出、音量 80%、非静音；旧配置加载时自动补齐字段。
+- 视频与 Music Service 并行播放；重叠提醒非阻塞、9 秒后自动消失，忽略不改变播放。
+- 提醒内可选择暂停音乐或静音视频；两个动作仅影响用户主动选中的音源。
+- 所选非默认音频端点不可用时，保持视频静音并提示原因，不静默回退至系统默认设备。
+
+## 验证矩阵
+
+| 检查 | 结果 |
+|---|---|
+| 版本元数据门禁 | 待 Windows CI |
+| Main / Node 回归测试 | 待 Windows CI |
+| Renderer TypeScript / Vite | 待 Windows CI |
+| Native WASAPI 构建 | 待 Windows CI |
+| PawnIO / .NET HardwareService | 待 Windows CI |
+| 硬件 / 存储测试 | 待 Windows CI |
+| NSIS 安装包 / SHA-256 / Release | 待 Windows CI |
+| 目标 PC 视频声音与设备实测 | 待用户实机验收 |
+
+## 重要边界
+
+- Windows Hosted Runner 可验证构建和自动化测试，不能证明用户五寸屏扬声器实际有声音。
+- 需要用真实视频样本检查音轨存在、编码可解码、输出设备端点可用；仅按扩展名不能保证视频编码兼容。
+- 本版本不改 native WASAPI backend，也不把视频音频接入音乐播放器的 EQ / ReplayGain 链路。

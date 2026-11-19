@@ -1,8 +1,10 @@
 # NexusMonitor — 新接手 GPT 请先看这里
 
-**当前正式发布：2.2.9；Windows CI Run #213 全部成功。四态统一播放模式已正式发布。唯一工作基线：GitHub main。下一正式行为版本从 2.2.10 开始。**
+**当前源码版本：2.2.10；基于上一正式版本 2.2.9。请以本版 Windows CI / Release 页面确认正式发布状态。唯一工作基线：GitHub main。下一正式行为版本从 2.2.11 开始。**
 
-- 当前正式 Release：https://github.com/xiaobei206/NexusMonitor/releases/tag/v2.2.9
+- 上一正式 Release（基线）：https://github.com/xiaobei206/NexusMonitor/releases/tag/v2.2.9
+- 当前版本交接：NexusMonitor-2.2.10-HANDOFF-CN.md
+- 当前版本构建报告：NexusMonitor-2.2.10-BUILD-REPORT.md
 - 当前 Windows 安装包：https://github.com/xiaobei206/NexusMonitor/releases/download/v2.2.9/NexusMonitor-2.2.9-Setup.exe
 - SHA-256：`05091f0ea3d15981798586043290e0a27c9aa77b2ca15dd8e17657549d66efb2`
 - Windows CI：Run #213 — success：https://github.com/xiaobei206/NexusMonitor/actions/runs/42501046745
@@ -10,6 +12,13 @@
 - 本版构建报告：NexusMonitor-2.2.9-BUILD-REPORT.md
 - 唯一跨版本日志：NexusMonitor-DEVELOPMENT-LOG-CN.md
 - 架构与硬性约束：AGENTS.md
+
+## 2.2.10 当前实现
+
+- USB 视频播放器有独立音量、静音与输出设备设置，不再被 JSX 强制静音。
+- 视频与 Music Service 可以并行发声；重叠时显示非阻塞提醒，忽略提醒不改变任一音源。
+- 设备绑定失败时显示明确提示；请求非默认设备时不允许声音悄悄退回系统默认输出。
+- Windows CI / Release 与目标机验收状态须分别核验。
 
 ## 2.2.9 已发布功能
 
@@ -30,6 +39,6 @@
 
 - 2.2.6 已加入 QWeather V1、华风爱科、彩云天气适配和 AQI 分类规范，保留 Open-Meteo、WeatherAPI、OpenWeather。
 - 竖向 HUD 默认高度为 960 逻辑像素，记住每显示器的手动高度（700–1200px）。
-- 音乐服务是唯一 main Renderer 音频引擎；USB 视频模式没有音乐迷你播放器。
+- 音乐服务是唯一 main Renderer 音乐引擎；USB 视频使用独立 HTML video 音频链路。视频模式不显示音乐迷你播放器，但允许两路音源同时播放。
 - P4 Mono UAC Direct v62 的 WASAPI Exclusive 无声问题是独立的历史目标机问题，本轮未改 native backend。
 - 用户项目习惯：直接在 main 开发；所有正式行为版本号递增；版本元数据同步；保留唯一累计开发日志；构建报告、交接文件都含产品名及版本号。Windows PowerShell 使用 npm.cmd / npx.cmd。
