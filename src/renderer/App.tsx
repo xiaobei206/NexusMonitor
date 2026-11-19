@@ -1289,7 +1289,7 @@ function UsbDisplayPage({settings,updateSettings,notify}:any){
             <p className="panel-note usb-video-audio-note">{videoAudioMessage||'视频音量、静音和输出设备与音乐播放器独立；两路声音默认可以同时播放。'}</p>
           </div>
           <p className="panel-note">支持 MP4 / M4V / WebM；MOV 取决于实际视频编码是否被 Chromium 支持。不会主动转码。竖屏模式会保留纵向画面比例并居中显示。</p>
-        </div>
+        </div>}
         {mode==='weather-clock'&&<div className="usb-display-media-picker usb-media-picker-v2"><div><b>天气时钟</b><small>共享当前天气源与位置；AQI / PM2.5 / PM10 有数据就显示。</small></div><div className="weather-mode-preview-note">建议直接使用横屏 960 × 540。主时间 44–56px，温度 42px，AQI 单独高亮。</div></div>}
         {mode==='monitor'&&<div className="usb-display-media-picker usb-media-picker-v2"><div><b>硬件监控</b><small>专门为 960 × 540 重新设计，不复用 3.5 寸 Turing 的小字号布局。</small></div><div className="monitor-mode-preview-note">CPU / GPU 大仪表 · 内存 / 网络 / 存储状态 · 网格曲线 · 温度 / 功耗醒目显示</div></div>}
         <div className="usb-display-brightness-note"><Sun size={17}/><span><b>5 寸屏硬件亮度</b><small>暂时保留为后续硬件能力：你这块屏边缘的拨动键已证明可逐级调整背光，但当前还没有确认 USB 亮度指令，因此不假装用软件黑层替代真正背光。</small></span></div>
