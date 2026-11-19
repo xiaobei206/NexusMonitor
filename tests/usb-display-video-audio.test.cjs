@@ -18,8 +18,8 @@ test('video audio has safe independent defaults and backwards-compatible setting
 });
 test('video is not hard-muted and applies independent volume, mute and output route', () => {
   assert.match(usb, /videoRef/);
-  assert.match(usb, /video\.volume=volume/);
-  assert.match(usb, /video\.muted=muted/);
+  assert.match(usb, /video\.volume=(?:volume|desired\.volume|latest\.volume)/);
+  assert.match(usb, /video\.muted=(?:muted|latest\.muted)/);
   assert.match(usb, /video\.setSinkId\(requestedDeviceId\)/);
   assert.match(usb, /await video\.play\(\)/);
   assert.doesNotMatch(usb, /<video[^>]*\bmuted(?:\s|=|\/|>)/s);
