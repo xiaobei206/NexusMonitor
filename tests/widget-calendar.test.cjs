@@ -34,12 +34,22 @@ test('calendar grid starts on Monday, supports adjacent-month dates and does not
   assert.equal(october[0].date.getMonth(), 8);
   assert.equal(october[0].dayNumber, 28);
   assert.equal(october[3].dayNumber, 1);
-  assert.match(calendar.getCalendarScheduleCoverage(2027), /尚未内置/);
-  const unknownWeekday = calendar.getCalendarDayInfo(new Date(2027, 0, 4, 12));
+  assert.match(calendar.getCalendarScheduleCoverage(2027), /已内置/);
+  const knownWeekday = calendar.getCalendarDayInfo(new Date(2027, 0, 4, 12));
+  assert.equal(knownWeekday.badge, null);
+  assert.equal(knownWeekday.status, 'workday');
+  const knownWeekend = calendar.getCalendarDayInfo(new Date(2027, 0, 2, 12));
+  assert.equal(knownWeekend.isBlueDate, true);
+  assert.equal(knownWeekend.badge, null);
+  assert.equal(knownWeekend.status, 'weekend');
+  assert.equal(calendar.getCalendarDayInfo(new Date(2027, 0, 31, 12)).badge, '班');
+  assert.equal(calendar.getCalendarDayInfo(new Date(2027, 1, 5, 12)).badge, '休');
+  assert.match(calendar.getCalendarScheduleCoverage(2028), /尚未获取/);
+  const unknownWeekday = calendar.getCalendarDayInfo(new Date(2028, 0, 4, 12));
   assert.equal(unknownWeekday.badge, null);
   assert.equal(unknownWeekday.status, 'unknown');
   assert.equal(unknownWeekday.statusLabel, '调休安排待公布');
-  const unknownWeekend = calendar.getCalendarDayInfo(new Date(2027, 0, 2, 12));
+  const unknownWeekend = calendar.getCalendarDayInfo(new Date(2028, 0, 2, 12));
   assert.equal(unknownWeekend.isBlueDate, true, 'weekend remains blue as a calendar weekday marker');
   assert.equal(unknownWeekend.badge, null, 'no unannounced rest badge is invented');
   assert.equal(unknownWeekend.status, 'unknown', 'do not claim a future weekend is a confirmed rest day');
@@ -67,4 +77,21 @@ test('calendar is a separate pop-out renderer route with a close action and mont
   assert.match(view, /changeMonth\(-1\)/);
   assert.match(view, /changeMonth\(1\)/);
   assert.match(view, /goToday/);
+});
+
+test('calendar applies a verified future-year cache without changing the bundled historical table', async () => {
+  const calendar = await import(pathToFileURL(path.join(root, 'src/renderer/calendar-data.mjs')).href);
+  assert.equal(calendar.applyCalendarScheduleResult({
+    year: 2028, status: 'cache',
+    schedule: {
+      year: 2028, restDays: ['2028-04-04','2028-04-05','2028-04-06'],
+      makeUpWorkDays: ['2028-04-08']
+    }
+  }), true);
+  const april = calendar.buildCalendarMonth(2028, 3);
+  const day = (n) => april.find(item => item.inMonth && item.dayNumber === n);
+  assert.equal(day(4).badge, '休');
+  assert.equal(day(8).badge, '班');
+  assert.match(calendar.getCalendarScheduleCoverage(2028), /已获取并缓存/);
+  assert.equal(calendar.getCalendarDayInfo(new Date(2017, 0, 2, 12)).badge, '休');
 });
