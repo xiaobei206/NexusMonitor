@@ -3,7 +3,7 @@
 **版本：** 2.2.11  
 **基线：** 2.2.10  
 **目标：** 动态国务院节假日日历  
-**状态：** <已正式发布>  
+**状态：** 已正式发布  
 **发布日期：** 2026-11-23
 
 ## 正式交付
@@ -28,19 +28,25 @@
 
 | 项目 | 结果 |
 |---|---|
-| 版本一致性门禁 | <通过> |
-| Main / Node 回归 | <通过，270/270> |
-| Renderer TypeScript / Vite | <通过> |
-| Windows native WASAPI | <通过> |
-| PawnIO 官方 MCHBAR 资源 | <通过> |
-| .NET HardwareService | <通过> |
-| Hardware / Storage tests | <通过> |
-| Windows NSIS 安装包 | <通过> |
-| SHA-256 生成 | <通过> |
-| GitHub Release 发布 | <通过> |
-| Workflow artifact 上传 | <通过> |
+| 版本一致性门禁 | 通过 |
+| Main / Node 回归 | 通过，270/270 |
+| Renderer TypeScript / Vite | 通过 |
+| Windows native WASAPI | 通过 |
+| PawnIO 官方 MCHBAR 资源 | 通过 |
+| .NET HardwareService | 通过 |
+| Hardware / Storage tests | 通过 |
+| Windows NSIS 安装包 | 通过 |
+| SHA-256 生成 | 通过 |
+| GitHub Release 发布 | 通过 |
+| Workflow artifact 上传 | 通过 |
 
 完整记录：[GitHub Actions Run #254](https://github.com/xiaobei206/NexusMonitor/actions/runs/45144691021)。
+
+## 发布后发现的历史数据校正项
+
+2020 年年度假期通知后来被国务院办公厅另行调整：2020-01-26 的后续通知将春节假期延长至 2020-02-02，并明确 2020-02-03 起正常上班。2.2.11 内置数据仍采用最初年度安排（2020-01-24 至 2020-01-30，2020-02-01 补班），尚未合并后续修订。下一行为版本需将 2020-01-31 至 2020-02-02 加入休假日期，并从补班列表移除 2020-02-01。官方原文：https://app.www.gov.cn/govdata/gov/202001/27/453442/article.html。
+
+2027 年日期列表已与两家 AI 搜索回显一致；源码表当前记录的政府网 URL 来自百度返回的 `zhengceku/...7085102.htm`，另检索到该通知的政府网正文入口 `zhengce/content/...7085101.htm`，规范来源 URL 后续宜统一。
 
 ## 真实年度验证边界
 
