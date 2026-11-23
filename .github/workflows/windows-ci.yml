@@ -12,7 +12,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: nexusmonitor-${{ github.workflow }}-${{ github.ref }}
+  group: nexusmonitor-ci-v2-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
