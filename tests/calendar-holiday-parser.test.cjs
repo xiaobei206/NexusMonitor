@@ -29,7 +29,7 @@ test('parser handles parenthesized weekday annotations before a range marker', (
   const notice = `一、元旦：1月1日（周四）至3日（周六）放假调休，共3天。1月4日（周日）上班。二、春节：2月15日（农历腊月二十八、周日）至23日（农历正月初七、周一）放假调休，共9天。2月14日（周六）、2月28日（周六）上班。三、清明节：4月4日（周六）至6日（周一）放假，共3天。四、劳动节：5月1日（周五）至5日（周二）放假调休，共5天。5月9日（周六）上班。五、端午节：6月19日（周五）至21日（周日）放假，共3天。六、中秋节：9月25日（周五）至27日（周日）放假，共3天。七、国庆节：10月1日（周四）至7日（周三）放假调休，共7天。9月20日（周日）、10月10日（周六）上班。国务院办公厅 2025年11月4日`;
   const parsed = parseHolidayNotice(notice, 2026, source, '2025-11-04');
   assert.ok(parsed.schedule, parsed.errors.join('; '));
-  assert.equal(parsed.schedule.restDays.length, 37);
+  assert.equal(parsed.schedule.restDays.length, 33);
   assert.ok(parsed.schedule.makeUpWorkDays.includes('2026-01-04'));
   assert.ok(parsed.schedule.restDays.includes('2026-02-23'));
 });
