@@ -23,6 +23,7 @@ import { musicFormatLabel, readMusicMetadata } from './music-metadata';
 import { MusicExclusiveOutput } from './music-exclusive-output';
 import { fetchOnlineLyrics, parseLrc } from './music-lyrics';
 import { parseM3u, serializeM3u } from './music-playlist';
+import { CalendarScheduleService } from './calendar-schedule-service';
 
 // Music controls may arrive from a separate HUD/USB BrowserWindow after an explicit
 // user click there. The shared, hidden main-renderer audio element must be allowed to
@@ -82,6 +83,7 @@ const MUSIC_AUDIO_FILTER_EXTENSIONS = [...MUSIC_AUDIO_EXTENSIONS].map(extension 
 const MUSIC_FOLDER_SCAN_LIMIT = 5000;
 let quitting = false;
 let appLogger: RotatingLogger | null = null;
+let calendarScheduleService: CalendarScheduleService | null = null;
 let lastServiceStatus: ServiceStatus = {
   phase: 'starting',
   reason: 'starting',
@@ -1795,6 +1797,14 @@ if (!hasSingleInstanceLock) {
   app.whenReady().then(async () => {
     loadSettings();
     loadMusicLibrary();
+    const bundledCalendarPath = isDev
+      ? join(app.getAppPath(), 'src', 'shared', 'calendar-holiday-schedules.json')
+      : join(app.getAppPath(), 'dist-electron', 'shared', 'calendar-holiday-schedules.json');
+    calendarScheduleService = new CalendarScheduleService(
+      join(app.getPath('userData'), 'calendar-schedules'),
+      bundledCalendarPath,
+      message => log(message)
+    );
     usbDisplayRestorePending = Boolean(String(currentSettings.usbDisplayDisplayId ?? '').trim());
     const notifyDisplayTopologyChanged = () => {
       const displays = listDesktopDisplays();
@@ -2060,6 +2070,22 @@ ipcMain.handle('widget:detail-pointer', (_event, inside: boolean) => {
   return true;
 });
 ipcMain.handle('widget:open-calendar', () => openWidgetCalendar());
+ipcMain.handle('calendar:get-schedule', (event, rawYear: number) => {
+  if (!widgetCalendarWindow || event.sender !== widgetCalendarWindow.webContents) {
+    throw new Error('Untrusted calendar schedule request sender.');
+  }
+  const year = Number(rawYear);
+  const initial = calendarScheduleService?.getSchedule(year)
+    ?? { year, status: 'unavailable', schedule: null, message: '日历服务尚未初始化' };
+  if (initial.status === 'pending' || initial.status === 'cache') {
+    void calendarScheduleService?.ensureSchedule(year).then(result => {
+      if (widgetCalendarWindow && !widgetCalendarWindow.isDestroyed()) {
+        widgetCalendarWindow.webContents.send('calendar:schedule-updated', result);
+      }
+    }).catch(error => log(`[calendar] Background schedule lookup failed: ${String(error)}`));
+  }
+  return initial;
+});
 ipcMain.handle('widget:close-calendar', () => closeWidgetCalendar());
 ipcMain.handle('widget:move-to', (_event, position: { x: number; y: number }) => moveWidgetTo(position));
 ipcMain.handle('widget:snap-edge', () => snapWidgetToEdge());
