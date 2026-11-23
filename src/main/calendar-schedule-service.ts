@@ -170,7 +170,7 @@ export class CalendarScheduleService {
     }
     const existing = this.inFlight.get(year);
     if (existing) return existing;
-    const task = this.fetchAndCache(year).finally(() => this.inFlight.delete(year));
+    const task = this.fetchAndCache(year).then(result => !result.schedule && current.schedule ? current : result).finally(() => this.inFlight.delete(year));
     this.inFlight.set(year, task);
     return task;
   }
@@ -204,7 +204,7 @@ export class CalendarScheduleService {
 
     const prompt = buildAiSearchPrompt(year);
     const searchTargets = [
-      { name: 'Google', url: `https://www.google.com/search?q=${encodeURIComponent(prompt)}&newwindow=1` },
+      { name: 'Google', url: `https://www.google.com/search?q=${encodeURIComponent(prompt)}&aep=22&newwindow=1` },
       { name: 'Baidu', url: `https://www.baidu.com/s?wd=${encodeURIComponent(prompt)}` }
     ];
     for (const target of searchTargets) {
