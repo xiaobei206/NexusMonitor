@@ -1,6 +1,6 @@
 {
   "name": "nexus-monitor",
-  "version": "2.2.10",
+  "version": "2.2.11",
   "private": true,
   "description": "A customizable Windows hardware HUD, Turing display and USB extended-display companion with media playback.",
   "author": "NexusMonitor",
@@ -10,7 +10,7 @@
   },
   "scripts": {
     "dev": "npm run build:main && concurrently -k \"vite --host 127.0.0.1\" \"wait-on http://127.0.0.1:5173 && electron .\"",
-    "build:main": "tsc -p tsconfig.electron.json",
+    "build:main": "tsc -p tsconfig.electron.json && node scripts/copy-calendar-schedules.cjs",
     "build:renderer": "tsc -p tsconfig.renderer.json && vite build",
     "build": "npm run build:main && npm run build:renderer",
     "test:main": "npm run build:main && npm run build:test-utils && node --test",
