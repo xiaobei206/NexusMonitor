@@ -69,6 +69,12 @@ const api = {
   notifyMainRendererReady: () => ipcRenderer.send('window:main-renderer-ready'),
   notifyWidgetDetailPointer: (inside: boolean) => ipcRenderer.invoke('widget:detail-pointer', inside),
   openWidgetCalendar: () => ipcRenderer.invoke('widget:open-calendar'),
+  getCalendarSchedule: (year: number) => ipcRenderer.invoke('calendar:get-schedule', year),
+  onCalendarScheduleUpdated: (callback: (result: any) => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, result: any) => callback(result);
+    ipcRenderer.on('calendar:schedule-updated', listener);
+    return () => ipcRenderer.removeListener('calendar:schedule-updated', listener);
+  },
   closeWidgetCalendar: () => ipcRenderer.invoke('widget:close-calendar'),
   moveWidgetTo: (position: { x: number; y: number }) => ipcRenderer.invoke('widget:move-to', position),
   snapWidgetToEdge: () => ipcRenderer.invoke('widget:snap-edge'),
