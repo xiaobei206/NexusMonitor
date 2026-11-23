@@ -40,7 +40,7 @@ test('calendar grid starts on Monday, supports adjacent-month dates and does not
   assert.equal(knownWeekday.status, 'workday');
   const knownWeekend = calendar.getCalendarDayInfo(new Date(2027, 0, 2, 12));
   assert.equal(knownWeekend.isBlueDate, true);
-  assert.equal(knownWeekend.badge, null);
+  assert.equal(knownWeekend.badge, '休');
   assert.equal(knownWeekend.status, 'weekend');
   assert.equal(calendar.getCalendarDayInfo(new Date(2027, 0, 31, 12)).badge, '班');
   assert.equal(calendar.getCalendarDayInfo(new Date(2027, 1, 5, 12)).badge, '休');
