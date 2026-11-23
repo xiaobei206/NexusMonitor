@@ -1,16 +1,21 @@
 # NexusMonitor — 新接手 GPT 请先看这里
 
-**当前正式发布：2.2.10；Windows CI Run #217 全部成功。USB 视频独立音频控制与双路并行播放已正式发布。唯一工作基线：GitHub main。下一行为版本从 2.2.11 开始。**
+**当前正式发布：2.2.10；GitHub main 已进入 2.2.11 动态国务院日历开发。2.2.11 CI/Release 状态需重新检查。唯一工作基线：GitHub main。**
 
 - 当前正式 Release：https://github.com/xiaobei206/NexusMonitor/releases/tag/v2.2.10
 - Windows CI Run #217：https://github.com/xiaobei206/NexusMonitor/actions/runs/44547086725
 - Windows 安装包：https://github.com/xiaobei206/NexusMonitor/releases/download/v2.2.10/NexusMonitor-2.2.10-Setup.exe
 - SHA-256：`6e368d3c0408be7817eb5e139a5c4181ddca4af8f4ea2654ab888423145a9521`（160,061,996 bytes (152.65 MiB)）
 - 上一正式 Release（基线）：https://github.com/xiaobei206/NexusMonitor/releases/tag/v2.2.9
-- 当前版本交接：NexusMonitor-2.2.10-HANDOFF-CN.md
+- 当前已发布版本交接：NexusMonitor-2.2.10-HANDOFF-CN.md
+- 当前开发版本交接：NexusMonitor-2.2.11-HANDOFF-CN.md
 - 当前版本构建报告：NexusMonitor-2.2.10-BUILD-REPORT.md
 - 唯一跨版本日志：NexusMonitor-DEVELOPMENT-LOG-CN.md
 - 架构与硬性约束：AGENTS.md
+
+## 2.2.11 开发中
+
+- 正在实现国务院年度节假日动态获取、正则解析、AI 搜索后备和本地缓存。详见 NexusMonitor-2.2.11-HANDOFF-CN.md；需以最新 Windows Actions/Release 结果确认验证状态。
 
 ## 2.2.10 已正式发布
 
