@@ -1,21 +1,24 @@
 # NexusMonitor — 新接手 GPT 请先看这里
 
-**当前正式发布：2.2.10；GitHub main 已进入 2.2.11 动态国务院日历开发。2.2.11 CI/Release 状态需重新检查。唯一工作基线：GitHub main。**
+**当前正式发布：2.2.11；GitHub main 已完成动态国务院节假日日历。Windows CI Run #254 全流程成功。唯一工作基线：GitHub main。下一行为版本从 2.2.12 开始。**
 
-- 当前正式 Release：https://github.com/xiaobei206/NexusMonitor/releases/tag/v2.2.10
-- Windows CI Run #217：https://github.com/xiaobei206/NexusMonitor/actions/runs/44547086725
-- Windows 安装包：https://github.com/xiaobei206/NexusMonitor/releases/download/v2.2.10/NexusMonitor-2.2.10-Setup.exe
-- SHA-256：`6e368d3c0408be7817eb5e139a5c4181ddca4af8f4ea2654ab888423145a9521`（160,061,996 bytes (152.65 MiB)）
-- 上一正式 Release（基线）：https://github.com/xiaobei206/NexusMonitor/releases/tag/v2.2.9
-- 当前已发布版本交接：NexusMonitor-2.2.10-HANDOFF-CN.md
-- 当前开发版本交接：NexusMonitor-2.2.11-HANDOFF-CN.md
-- 当前版本构建报告：NexusMonitor-2.2.10-BUILD-REPORT.md
+- 当前正式 Release：https://github.com/xiaobei206/NexusMonitor/releases/tag/v2.2.11
+- Windows CI Run #254（success）：https://github.com/xiaobei206/NexusMonitor/actions/runs/45144691021
+- Windows 安装包：https://github.com/xiaobei206/NexusMonitor/releases/download/v2.2.11/NexusMonitor-2.2.11-Setup.exe
+- SHA-256：`7c3f0238e185e8b5930d93e75f224bdae2c0f721311cdf82e064d397b4b9e994`（160,069,433 bytes，约 152.65 MiB）
+- SHA-256 sidecar：https://github.com/xiaobei206/NexusMonitor/releases/download/v2.2.11/NexusMonitor-2.2.11-Setup.exe.sha256
+- 上一正式 Release（基线）：https://github.com/xiaobei206/NexusMonitor/releases/tag/v2.2.10
+- 当前版本交接：NexusMonitor-2.2.11-HANDOFF-CN.md
+- 当前版本构建报告：NexusMonitor-2.2.11-BUILD-REPORT.md
 - 唯一跨版本日志：NexusMonitor-DEVELOPMENT-LOG-CN.md
 - 架构与硬性约束：AGENTS.md
 
-## 2.2.11 开发中
+## 2.2.11 已正式发布
 
-- 正在实现国务院年度节假日动态获取、正则解析、AI 搜索后备和本地缓存。详见 NexusMonitor-2.2.11-HANDOFF-CN.md；需以最新 Windows Actions/Release 结果确认验证状态。
+- 内置 2017—2027 年国务院放假/调休数据；未来年份按需后台查询，规则解析为主，百度/Google AI 搜索 JSON 为后备。
+- 成功数据按年度缓存到 `%APPDATA%\\NexusMonitor\\calendar-schedules`，并通过 IPC 即时刷新日历；查询失败不猜测、不覆盖旧缓存。
+- Windows CI Run #254 全流程成功：270 项 Node 回归、Renderer TS/Vite、WASAPI、PawnIO、.NET、Hardware/Storage、NSIS、SHA、Release 和 artifact 上传均通过。
+- 2028 年官方安排尚未公布，真实未来通知命中和用户目标机联网环境仍待届时验收。详见 NexusMonitor-2.2.11-HANDOFF-CN.md。
 
 ## 2.2.10 已正式发布
 

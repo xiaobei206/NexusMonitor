@@ -1,10 +1,15 @@
 # NexusMonitor 2.2.11 — 动态国务院节假日日历交接
 
-**当前正式 Release：** v2.2.10  
-**开发基线：** GitHub main  
-**开发版本：** 2.2.11  
-**状态：** 源码与回归测试已推送；Windows CI / Release 待核验。  
-**开发日期：** 2026-11-23
+**正式 Release：** [v2.2.11](https://github.com/xiaobei206/NexusMonitor/releases/tag/v2.2.11)  
+**开发基线：** v2.2.10  
+**工作基线：** GitHub main  
+**状态：** 已正式发布；Windows CI Run #254 全流程 success。  
+**发布日期：** 2026-11-23  
+**安装包：** [NexusMonitor-2.2.11-Setup.exe](https://github.com/xiaobei206/NexusMonitor/releases/download/v2.2.11/NexusMonitor-2.2.11-Setup.exe)  
+**大小：** 160,069,433 bytes（约 152.65 MiB）  
+**SHA-256：** `7c3f0238e185e8b5930d93e75f224bdae2c0f721311cdf82e064d397b4b9e994`  
+**SHA sidecar：** [NexusMonitor-2.2.11-Setup.exe.sha256](https://github.com/xiaobei206/NexusMonitor/releases/download/v2.2.11/NexusMonitor-2.2.11-Setup.exe.sha256)  
+**Windows CI：** [Run #254 — success](https://github.com/xiaobei206/NexusMonitor/actions/runs/45144691021)
 
 ## 本版本目标
 
@@ -38,7 +43,8 @@
 - 通过 2017—2027 官方通知样本与合成 2028 数据测试规则解析、跨年日期、括号注释、冲突拒绝、未知年份和缓存应用。
 - 2028 年尚未公布官方安排时，无法实测未来真实公文命中；需要等待其公布后再做最终真实年度验收。
 - Google/Baidu AI 回显受搜索页面、地区、反自动化和会话条件影响，属于尽力而为的后备，不是稳定 API。
-- 本文件生成时尚未核验 2.2.11 Windows CI 的最终结果；以 GitHub Actions 最新状态为准。
+- Windows CI Run #254 已全流程成功，包括版本门禁、Main / Node 270/270、Renderer TypeScript / Vite、WASAPI N-API、PawnIO 官方资源、.NET HardwareService、Hardware/Storage Tests、NSIS、SHA-256、GitHub Release 和 workflow artifact 上传。
+- CI 成功不等于目标 PC 网络验收：用户机器是否能访问国务院政策库、Google 或百度，仍需目标机实测。
 
 ## Windows 验证命令
 
@@ -52,4 +58,4 @@ dotnet build .\\HardwareService\\HardwareService.csproj -c Release
 npm.cmd run test:storage
 ```
 
-CI 成功后再核对 NSIS 安装包、SHA-256 和 v2.2.11 Release。CI 通过不等于目标 PC 的实时联网检索已验收。
+本版本已由 Windows CI 构建并发布 v2.2.11。CI 通过不等于目标 PC 的实时联网检索已验收。

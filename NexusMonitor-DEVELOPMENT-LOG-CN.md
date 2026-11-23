@@ -1,4 +1,4 @@
-## 2.2.11（动态国务院节假日数据；开发中，Windows CI 待验证）
+## 2.2.11（动态国务院节假日数据；已正式发布，Windows CI Run #254 success）
 
 ### 用户目标
 - 不再要求每年为国务院调休日期发布软件更新。历史年份随软件离线内置，未来年份在查看时自动查找、校验并缓存。
@@ -20,10 +20,12 @@
 - Windows CI Run #250：版本门禁通过；Main-process build 与 270 项 Node 回归全部通过。随后 Renderer TypeScript 检查发现 `calendar-data.d.mts` 缺少新导出 `applyCalendarScheduleResult` 的声明；已补齐声明。Run #251/#252 因连续 push 进入等待/排队，需用包含最新代码的后续 Windows CI 确认。
 - 日期范围测试还发现 `rangePattern` 的结束年份/月/日捕获组索引错位，已修正并由 270 项回归通过。2027 年 1 月 2 日等周末官方休假日期的状态期望也同步校正。
 - 2021 年内置来源元数据校正为中国政府网 2020-11-25 原文（`https://app.www.gov.cn/govdata/gov/202011/25/465322/article.html`），发布日期 `2020-11-25`。
-- 截至本记录更新时，尚未取得包含最新声明和数据源修正的完整 Windows CI 成功结果；不能宣称已打包或发布。
+- Windows CI Run #254（最终 HEAD `845a80b5ec20037e95cb359eedb89eac3b1003ef`）全流程 success：[workflow run](https://github.com/xiaobei206/NexusMonitor/actions/runs/45144691021)。版本门禁、Main / Node 270/270、Renderer TypeScript/Vite、WASAPI N-API、PawnIO 官方资源、.NET HardwareService、Hardware/Storage Tests、NSIS 安装包、SHA-256、GitHub Release 和 workflow artifact 上传全部成功。
+- 正式 Release：[v2.2.11](https://github.com/xiaobei206/NexusMonitor/releases/tag/v2.2.11)。安装包 `NexusMonitor-2.2.11-Setup.exe`，160,069,433 bytes（约 152.65 MiB）；SHA-256 `7c3f0238e185e8b5930d93e75f224bdae2c0f721311cdf82e064d397b4b9e994`。SHA sidecar 随 Release 一并上传。
+- 因旧并发组的 Windows runner 出现无步骤日志的卡住状态，本版将 workflow concurrency group 前缀轮换为 `nexusmonitor-ci-v2-...`，保留 `cancel-in-progress: true` 语义；Run #254 在新并发组下完成最终验证。
 
 ### 待确认边界
-- 2028 年尚未公布安排时，无法在 2026 年验证真实未来公文格式；通过历史通知回归和合成 2028 样本验证解析与缓存链路。真正的年度联网命中需等官方通知公布后再做实测。
+- 2028 年尚未公布安排时，无法在 2026-11-23 验证真实未来公文格式；通过历史通知回归和合成 2028 样本验证解析与缓存链路。真正的年度联网命中需等官方通知公布后再做实测。
 - Google/Baidu 页面可能不向无会话的普通 HTTP 请求暴露 AI 回显；该路径为 best-effort 后备，不影响官方来源解析和本地缓存。
 - Hosted Windows CI 通过不等于用户目标机的真实网络环境一定能访问政府网站或搜索引擎；目标机联网行为仍需实际验收。
 
@@ -75,7 +77,7 @@
 
 # NexusMonitor 统一开发日志（跨版本唯一主记录）
 
-**当前正式发布：2.2.10；main 正在开发 2.2.11。2.2.11 的 Windows CI 与 Release 状态以当前 Actions 结果为准。**  
+**当前正式发布：2.2.11；下一行为版本从 2.2.12 开始。唯一工作基线：GitHub main。**  
 **记录规则：** 每个正式版本都追加到本文件；历史测试结果不能冒充当前版本测试结果。保留失败尝试、取消的运行、已验证结果与仍需实机验收的事项。
 
 ## 2.2.8（2026-11-08，已正式发布）
