@@ -1,27 +1,51 @@
+import BUILTIN_SCHEDULES from '../shared/calendar-holiday-schedules.json' with { type: 'json' };
+
 const dateKey = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 // Government-published mainland China holiday and make-up work schedules.
 // Sources: State Council General Office notices for 2025 and 2026.
-const REST_DAYS = new Set([
-  // 2025
-  '2025-01-01',
-  '2025-01-28','2025-01-29','2025-01-30','2025-01-31','2025-02-01','2025-02-02','2025-02-03','2025-02-04',
-  '2025-04-04','2025-04-05','2025-04-06',
-  '2025-05-01','2025-05-02','2025-05-03','2025-05-04','2025-05-05',
-  '2025-05-31','2025-06-01','2025-06-02',
-  '2025-10-01','2025-10-02','2025-10-03','2025-10-04','2025-10-05','2025-10-06','2025-10-07','2025-10-08',
-  // 2026
-  '2026-01-01','2026-01-02','2026-01-03',
-  '2026-02-15','2026-02-16','2026-02-17','2026-02-18','2026-02-19','2026-02-20','2026-02-21','2026-02-22','2026-02-23',
-  '2026-04-04','2026-04-05','2026-04-06',
-  '2026-05-01','2026-05-02','2026-05-03','2026-05-04','2026-05-05',
-  '2026-06-19','2026-06-20','2026-06-21',
-  '2026-09-25','2026-09-26','2026-09-27',
-  '2026-10-01','2026-10-02','2026-10-03','2026-10-04','2026-10-05','2026-10-06','2026-10-07',
-]);
-const MAKE_UP_WORK_DAYS = new Set([
-  '2025-01-26','2025-02-08','2025-04-27','2025-09-28','2025-10-11',
-  '2026-01-04','2026-02-14','2026-02-28','2026-05-09','2026-09-20','2026-10-10',
-]);
+const scheduleRecords = new Map(Object.entries(BUILTIN_SCHEDULES).map(([year, record]) => [Number(year), record]));
+const scheduleStatuses = new Map([...scheduleRecords.keys()].map(year => [year, 'bundled']));
+const REST_DAYS = new Set();
+const MAKE_UP_WORK_DAYS = new Set();
+
+function expandRange(start, end) {
+  const values = [];
+  const cursor = new Date(`${start}T12:00:00`);
+  const last = new Date(`${end}T12:00:00`);
+  if (!Number.isFinite(cursor.getTime()) || !Number.isFinite(last.getTime()) || cursor > last) return values;
+  while (cursor <= last) {
+    values.push(dateKey(cursor));
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  return values;
+}
+
+function rebuildScheduleDateSets() {
+  REST_DAYS.clear();
+  MAKE_UP_WORK_DAYS.clear();
+  for (const record of scheduleRecords.values()) {
+    const days = Array.isArray(record.restDays)
+      ? record.restDays
+      : Array.isArray(record.restRanges)
+        ? record.restRanges.flatMap(([start, end]) => expandRange(start, end))
+        : [];
+    for (const day of days) REST_DAYS.add(day);
+    for (const day of Array.isArray(record.makeUpWorkDays) ? record.makeUpWorkDays : []) MAKE_UP_WORK_DAYS.add(day);
+  }
+}
+rebuildScheduleDateSets();
+
+export function applyCalendarScheduleResult(result) {
+  const year = Number(result?.year);
+  if (!Number.isInteger(year)) return false;
+  const schedule = result?.schedule;
+  if (schedule && Number(schedule.year) === year && Array.isArray(schedule.restDays) && Array.isArray(schedule.makeUpWorkDays)) {
+    scheduleRecords.set(year, schedule);
+  }
+  if (typeof result?.status === 'string') scheduleStatuses.set(year, result.status);
+  if (schedule) rebuildScheduleDateSets();
+  return true;
+}
 
 const SOLAR_TERMS = new Map([
   // 2025 solar terms (Beijing dates).
@@ -96,7 +120,7 @@ export function getCalendarDayInfo(date) {
   const festival = GREGORIAN_LABELS.get(monthDay) ?? getLunarFestival(lunar.month, lunar.day, nextLunar);
   const solarTerm = SOLAR_TERMS.get(key) ?? null;
   const subLabel = festival ?? solarTerm ?? (lunar.day === 1 ? lunar.month : lunar.dayLabel);
-  const hasOfficialSchedule = key.startsWith('2025-') || key.startsWith('2026-');
+  const hasOfficialSchedule = scheduleRecords.has(date.getFullYear());
   const isWeekendOrRest = !isMakeUpWorkday && (isWeekend || isRestDay);
   const status = isMakeUpWorkday ? 'work' : isRestDay ? 'rest' : hasOfficialSchedule ? (isWeekend ? 'weekend' : 'workday') : 'unknown';
   const statusLabel = isMakeUpWorkday ? '调休上班' : isRestDay ? '国务院安排放假' : hasOfficialSchedule ? (isWeekend ? '周末' : '工作日') : '调休安排待公布';
@@ -120,7 +144,10 @@ export function buildCalendarMonth(year, monthIndex) {
 }
 
 export function getCalendarScheduleCoverage(year) {
-  if (year === 2025 || year === 2026) return '已内置国务院公布的调休安排';
-  if (year >= 2027) return '2027年及以后：尚未内置国务院年度调休安排，不推测“休/班”';
-  return '该年份的国务院调休安排未内置；仅按周末显示蓝色日期，不推测“休/班”';
+  const status = scheduleStatuses.get(Number(year));
+  if (status === 'bundled') return '已内置国务院公布的调休安排';
+  if (status === 'cache') return '已获取并缓存官方调休安排';
+  if (status === 'pending') return '正在联网查询该年度官方安排…';
+  if (status === 'unavailable') return '暂未获取到可核实的官方安排；不推测“休/班”';
+  return '该年份的国务院调休安排尚未获取；仅按周末显示蓝色日期';
 }
