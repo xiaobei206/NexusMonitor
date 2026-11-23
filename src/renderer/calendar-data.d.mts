@@ -10,3 +10,5 @@ export function getLunarParts(date: Date): LunarParts;
 export function getCalendarDayInfo(date: Date): CalendarDayInfo;
 export function buildCalendarMonth(year: number, monthIndex: number): CalendarDayInfo[];
 export function getCalendarScheduleCoverage(year: number): string;
+
+export function applyCalendarScheduleResult(result: { year: number; status?: string; schedule?: Record<string, unknown> | null }): boolean;
