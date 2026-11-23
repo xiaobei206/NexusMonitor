@@ -115,7 +115,7 @@ export function parseHolidayNotice(
 
   const restDays = new Set<string>();
   const makeUpWorkDays = new Set<string>();
-  const rangePattern = /((?:(\d{4})年)?(\d{1,2})月(\d{1,2})日)\s*(?:至|到|—|–|-)\s*((?:(\d{4})年)?(?:(\d{1,2})月)?(\d{1,2})日)/g;
+  const rangePattern = /((?:(\d{4})年)?(\d{1,2})月(\d{1,2})日)(?:\s*[（(][^）)]*[）)])?\s*(?:至|到|—|–|-)\s*((?:(\d{4})年)?(?:(\d{1,2})月)?(\d{1,2})日)/g;
   const datePattern = /(?:(\d{4})年)?(\d{1,2})月(\d{1,2})日/g;
 
   for (let index = 0; index < headings.length; index++) {
