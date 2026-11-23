@@ -14,10 +14,13 @@
 - 新增 `scripts/copy-calendar-schedules.cjs`，确保内置 JSON 在 Electron 打包后位于 `dist-electron/shared`。
 - 同步应用版本、.NET HardwareService 版本、package/package-lock、About 和版本侧栏到 2.2.11。
 
-### 回归覆盖
+### 回归覆盖与 CI 迭代
 - 新增 `tests/calendar-holiday-parser.test.cjs`，测试 2017 补休、2019 跨年与周末连休、2026/2027 含星期/农历括号的日期范围、冲突拒绝和 AI JSON 来源校验。
 - 更新 `tests/widget-calendar.test.cjs`：验证 2017—2027 的内置覆盖、2027 实际休/班标记、2028 未公布时不推测，以及未来缓存到达后即时应用。
-- 当前代码已推送到 GitHub main；本记录写入时尚未取得最终 Windows CI 结果。不得把历史版本的通过记录当作 2.2.11 验证结果。
+- Windows CI Run #250：版本门禁通过；Main-process build 与 270 项 Node 回归全部通过。随后 Renderer TypeScript 检查发现 `calendar-data.d.mts` 缺少新导出 `applyCalendarScheduleResult` 的声明；已补齐声明。Run #251/#252 因连续 push 进入等待/排队，需用包含最新代码的后续 Windows CI 确认。
+- 日期范围测试还发现 `rangePattern` 的结束年份/月/日捕获组索引错位，已修正并由 270 项回归通过。2027 年 1 月 2 日等周末官方休假日期的状态期望也同步校正。
+- 2021 年内置来源元数据校正为中国政府网 2020-11-25 原文（`https://app.www.gov.cn/govdata/gov/202011/25/465322/article.html`），发布日期 `2020-11-25`。
+- 截至本记录更新时，尚未取得包含最新声明和数据源修正的完整 Windows CI 成功结果；不能宣称已打包或发布。
 
 ### 待确认边界
 - 2028 年尚未公布安排时，无法在 2026 年验证真实未来公文格式；通过历史通知回归和合成 2028 样本验证解析与缓存链路。真正的年度联网命中需等官方通知公布后再做实测。
