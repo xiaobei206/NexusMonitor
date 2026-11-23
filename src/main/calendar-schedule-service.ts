@@ -4,6 +4,7 @@ import {
   expandHolidayRange, extractScheduleJson, isOfficialScheduleSource,
   parseHolidayNotice, validateHolidaySchedule
 } from '../shared/calendar-holiday-parser';
+import type { HolidaySchedule } from '../shared/calendar-holiday-parser';
 
 interface BundledScheduleRecord {
   source: string;
@@ -224,9 +225,9 @@ export class CalendarScheduleService {
     return { year, status: 'unavailable', schedule: null, message: '未找到可核实的官方安排；日历不会猜测休假或补班日期' };
   }
 
-  private persist(value: Record<string, unknown>, provenance: 'official-parser' | 'ai-search'): ScheduleResult {
+  private persist(value: HolidaySchedule, provenance: 'official-parser' | 'ai-search'): ScheduleResult {
     const year = Number(value.year);
-    const schedule = {
+    const schedule: Record<string, unknown> = {
       ...value,
       fetchedAt: new Date().toISOString(),
       parserVersion: 1,
