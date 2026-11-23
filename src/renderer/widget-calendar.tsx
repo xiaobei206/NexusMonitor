@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { CalendarDays, ChevronLeft, ChevronRight, X } from 'lucide-react';
-import { buildCalendarMonth, calendarDateKey, getCalendarDayInfo, getCalendarScheduleCoverage } from './calendar-data.mjs';
+import { applyCalendarScheduleResult, buildCalendarMonth, calendarDateKey, getCalendarDayInfo, getCalendarScheduleCoverage } from './calendar-data.mjs';
 import type { CalendarDayInfo } from './calendar-data.mjs';
 import './widget-calendar.css';
 
@@ -33,9 +33,29 @@ export default function WidgetCalendarWindow() {
   const now = new Date();
   const [viewMonth, setViewMonth] = useState(() => new Date(now.getFullYear(), now.getMonth(), 1, 12));
   const [selectedDate, setSelectedDate] = useState(() => new Date(now.getFullYear(), now.getMonth(), now.getDate(), 12));
+  const [scheduleRevision, setScheduleRevision] = useState(0);
+  const viewedYear = viewMonth.getFullYear();
+
+  useEffect(() => {
+    let active = true;
+    const applyResult = (result: { year: number; status: string; schedule: Record<string, unknown> | null }) => {
+      if (!active || result.year !== viewedYear) return;
+      if (applyCalendarScheduleResult(result)) setScheduleRevision(value => value + 1);
+    };
+    const unsubscribe = window.nexus.onCalendarScheduleUpdated(applyResult);
+    void window.nexus.getCalendarSchedule(viewedYear)
+      .then(applyResult)
+      .catch(() => {
+        if (active) {
+          applyCalendarScheduleResult({ year: viewedYear, status: 'unavailable', schedule: null });
+          setScheduleRevision(value => value + 1);
+        }
+      });
+    return () => { active = false; unsubscribe(); };
+  }, [viewedYear]);
   const todayKey = calendarDateKey(now);
   const selectedKey = calendarDateKey(selectedDate);
-  const days = useMemo(() => buildCalendarMonth(viewMonth.getFullYear(), viewMonth.getMonth()), [viewMonth]);
+  const days = useMemo(() => buildCalendarMonth(viewMonth.getFullYear(), viewMonth.getMonth()), [viewMonth, scheduleRevision]);
   const selectedInfo = getCalendarDayInfo(selectedDate);
   const scheduleCoverage = getCalendarScheduleCoverage(viewMonth.getFullYear());
 
