@@ -133,9 +133,9 @@ export function parseHolidayNotice(
       const startYear = rangeMatch[2] ? Number(rangeMatch[2]) : year;
       const startMonth = Number(rangeMatch[3]);
       const startDay = Number(rangeMatch[4]);
-      const endYear = rangeMatch[5] ? Number(rangeMatch[5]) : startYear;
-      const endMonth = rangeMatch[6] ? Number(rangeMatch[6]) : startMonth;
-      const endDay = Number(rangeMatch[7]);
+      const endYear = rangeMatch[6] ? Number(rangeMatch[6]) : startYear;
+      const endMonth = rangeMatch[7] ? Number(rangeMatch[7]) : startMonth;
+      const endDay = Number(rangeMatch[8]);
       const start = dateKey(startYear, startMonth, startDay);
       const end = dateKey(endYear, endMonth, endDay);
       if (start && end && start <= end) addRange(restDays, start, end);
