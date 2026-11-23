@@ -1,0 +1,21 @@
+NexusMonitor 2.2.11 Windows 验收命令
+
+在 Windows clone 根目录执行：
+
+npm.cmd ci --include=dev --no-audit --no-fund
+node .\scripts\validate-release-version.cjs
+npm.cmd run test:main
+npm.cmd run build:renderer
+npm.cmd run build:wasapi
+dotnet build .\HardwareService\HardwareService.csproj -c Release
+npm.cmd run test:storage
+
+动态日历目标机验收（未来真实官方安排公布后）：
+1. 安装后离线查看 2017—2027 年，检查官方休/班标记。
+2. 翻到尚无本地数据的未来年份，确认先显示“正在查询”，UI 不阻塞。
+3. 官方通知可访问时，确认主进程解析成功、写入 %APPDATA%\NexusMonitor\calendar-schedules\YYYY.json，日历自动刷新。
+4. 重启并断网，确认已缓存年份仍可用。
+5. 让联网查询失败，确认旧缓存不被覆盖、未知日期不推测休/班。
+6. 检查 NexusMonitor.log 中 [calendar] 诊断信息，确认来源、失败原因和解析拒绝信息可追踪。
+
+注意：2028 年通知目前尚未公布，真实年度查询必须等待官方通知发布后验收。GitHub Actions 成功不等于用户目标机网络访问验收成功。
