@@ -116,7 +116,7 @@ export function resizeWidgetForOrientation(
   orientation: WidgetOrientation,
   dockEdge: DockEdge | null,
   margin = 18,
-  preferredVerticalHeight = 960,
+  preferredVerticalHeight = 1200,
 ): WidgetOrientationLayout {
   const safeMargin = Math.max(0, Math.floor(margin));
   const availableWidth = Math.max(1, Math.floor(area.width - safeMargin * 2));

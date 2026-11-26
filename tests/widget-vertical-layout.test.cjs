@@ -5,6 +5,7 @@ const path = require('node:path');
 const root = path.resolve(__dirname, '..');
 const app = fs.readFileSync(path.join(root, 'src/renderer/App.tsx'), 'utf8');
 const main = fs.readFileSync(path.join(root, 'src/main/index.ts'), 'utf8');
+const css = fs.readFileSync(path.join(root, 'src/renderer/styles.css'), 'utf8');
 
 test('vertical HUD uses a dedicated icon-led information layout with weekday and richer weather', () => {
   assert.match(app, /settings\.orientation === 'vertical' \? <>/);
@@ -18,12 +19,21 @@ test('vertical HUD uses a dedicated icon-led information layout with weekday and
   assert.match(app, /<span>\{dateText\}<\/span><small>\{weekdayText\}<\/small>/);
 });
 
-test('horizontal HUD remains a separate original rendering branch and vertical defaults to remembered 340x960', () => {
+test('horizontal HUD remains separate and vertical HUD uses a fixed non-resizable design size', () => {
   assert.match(app, /: <>\s*<div className="widget-brand">/);
   assert.match(app, /widget-stat cpu-stat/);
-  assert.ok(main.includes('width: 340, height: savedHeight'));
-  assert.ok(main.includes(': 960;'));
-  assert.match(main, /scheduleWidgetDimensionPersistence/);
+  assert.ok(main.includes('width: 340, height: 1200, minWidth: 340'));
+  assert.match(main, /resizable: !vertical/);
+  assert.match(main, /widgetWindow\.setResizable\(currentSettings\.orientation !== 'vertical'\)/);
+  assert.doesNotMatch(main, /const savedHeight =/);
+  assert.doesNotMatch(main, /const rememberedHeight =/);
+});
+
+test('vertical HUD sections keep natural height and hide the complete optional daily forecast on shorter screens', () => {
+  assert.match(css, /\.widget-shell\.vertical \.widget-bar > \.widget-vertical-row,[\s\S]*?flex: 0 0 auto;/);
+  assert.match(css, /@media\(max-height:1180px\)\s*\{\s*\.widget-shell\.vertical \.widget-vertical-daily-block\{display:none\}/);
+  assert.match(css, /\.widget-shell\.vertical \.widget-bar > \.nm-widget-player/);
+  assert.match(app, /widget-vertical-forecast-block widget-vertical-daily-block/);
 });
 
 test('vertical HUD restores disk capacity and separate download/upload bars', () => {

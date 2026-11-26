@@ -49,7 +49,7 @@ test('orientation resize restores canonical vertical dimensions after horizontal
 });
 
 
-test('vertical HUD opens at a balanced 960px height that leaves desktop space visible', () => {
+test('vertical HUD prefers its full 1200px design height where the display permits it', () => {
   const monitor = { x: 0, y: 0, width: 2560, height: 1440 };
   const vertical = resizeWidgetForOrientation(
     { x: 2200, y: 18, width: 340, height: 900 },
@@ -57,7 +57,7 @@ test('vertical HUD opens at a balanced 960px height that leaves desktop space vi
     'vertical',
     'right',
   );
-  assert.deepEqual(vertical.bounds, { x: 2202, y: 0, width: 340, height: 960 });
+  assert.deepEqual(vertical.bounds, { x: 2202, y: 0, width: 340, height: 1200 });
   assert.equal(vertical.minHeight, 700);
 });
 

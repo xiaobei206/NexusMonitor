@@ -1,17 +1,29 @@
 # NexusMonitor — 新接手 GPT 请先看这里
 
-**当前正式发布：2.2.11；GitHub main 已完成动态国务院节假日日历。Windows CI Run #254 全流程成功。唯一工作基线：GitHub main。下一行为版本从 2.2.12 开始。**
+**当前行为版本：2.2.12；唯一工作基线：GitHub main。** 本版本修复垂直悬浮窗在硬件/天气异步加载后卡片被挤压的问题，并将竖向 HUD 改为固定设计尺寸。Windows CI / Release 状态以当前构建报告和 GitHub Actions 实际结果为准。
 
-- 当前正式 Release：https://github.com/xiaobei206/NexusMonitor/releases/tag/v2.2.11
-- Windows CI Run #254（success）：https://github.com/xiaobei206/NexusMonitor/actions/runs/45144691021
-- Windows 安装包：https://github.com/xiaobei206/NexusMonitor/releases/download/v2.2.11/NexusMonitor-2.2.11-Setup.exe
-- SHA-256：`7c3f0238e185e8b5930d93e75f224bdae2c0f721311cdf82e064d397b4b9e994`（160,069,433 bytes，约 152.65 MiB）
-- SHA-256 sidecar：https://github.com/xiaobei206/NexusMonitor/releases/download/v2.2.11/NexusMonitor-2.2.11-Setup.exe.sha256
-- 上一正式 Release（基线）：https://github.com/xiaobei206/NexusMonitor/releases/tag/v2.2.10
-- 当前版本交接：NexusMonitor-2.2.11-HANDOFF-CN.md
-- 当前版本构建报告：NexusMonitor-2.2.11-BUILD-REPORT.md
+- 当前交接：NexusMonitor-2.2.12-HANDOFF-CN.md
+- 当前构建报告：NexusMonitor-2.2.12-BUILD-REPORT.md
+- Windows 验收命令：NexusMonitor-2.2.12-Windows-验收命令.txt
+- 统一构建入口：NexusMonitor-2.2.12-BUILD-RELEASE.cjs
 - 唯一跨版本日志：NexusMonitor-DEVELOPMENT-LOG-CN.md
 - 架构与硬性约束：AGENTS.md
+- 版本一致性检查：node scripts/validate-release-version.cjs
+
+## 2.2.12 当前实现目标
+
+- 垂直 HUD 设计尺寸 340×1200 逻辑像素；屏幕工作区不足时按工作区约束实际窗口尺寸。
+- 垂直方向不可手动缩放；横向 HUD 仍可缩放，拖动、靠边停靠、自动隐藏和独立详情窗保持可用。
+- 所有纵向 HUD 卡片按自身内容自然占高，防止异步数据加载与换行把卡片压扁。
+- 可用高度低于 1180px 时整块隐藏可选的未来三天预报；不超过 920px 时额外压缩间距。
+- Windows CI 和安装包信息不在源码提交前预判；以版本构建报告的实测记录为准。
+
+## 项目通用约束
+
+- 个人仓库直接在 main 开发，不创建功能分支或 PR，除非用户明确要求。
+- 所有行为版本递增；统一同步 VERSION、package / lockfile、HardwareService、Renderer 版本字段和版本化构建入口。
+- 只记录实际跑过的测试；CI 不代表实机硬件验收。
+- Windows PowerShell 中使用 npm.cmd / npx.cmd。
 
 ## 2.2.11 已正式发布
 
@@ -45,7 +57,7 @@
 ## 能力与边界基线
 
 - 2.2.6 已加入 QWeather V1、华风爱科、彩云天气适配和 AQI 分类规范，保留 Open-Meteo、WeatherAPI、OpenWeather。
-- 竖向 HUD 默认高度为 960 逻辑像素，记住每显示器的手动高度（700–1200px）。
+- 当前垂直 HUD 采用 340×1200 逻辑像素固定设计尺寸，并忽略旧版保存的手动高度；受工作区限制时按屏幕可用区域适配。
 - 音乐服务是唯一 main Renderer 音乐引擎；USB 视频使用独立 HTML video 音频链路。视频模式不显示音乐迷你播放器，但允许两路音源同时播放。
 - P4 Mono UAC Direct v62 的 WASAPI Exclusive 无声问题是独立的历史目标机问题，本轮未改 native backend。
 - 用户项目习惯：直接在 main 开发；所有正式行为版本号递增；版本元数据同步；保留唯一累计开发日志；构建报告、交接文件都含产品名及版本号。Windows PowerShell 使用 npm.cmd / npx.cmd。

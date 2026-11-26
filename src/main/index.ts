@@ -956,23 +956,18 @@ function saveSettings(next: Record<string, unknown>) {
     if (widgetEdgeHidden) revealWidgetFromEdge();
     const currentBounds = widgetWindow.getBounds();
     const display = screen.getDisplayMatching(currentBounds);
-    const positions = currentSettings.widgetDisplayPositions && typeof currentSettings.widgetDisplayPositions === 'object'
-      ? currentSettings.widgetDisplayPositions as Record<string, unknown> : {};
-    const saved = positions[String(display.id)];
-    const savedRecord = saved && typeof saved === 'object' && !Array.isArray(saved) ? saved as Record<string, unknown> : {};
-    const rememberedHeight = typeof savedRecord.height === 'number' && Number.isFinite(savedRecord.height)
-      ? Math.max(700, Math.min(1200, Math.round(savedRecord.height))) : 960;
     const layout = resizeWidgetForOrientation(
       currentBounds,
       display.workArea,
       currentSettings.orientation === 'vertical' ? 'vertical' : 'horizontal',
       widgetDockEdge,
       18,
-      rememberedHeight,
+      1200,
     );
     widgetRestoreBounds = null;
     widgetRestoreMinSize = null;
     widgetEdgeHidden = false;
+    widgetWindow.setResizable(currentSettings.orientation !== 'vertical');
     widgetWindow.setMinimumSize(layout.minWidth, layout.minHeight);
     widgetWindow.setBounds(layout.bounds, false);
     if (currentSettings.orientation !== 'vertical' && widgetCalendarWindow && !widgetCalendarWindow.isDestroyed()) {
@@ -1732,11 +1727,10 @@ function toggleWidget(force?: boolean) {
   const savedPositionRecord = rawSavedPosition && typeof rawSavedPosition === 'object' && !Array.isArray(rawSavedPosition)
     ? rawSavedPosition as Record<string, unknown>
     : null;
-  const savedHeight = savedPositionRecord && typeof savedPositionRecord.height === 'number' && Number.isFinite(savedPositionRecord.height)
-    ? Math.max(700, Math.min(1200, Math.round(savedPositionRecord.height)))
-    : 960;
+  // Use a fixed design height for the complete vertical HUD. The actual window
+  // is clamped to the selected display's work area, but old saved heights are ignored.
   const layout = fitWindowToWorkArea(area, vertical
-    ? { width: 340, height: savedHeight, minWidth: 340, minHeight: 700, margin: 18, horizontalAnchor: 'right', verticalAnchor: 'top' }
+    ? { width: 340, height: 1200, minWidth: 340, minHeight: 700, margin: 18, horizontalAnchor: 'right', verticalAnchor: 'top' }
     : { width: 980, height: 112, minWidth: 760, minHeight: 96, margin: 18, horizontalAnchor: 'right', verticalAnchor: 'top' });
   const savedPosition = savedPositionRecord
     && typeof savedPositionRecord.x === 'number' && Number.isFinite(savedPositionRecord.x)
@@ -1758,7 +1752,7 @@ function toggleWidget(force?: boolean) {
   }
   widgetWindow = new BrowserWindow({
     ...layout,
-    frame: false, transparent: true, backgroundColor: '#00000000', resizable: true,
+    frame: false, transparent: true, backgroundColor: '#00000000', resizable: !vertical,
     alwaysOnTop: widgetAlwaysOnTopEnabled(), skipTaskbar: true, hasShadow: false,
     webPreferences: { preload: join(__dirname, '../preload/index.js'), contextIsolation: true, nodeIntegration: false, sandbox: true, additionalArguments: ['--nexus-widget'] },
   });

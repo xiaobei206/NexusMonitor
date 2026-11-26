@@ -1,0 +1,22 @@
+NexusMonitor 2.2.12 Windows 验收命令
+
+在 Windows clone 根目录执行：
+
+npm.cmd ci --include=dev --no-audit --no-fund
+node .\scripts\validate-release-version.cjs
+npm.cmd run test:main
+npm.cmd run build:renderer
+npm.cmd run build:wasapi
+dotnet build .\HardwareService\HardwareService.csproj -c Release
+npm.cmd run test:storage
+
+垂直 HUD 实机验收：
+1. 完全退出 NexusMonitor 后重新启动，确认垂直 HUD 采用固定设计尺寸；屏幕工作区不足时不越过任务栏或显示器边界。
+2. 等待 CPU/GPU、内存、硬盘、网络、功耗、天气、AQI、小时预报、音乐播放器完全加载；逐个检查文字不越过卡片边框。
+3. 在高于设计高度的工作区检查未来三天预报正常显示；在 1080p / 较矮工作区检查整块三天预报（标题与内容）一起隐藏。
+4. 在较短工作区滚动 HUD 栏，确认内容可以滚动且卡片本身不再被压扁。
+5. 尝试拉伸竖向 HUD，确认不能手动缩放；拖动、四边停靠、靠边自动隐藏、置顶、全屏让位仍正常。
+6. 在设置里切换横向与竖向：横向仍可缩放；回到竖向后恢复固定尺寸。
+7. 检查日历入口、独立详情窗与音乐播放不受影响。
+
+Windows CI 和本地自动化测试不等同于以上目标机实测；只记录实际完成的项目。

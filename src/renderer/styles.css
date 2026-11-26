@@ -414,6 +414,16 @@ body{font-size:var(--text-body);line-height:1.5}
 .weather-api-key-panel{display:flex;flex-direction:column;gap:8px;margin-top:10px;padding:11px;border:1px solid var(--line);border-radius:9px;background:var(--surface2)}
 .weather-key-status{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:12px}.weather-key-status>span{font-weight:700}.weather-key-status>small{color:var(--muted);font-size:11px}.weather-api-key-panel .text-input{width:100%}.weather-api-key-panel .setting-actions{display:flex;gap:8px;align-items:center}.weather-api-key-panel .setting-actions button:disabled{opacity:.45;cursor:not-allowed}
 
+/* 2.2.12: prevent live telemetry/weather content from compressing its own card. */
+.widget-shell.vertical .widget-bar > .widget-vertical-brand,
+.widget-shell.vertical .widget-bar > .widget-vertical-row,
+.widget-shell.vertical .widget-bar > .nm-widget-player,
+.widget-shell.vertical .widget-bar > .widget-vertical-weather,
+.widget-shell.vertical .widget-bar > .widget-vertical-clock {
+  flex: 0 0 auto;
+  min-width: 0;
+}
+
 /* Vertical HUD only: restore capacity/network bars and improve information density/readability. */
 .widget-shell.vertical .widget-bar{gap:6px;padding:12px 11px 10px;overflow-y:auto;overflow-x:hidden}
 .widget-shell.vertical .widget-vertical-brand{min-height:35px;padding-bottom:7px;font-size:14px}
@@ -473,7 +483,7 @@ body{font-size:var(--text-body);line-height:1.5}
 .widget-shell.vertical .widget-vertical-detail-days>div>span{grid-row:span 2;font-size:13px;color:var(--muted)}
 .widget-shell.vertical .widget-vertical-detail-days>div>b{font-size:14px}
 .widget-shell.vertical .widget-vertical-detail-days>div>small{font-size:11px;color:var(--muted)}
-@media(max-height:700px){.widget-shell.vertical .widget-vertical-daily{display:none}.widget-shell.vertical .widget-vertical-hourly>span>i{font-size:16px}}
+@media(max-height:700px){.widget-shell.vertical .widget-vertical-daily-block{display:none}.widget-shell.vertical .widget-vertical-hourly>span>i{font-size:16px}}
 
 /* Vertical HUD refinement: larger default rail, today's range, particulate metrics and calendar launcher. */
 .widget-shell.vertical .widget-vertical-weather-range{display:flex;align-items:center;gap:16px;font:700 12px var(--mono);color:var(--text)}
@@ -768,13 +778,18 @@ body{font-size:var(--text-body);line-height:1.5}
 .widget-shell.vertical .widget-vertical-clock>button>span{font-size:14px}
 .widget-shell.vertical .widget-vertical-clock>button>small{font-size:12px}
 
-/* On short work areas, prioritize live metrics and current weather over the
-   optional multi-day strip. Taller displays get the entire HUD without scrolling. */
+/* Below the 1200px design height, hide the complete optional three-day block.
+   Keep every visible metric/weather card at its natural content height. */
+@media(max-height:1180px){
+  .widget-shell.vertical .widget-vertical-daily-block{display:none}
+}
+
+/* On very short work areas, tighten spacing while keeping cards uncompressed. */
 @media(max-height:920px){
   .widget-shell.vertical .widget-bar{gap:5px;padding:8px 9px;overflow-y:auto}
   .widget-shell.vertical .widget-vertical-row{padding:5px 7px}
   .widget-shell.vertical .widget-vertical-weather{gap:3px;padding:6px 8px}
-  .widget-shell.vertical .widget-vertical-daily{display:none}
+  .widget-shell.vertical .widget-vertical-daily-block{display:none}
   .widget-shell.vertical .widget-vertical-weather-meta{font-size:12px}
   .widget-shell.vertical .widget-vertical-heading>b{font-size:14px}
   .widget-shell.vertical .widget-vertical-heading>strong{font-size:18px}

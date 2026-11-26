@@ -1,4 +1,4 @@
-# NexusMonitor 2.2.7 — Electron Edition (released; Windows CI Run #204 passed)
+# NexusMonitor 2.2.12 — Electron Edition (fixed vertical HUD; Windows CI pending)
 
 > **新对话 / 新开发者接手：先读 [START-HERE-NEXT-GPT.md](START-HERE-NEXT-GPT.md) 和根目录 [AGENTS.md](AGENTS.md)。** 入口文档列出阅读顺序、源码目录地图、验证命令与硬件验收边界。
 
@@ -18,7 +18,7 @@ The Electron 45 stable channel was current at the project date, and its release 
 
 - Frameless React dashboard with sidebar, system overview and live telemetry cards
 - Separate transparent HUD with independent topmost control, native right-click menu, position pinning, four-edge snapping, optional 10px edge auto-hide, per-display position memory and best-effort fullscreen yielding on the HUD display
-- Readable global desktop typography; horizontal HUD defaults to 980×112 and vertical HUD opens at 340×960 logical pixels. A manually resized vertical height is remembered per display (700–1200px) and fitted to the work area.
+- Readable global desktop typography; horizontal HUD defaults to 980×112 and the vertical HUD uses a non-resizable 340×1200 logical-pixel design size where the display work area permits. Shorter work areas hide the optional three-day forecast and keep card content at natural height.
 - Dynamic CPU/GPU/RAM meters and 60-second sparklines
 - Physical-disk overview capacity bars aggregate mounted volumes only when Windows reports an explicit disk/volume mapping; physical capacity and volume capacity are labelled separately.
 - Floating HUD C: storage usage bar alongside existing physical-disk I/O/activity, plus parallel download/upload scales (600 Mbps down / 40 Mbps up) with uncapped numeric readings.
@@ -75,14 +75,14 @@ NexusMonitor source in this package is provided for the user's development/testi
 
 ## Current source handoff
 
-The current source line is **main / 2.2.10**; the previous completed release is [NexusMonitor 2.2.9](https://github.com/xiaobei206/NexusMonitor/releases/tag/v2.2.9). This personal repository is developed directly on main; no feature branches or PRs unless explicitly requested.
+The current source line is **main / 2.2.12**; the previous completed release is [NexusMonitor 2.2.11](https://github.com/xiaobei206/NexusMonitor/releases/tag/v2.2.11). This personal repository is developed directly on main; no feature branches or PRs unless explicitly requested.
 
-- Current handoff: [NexusMonitor-2.2.7-HANDOFF-CN.md](NexusMonitor-2.2.7-HANDOFF-CN.md)
-- Current build report: [NexusMonitor-2.2.7-BUILD-REPORT.md](NexusMonitor-2.2.7-BUILD-REPORT.md)
+- Current handoff: [NexusMonitor-2.2.12-HANDOFF-CN.md](NexusMonitor-2.2.12-HANDOFF-CN.md)
+- Current build report: [NexusMonitor-2.2.12-BUILD-REPORT.md](NexusMonitor-2.2.12-BUILD-REPORT.md)
 - Canonical development log: [NexusMonitor-DEVELOPMENT-LOG-CN.md](NexusMonitor-DEVELOPMENT-LOG-CN.md)
 - 2.2.6 adds three selectable provider adapters: QWeather V1 with locally signed Ed25519 JWT, WeatherCN standard API, and Caiyun V2.6 HMAC-SHA256 authentication. Existing Open-Meteo, WeatherAPI and OpenWeather choices remain.
 - QWeather private keys, WeatherCN / WeatherAPI / OpenWeather API keys and Caiyun App Key / Secret are encrypted with Electron safeStorage. Only public QWeather metadata is shared with renderer windows.
-- The default vertical HUD height is 960 logical pixels. Manual vertical height is remembered per display and restored within the supported 700–1200px range.
+- The vertical HUD is designed for 340×1200 logical pixels and cannot be manually resized. Actual bounds are clamped to the selected display work area; old remembered heights are ignored.
 - 2.2.7 fixes a music repeat-playback race: transient paused state during an ended→play restart no longer cancels the pending `play()` request or surfaces a normal `AbortError` as a playback failure. All play calls now share a cancellable state-aware path.
 - 2.2.7 does not change the native WASAPI backend. The prior target-PC observation remains: P4 Mono UAC Direct v62 was silent with WASAPI Exclusive enabled and ordinary playback returned after Exclusive was disabled; this new release does not claim to fix that separate issue.
 
