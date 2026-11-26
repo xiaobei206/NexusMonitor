@@ -6,6 +6,7 @@ const root = path.resolve(__dirname, '..');
 const app = fs.readFileSync(path.join(root, 'src/renderer/App.tsx'), 'utf8');
 const main = fs.readFileSync(path.join(root, 'src/main/index.ts'), 'utf8');
 const css = fs.readFileSync(path.join(root, 'src/renderer/styles.css'), 'utf8');
+const docking = fs.readFileSync(path.join(root, 'src/main/widget-docking.ts'), 'utf8');
 
 test('vertical HUD uses a dedicated icon-led information layout with weekday and richer weather', () => {
   assert.match(app, /settings\.orientation === 'vertical' \? <>/);
@@ -24,7 +25,7 @@ test('vertical HUD restores the saved per-display size and uses a smaller first-
   assert.match(app, /widget-stat cpu-stat/);
   assert.match(main, /resolveSavedVerticalWidgetSize\(sizeMap\[String\(display\.id\)\], savedPositionRecord\)/);
   assert.match(main, /height: verticalSize\.height, minWidth: 280, minHeight: 420/);
-  assert.match(main, /width: 340, height: 900/);
+  assert.match(docking, /return read\(saved\) \?\? read\(legacy\) \?\? \{ width: 340, height: 900 \}/);
   assert.match(main, /resizable: !vertical \|\| currentSettings\.widgetResizeEnabled !== false/);
   assert.match(main, /widgetVerticalDisplaySizes/);
 });
