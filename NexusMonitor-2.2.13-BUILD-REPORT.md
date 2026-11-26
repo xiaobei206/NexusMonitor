@@ -2,31 +2,40 @@
 
 **版本：** 2.2.13  
 **基线：** 2.2.12  
-**目标：** 垂直 HUD 自动记忆尺寸与可持久化的右键缩放锁定  
-**状态：** 等待本版本 Windows CI 实际运行并回填最终发布数据；此占位报告不代表构建或发布已成功。
+**状态：** 已正式发布，Windows CI 成功  
+**Workflow Run：** [Run #45739133551](https://github.com/xiaobei206/NexusMonitor/actions/runs/45739133551)  
+**GitHub Release：** [NexusMonitor 2.2.13](https://github.com/xiaobei206/NexusMonitor/releases/tag/v2.2.13)
 
 ## 变更摘要
 
 - 垂直 HUD 启动时恢复每显示器保存的宽度和高度，并校验迁移旧版本有效的纵向尺寸。
-- 首次启动或无有效尺寸时默认 340×900 逻辑像素，最终窗口受显示器工作区约束。
-- 右键「允许调整窗口大小」默认勾选；用户取消勾选后禁用原生拉伸，尺寸与锁定状态持久保存。
+- 首次启动或无有效尺寸时默认 340×900 逻辑像素；实际窗口受显示器工作区约束。
+- 右键「允许调整窗口大小」默认勾选；取消勾选后禁用原生拉伸，尺寸与锁定状态持久保存。
 - 纵向尺寸独立保存在 `widgetVerticalDisplaySizes`，不与横向 HUD 默认尺寸互相覆盖。
-- 垂直最小尺寸为 280×420；内容列随窗口宽度响应，既有卡片自然高度、短屏预报折叠和内部滚动保持有效。
+- 垂直最小尺寸为 280×420；内容列随窗口宽度响应，保留卡片自然高度、短屏预报折叠和内部滚动。
 
-## Windows CI 结果
+## Windows CI 实际结果
 
-- Workflow run / 完成状态：待本提交实际运行后回填。
-- Main / Node 测试数：待回填实际通过数与失败数。
-- Renderer TypeScript / Vite：待回填。
-- Native WASAPI、PawnIO MCHBAR、.NET HardwareService、Hardware/Storage tests：待回填。
-- NSIS 安装包、SHA-256、GitHub Release、workflow artifact：待回填。
+- 版本一致性门禁：**14/14 checks passed**。
+- Main / Node：**277/277 tests passed，0 failed**。
+- Renderer TypeScript 与 Vite 生产构建：成功。
+- Native WASAPI 输出模块：成功。
+- PawnIO MCHBAR 资源验证：成功。
+- .NET HardwareService Release 构建：成功。
+- Hardware / Storage tests：成功。
+- Windows NSIS 安装包：成功。
+- SHA-256 生成：成功。
+- GitHub Release 发布、Release 描述同步、workflow artifact 上传：成功。
 
-## 正式交付信息
+## 安装包与校验值
 
-- GitHub Release：待 CI 实际创建后回填。
-- 安装包：`NexusMonitor-2.2.13-Setup.exe`；文件大小与 SHA-256 待构建成功后回填。
-- 安装包未代码签名（项目未配置代码签名证书）。
+- 文件：`NexusMonitor-2.2.13-Setup.exe`
+- 大小：**160,069,900 bytes**
+- SHA-256：`7649d3046d7849ce3b9803a55a57ea792c7525dacb0e04b29204f1a0283a2dfd`
+- [下载安装包](https://github.com/xiaobei206/NexusMonitor/releases/download/v2.2.13/NexusMonitor-2.2.13-Setup.exe)
+- [SHA-256 sidecar](https://github.com/xiaobei206/NexusMonitor/releases/download/v2.2.13/NexusMonitor-2.2.13-Setup.exe.sha256)
+- 未代码签名：项目没有配置代码签名证书。
 
-## 实机验收边界
+## 尚待目标 PC 实测
 
-Hosted Windows CI 不等同于目标 Windows PC 的 GUI 验收。仍需确认原生边缘/角落拉伸、尺寸跨重启恢复、右键锁定跨重启恢复、横竖切换、多显示器/DPI 工作区、较短窗口下内容滚动、拖动/吸附/自动隐藏及完整天气加载后的布局。
+Hosted Windows CI 成功不等同于目标电脑 GUI/DPI 验收。仍需确认原生边缘/角落拉伸、尺寸跨重启恢复、右键锁定跨重启恢复、横竖切换、多显示器/DPI 工作区、较短窗口下内容滚动、拖动/吸附/自动隐藏及天气完整加载后的实际布局。

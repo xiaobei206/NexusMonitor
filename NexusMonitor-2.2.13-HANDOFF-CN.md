@@ -3,18 +3,19 @@
 **版本：** 2.2.13  
 **基线：** 2.2.12  
 **唯一工作基线：** GitHub main  
-**目标：** 解决垂直悬浮窗固定 340×1200 过大问题，恢复用户控制的原生拉伸、自动记忆与右键锁定。  
-**CI / Release：** 首轮 Windows CI 完成后回填到版本化构建报告及 Release 文案。
+**状态：** 已正式发布；Windows CI 成功  
+**CI：** [Run #45739133551](https://github.com/xiaobei206/NexusMonitor/actions/runs/45739133551)  
+**Release：** [NexusMonitor 2.2.13](https://github.com/xiaobei206/NexusMonitor/releases/tag/v2.2.13)
 
 ## 文件索引
 
 - `src/main/index.ts`：恢复每显示器垂直尺寸；持久保存 `widgetVerticalDisplaySizes`；新增右键勾选项「允许调整窗口大小」；保留锁定状态并刷新最后一笔尺寸写入。
 - `src/main/widget-docking.ts`：增加尺寸配置校验、旧记录迁移和 340×900 首次启动默认值；垂直最小尺寸调整到 280×420。
 - `src/renderer/styles.css`：纵向内容列宽度跟随原生窗口宽度。
-- `tests/widget-vertical-layout.test.cjs`、`tests/widget-docking.test.cjs`：测试尺寸恢复、旧配置迁移、工作区限制及右键缩放锁定。
+- `tests/widget-vertical-layout.test.cjs`、`tests/widget-docking.test.cjs`、`tests/ui-readability.test.cjs`、`tests/weather-provider-contract.test.cjs`：测试新尺寸记忆与缩放行为。
 - `NexusMonitor-2.2.13-BUILD-RELEASE.cjs`：统一版本校验、测试与本地 Windows 安装包构建入口。
 - `NexusMonitor-2.2.13-Windows-验收命令.txt`：目标机行为验收步骤。
-- `NexusMonitor-2.2.13-BUILD-REPORT.md`：CI、安装包、SHA-256 与目标机验收状态。
+- `NexusMonitor-2.2.13-BUILD-REPORT.md`：包含真实 CI、安装包与 SHA-256 信息。
 - `NexusMonitor-DEVELOPMENT-LOG-CN.md`：跨版本累计开发日志。
 
 ## 当前行为
@@ -25,9 +26,12 @@
 4. 垂直尺寸另存于 `widgetVerticalDisplaySizes`，避免横向 HUD 的标准尺寸覆盖纵向尺寸。切换方向或关闭前会刷新待保存的尺寸。
 5. 垂直最小尺寸为 280×420；内容列响应窗口宽度。既有短屏预报折叠、HUD 内部滚动、拖动、靠边停靠、自动隐藏、独立详情窗和横向 HUD 行为继续保留。
 
-## Windows 自动化验证
+## CI 和交付信息
 
-执行 `NexusMonitor-2.2.13-Windows-验收命令.txt`，以实际 GitHub Actions 和构建报告为准。Hosted CI 不代表目标 PC 的 GUI/DPI 实机验收。
+- 版本门禁：14/14；Main / Node：277/277；Renderer、WASAPI、PawnIO、.NET、Hardware/Storage、NSIS、SHA-256、Release 发布、描述同步和 artifact 上传全部成功。
+- 安装包：`NexusMonitor-2.2.13-Setup.exe`，160,069,900 bytes。
+- SHA-256：`7649d3046d7849ce3b9803a55a57ea792c7525dacb0e04b29204f1a0283a2dfd`。
+- Hosted CI 不代表目标 PC GUI/DPI 实机验收，目标机清单见下文。
 
 ## 目标机验收清单
 

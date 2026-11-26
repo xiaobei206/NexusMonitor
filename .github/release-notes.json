@@ -161,7 +161,7 @@
       "Uses 340×900 logical pixels as the first-run default instead of the previous 340×1200 design size; clamps restored bounds to the target display work area and supports resizing down to 280×420.",
       "Keeps horizontal HUD sizing separate and stores portrait dimensions per display so orientation changes do not overwrite the user's vertical size."
     ],
-    "validation": "The Windows release workflow for v2.2.13 runs the version gate, main-process regression suite, Renderer TypeScript/Vite build, native WASAPI build, PawnIO resource verification, .NET HardwareService build, storage tests, NSIS packaging and SHA-256 generation. The exact completed run, test count and installer digest will be recorded in the versioned build report after this workflow finishes.",
+    "validation": "Windows CI Run #45739133551 passed on Windows Server 2025 / Node 24 / .NET 10: all 14 version-consistency checks, 277/277 Main/Node regression tests, Renderer TypeScript/Vite, native WASAPI, PawnIO MCHBAR verification, .NET HardwareService, Hardware/Storage tests, NSIS installer packaging, SHA-256 generation, GitHub Release publication, release-description synchronization and workflow-artifact upload. Installer size: 160,069,900 bytes; SHA-256: 7649d3046d7849ce3b9803a55a57ea792c7525dacb0e04b29204f1a0283a2dfd.",
     "caveat": "Automated tests cannot prove the resized widget's visual comfort on every DPI or monitor configuration. On the target PC, verify native resize handles, content scrolling at shorter heights, saved-size restoration, the checked/unchecked right-click state, orientation switching and display-work-area clamping.",
     "previousTag": "v2.2.12"
   }

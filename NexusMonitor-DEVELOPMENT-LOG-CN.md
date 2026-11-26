@@ -1,4 +1,4 @@
-## 2.2.13（竖向 HUD 用户尺寸记忆与右键缩放锁定；CI 待本版本实际运行结果确认）
+## 2.2.13（竖向 HUD 用户尺寸记忆与右键缩放锁定；已正式发布，Windows CI Run #45739133551 success）
 
 ### 用户反馈与目标
 - 用户安装 2.2.12 后认为 340×1200 固定尺寸太大，要求恢复自由拉伸、自动记忆上次大小，并在右键菜单增加可勾选的缩放权限；取消勾选后尺寸与锁定状态都应跨重启保留。
@@ -11,7 +11,8 @@
 - 更新竖向布局与 docking 回归测试，覆盖尺寸记忆、旧配置迁移、屏幕工作区限制和右键缩放锁定。
 
 ### 验收边界
-- Windows CI、Release 安装包/哈希与发布后 Release 文案核对，以本版本最终 Actions 和构建报告为准。
+- Windows CI Run #45739133551 全流程 success：[workflow run](https://github.com/xiaobei206/NexusMonitor/actions/runs/45739133551)。14/14 版本门禁、277/277 Main/Node 测试、Renderer、WASAPI、PawnIO、.NET、Hardware/Storage、NSIS、SHA-256、GitHub Release、Release 文案同步与 artifact 上传均成功。
+- 正式 Release：[v2.2.13](https://github.com/xiaobei206/NexusMonitor/releases/tag/v2.2.13)。安装包 `NexusMonitor-2.2.13-Setup.exe`，160,069,900 bytes；SHA-256 `7649d3046d7849ce3b9803a55a57ea792c7525dacb0e04b29204f1a0283a2dfd`。未配置代码签名证书，因此未签名。
 - 仍需目标 Windows PC 实测：边缘/角落拉伸、重启恢复尺寸、勾选状态持久化、横竖切换、多显示器/DPI 与短窗口下内容滚动。
 
 ---
