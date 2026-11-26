@@ -1,0 +1,24 @@
+NexusMonitor 2.2.13 Windows 验收命令
+
+在 Windows clone 根目录执行：
+
+npm.cmd ci --include=dev --no-audit --no-fund
+node .\scripts\validate-release-version.cjs
+npm.cmd run test:main
+npm.cmd run build:renderer
+npm.cmd run build:wasapi
+dotnet build .\HardwareService\HardwareService.csproj -c Release
+npm.cmd run test:storage
+
+垂直 HUD 尺寸与锁定实机验收：
+1. 完全退出旧版后安装并启动 2.2.13；没有有效尺寸记录时垂直 HUD 应使用约 340×900，并不越过任务栏或显示器边界。
+2. 在 HUD 上右键，确认「允许调整窗口大小」默认勾选；从边缘和四角调整宽高，检查内容列随宽度变化、短高度下仍可滚动。
+3. 拉伸到自选尺寸，等待自动保存；退出 NexusMonitor 后重新打开，核对恢复的宽度和高度。
+4. 右键取消「允许调整窗口大小」，确认窗口不能再拉伸；退出并重新打开，检查菜单项仍未勾选且尺寸一致。
+5. 重新勾选，调整到另一个尺寸，再取消勾选，检查最新尺寸依然保留。
+6. 切换横向再切回竖向，检查恢复用户最后一次竖向尺寸；横向 HUD 的标准尺寸保持正常。
+7. 在短高窗口等待 CPU/GPU、磁盘、网络、天气、AQI 与音乐信息完全加载，检查滚动、预报折叠和文字不越界。
+8. 检查拖动、固定位置、四边停靠、靠边自动隐藏/露出、置顶、全屏让位、日历、独立详情窗与音乐控制。
+9. 如有多显示器，逐屏设置不同的垂直尺寸；重开后确认各显示器分别恢复，并检查 DPI/负坐标工作区。
+
+Windows CI 与源码测试不等同于目标 Windows PC 的 GUI/DPI/多屏实测；只记录实际完成的项目。

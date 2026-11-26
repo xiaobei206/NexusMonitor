@@ -8,6 +8,7 @@ Before editing, read [START-HERE-NEXT-GPT.md](START-HERE-NEXT-GPT.md), then the 
 - Keep changes narrow, source-backed and regression-tested. Report only tests actually run. Hosted CI is not proof of physical hardware acceptance.
 - Follow `.github/workflows/windows-ci.yml`. On Windows PowerShell use `npm.cmd` / `npx.cmd`.
 - Keep the canonical development log, current handoff/build report, SHA-256 manifest and ZIP contents accurate.
+- Vertical HUD resizing invariant: auto-save vertical width/height per display, restore them on startup, default to `340×900` only when no valid size exists, and persist the right-click `widgetResizeEnabled` lock state. Keep vertical dimensions separate from horizontal sizing and clamp restored bounds to the display work area.
 - Never commit personal settings, music-library data, absolute user paths or runtime logs from `%APPDATA%\NexusMonitor`.
 
 

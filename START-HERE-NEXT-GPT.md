@@ -1,11 +1,11 @@
 # NexusMonitor — 新接手 GPT 请先看这里
 
-**当前行为版本：2.2.12；唯一工作基线：GitHub main。** 本版本修复垂直悬浮窗在硬件/天气异步加载后卡片被挤压的问题，并将竖向 HUD 改为固定设计尺寸。Windows CI / Release 状态以当前构建报告和 GitHub Actions 实际结果为准。
+**当前行为版本：2.2.13；唯一工作基线：GitHub main。** 垂直 HUD 改为用户可拉伸、自动记忆尺寸，并可通过右键菜单锁定；优先恢复按显示器保存的尺寸。Windows CI / Release 状态以当前构建报告和 GitHub Actions 实际结果为准。
 
-- 当前交接：NexusMonitor-2.2.12-HANDOFF-CN.md
-- 当前构建报告：NexusMonitor-2.2.12-BUILD-REPORT.md
-- Windows 验收命令：NexusMonitor-2.2.12-Windows-验收命令.txt
-- 统一构建入口：NexusMonitor-2.2.12-BUILD-RELEASE.cjs
+- 当前交接：NexusMonitor-2.2.13-HANDOFF-CN.md
+- 当前构建报告：NexusMonitor-2.2.13-BUILD-REPORT.md
+- Windows 验收命令：NexusMonitor-2.2.13-Windows-验收命令.txt
+- 统一构建入口：NexusMonitor-2.2.13-BUILD-RELEASE.cjs
 - 唯一跨版本日志：NexusMonitor-DEVELOPMENT-LOG-CN.md
 - Release 说明规范：[RELEASE-NOTES-GUIDELINES.md](RELEASE-NOTES-GUIDELINES.md)
 - 全部版本的英文 Release 文案源：.github/release-notes.json
@@ -13,13 +13,14 @@
 - 架构与硬性约束：AGENTS.md
 - 版本一致性检查：node scripts/validate-release-version.cjs
 
-## 2.2.12 当前实现目标
+## 2.2.13 当前实现目标
 
-- 垂直 HUD 设计尺寸 340×1200 逻辑像素；屏幕工作区不足时按工作区约束实际窗口尺寸。
-- 垂直方向不可手动缩放；横向 HUD 仍可缩放，拖动、靠边停靠、自动隐藏和独立详情窗保持可用。
-- 所有纵向 HUD 卡片按自身内容自然占高，防止异步数据加载与换行把卡片压扁。
-- 可用高度低于 1180px 时整块隐藏可选的未来三天预报；不超过 920px 时额外压缩间距。
-- Windows CI Run #258 已通过：271/271 主进程回归测试，Renderer、WASAPI、PawnIO、.NET、硬件/存储、NSIS 安装包和 SHA-256 均成功。目标 PC 的实际视觉验收仍待确认。
+- 垂直 HUD 默认尺寸为 340×900 逻辑像素；没有有效记忆时才用此默认值，并始终受显示器工作区约束。
+- 自动记忆每块显示器上的垂直宽高；优先读取独立尺寸记录，并校验迁移可用的旧位置记录。
+- 右键「允许调整窗口大小」默认勾选。取消勾选会禁用原生拉伸并持久保存锁定状态；重启后尺寸和勾选状态都应保留。
+- 垂直 HUD 最小可调尺寸为 280×420；横向 HUD 保持原有布局。横竖切换时单独保存、恢复纵向尺寸。
+- 原有卡片自然高度、短屏预报折叠、滚动、吸附、自动隐藏和独立详情窗继续保留。
+- 2.2.13 的 Windows CI / Release 状态以版本化构建报告及实际 Actions 结果为准；目标 PC 实测另行验收。
 
 ## 项目通用约束
 
@@ -28,6 +29,12 @@
 - 只记录实际跑过的测试；CI 不代表实机硬件验收。
 - Release 不得只写 Full Changelog。每版至少包含真实变更摘要、具体亮点、该版本实测验证和已知限制；发布后必须读取 Release API 回查文案。
 - Windows PowerShell 中使用 npm.cmd / npx.cmd。
+
+## 2.2.12 已正式发布
+
+- 垂直 HUD 曾改为 340×1200 逻辑像素的固定设计尺寸，并通过自然占高与短屏预报折叠避免异步加载后的卡片压缩。
+- Windows CI Run #258 通过：271/271 Main/Node 回归，Renderer、WASAPI、PawnIO、.NET、Hardware/Storage、NSIS、SHA-256 与发布。
+- 用户在实机安装后反馈固定尺寸太大；2.2.13 改为可拉伸、自动记忆尺寸和右键锁定。
 
 ## 2.2.11 已正式发布
 
@@ -61,7 +68,7 @@
 ## 能力与边界基线
 
 - 2.2.6 已加入 QWeather V1、华风爱科、彩云天气适配和 AQI 分类规范，保留 Open-Meteo、WeatherAPI、OpenWeather。
-- 当前垂直 HUD 采用 340×1200 逻辑像素固定设计尺寸，并忽略旧版保存的手动高度；受工作区限制时按屏幕可用区域适配。
+- 当前垂直 HUD 默认 340×900，自动记忆每显示器尺寸；右键「允许调整窗口大小」可随时锁定/解锁。横竖切换时单独恢复垂直尺寸。
 - 音乐服务是唯一 main Renderer 音乐引擎；USB 视频使用独立 HTML video 音频链路。视频模式不显示音乐迷你播放器，但允许两路音源同时播放。
 - P4 Mono UAC Direct v62 的 WASAPI Exclusive 无声问题是独立的历史目标机问题，本轮未改 native backend。
 - 用户项目习惯：直接在 main 开发；所有正式行为版本号递增；版本元数据同步；保留唯一累计开发日志；构建报告、交接文件都含产品名及版本号。Windows PowerShell 使用 npm.cmd / npx.cmd。

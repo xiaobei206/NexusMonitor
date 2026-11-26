@@ -152,5 +152,17 @@
     "validation": "Windows Server 2025 / Node 24 / .NET 10 CI run 42239092025 passed the 14 version-consistency checks, main tests, Renderer build, PawnIO verification, .NET HardwareService, storage tests, NSIS packaging and SHA-256 generation.",
     "caveat": "COM3 Turing refresh, ESP32-P4 USB display handling, mixed-DPI layouts, hot-plug and long-duration hardware behaviour still require testing on the target Windows PC.",
     "previousTag": null
+  },
+  "v2.2.13": {
+    "summary": "Returns control of the vertical HUD size to the user, with automatic per-display size memory and a persistent right-click resize lock.",
+    "highlights": [
+      "Restores the saved vertical HUD width and height on startup, prefers a dedicated per-display size record, and migrates compatible portrait dimensions from the older position record.",
+      "Adds a checked “Allow Resize” right-click option. Unchecking it disables native resizing and preserves both the selected size and the lock state across application restarts.",
+      "Uses 340×900 logical pixels as the first-run default instead of the previous 340×1200 design size; clamps restored bounds to the target display work area and supports resizing down to 280×420.",
+      "Keeps horizontal HUD sizing separate and stores portrait dimensions per display so orientation changes do not overwrite the user's vertical size."
+    ],
+    "validation": "The Windows release workflow for v2.2.13 runs the version gate, main-process regression suite, Renderer TypeScript/Vite build, native WASAPI build, PawnIO resource verification, .NET HardwareService build, storage tests, NSIS packaging and SHA-256 generation. The exact completed run, test count and installer digest will be recorded in the versioned build report after this workflow finishes.",
+    "caveat": "Automated tests cannot prove the resized widget's visual comfort on every DPI or monitor configuration. On the target PC, verify native resize handles, content scrolling at shorter heights, saved-size restoration, the checked/unchecked right-click state, orientation switching and display-work-area clamping.",
+    "previousTag": "v2.2.12"
   }
 }
