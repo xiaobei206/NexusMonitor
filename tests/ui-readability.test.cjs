@@ -35,13 +35,14 @@ test('floating HUD labels use readable metadata text instead of micro text', () 
 });
 
 
-test('vertical HUD defaults to 960px and restores the manually adjusted height per display', () => {
-  assert.ok(main.includes('width: 340, height: savedHeight, minWidth: 340, minHeight: 700'));
-  assert.ok(main.includes('savedPositionRecord.height'));
-  assert.ok(main.includes(': 960;'));
-  assert.match(main, /scheduleWidgetDimensionPersistence/);
-  assert.ok(docking.includes("preferredHeight = orientation === 'vertical' ? Math.max(700, Math.min(1200, Math.round(preferredVerticalHeight))) : 112"));
-  assert.match(css, /@media\(max-height:920px\)[\s\S]*?\.widget-shell\.vertical \.widget-vertical-daily\{display:none\}/);
+test('vertical HUD uses a fixed 1200px design height and cannot be manually resized', () => {
+  assert.ok(main.includes('width: 340, height: 1200, minWidth: 340, minHeight: 700'));
+  assert.match(main, /resizable: !vertical/);
+  assert.match(main, /widgetWindow\.setResizable\(currentSettings\.orientation !== 'vertical'\)/);
+  assert.doesNotMatch(main, /const savedHeight =/);
+  assert.doesNotMatch(main, /const rememberedHeight =/);
+  assert.ok(docking.includes('preferredVerticalHeight = 1200'));
+  assert.match(css, /@media\(max-height:1180px\)[\s\S]*?\.widget-shell\.vertical \.widget-vertical-daily-block\{display:none\}/);
 });
 
 test('weather and custom sensor blocks have responsive HUD layouts', () => {
