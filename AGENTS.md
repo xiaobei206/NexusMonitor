@@ -2,13 +2,23 @@
 
 Before editing, read [START-HERE-NEXT-GPT.md](START-HERE-NEXT-GPT.md), then the current handoff and the unique cross-version development log.
 
-- Current `main`, `VERSION`, source, tests, latest Actions and Release are authoritative. Re-query them for every new task.
+- Treat current `main`, `VERSION`, source, tests, latest Actions and published Releases as authoritative; re-query them before each task.
 - This is a personal repository. Work directly on `main`; do not create feature branches or pull requests unless the user explicitly asks.
-- The current `main`, `VERSION`, latest Actions run, and latest Release are authoritative. Increment the application version for every behavior change, synchronize every field checked by `scripts/validate-release-version.cjs`, and never use FIX-style version names or overwrite a published release.
+- Increment the application version for every behavior change, synchronize every field checked by `scripts/validate-release-version.cjs`, and never use FIX-style version names or overwrite a published release.
 - Keep changes narrow, source-backed and regression-tested. Report only tests actually run. Hosted CI is not proof of physical hardware acceptance.
 - Follow `.github/workflows/windows-ci.yml`. On Windows PowerShell use `npm.cmd` / `npx.cmd`.
 - Keep the canonical development log, current handoff/build report, SHA-256 manifest and ZIP contents accurate.
 - Never commit personal settings, music-library data, absolute user paths or runtime logs from `%APPDATA%\NexusMonitor`.
+
+
+## Release descriptions are mandatory — do not publish boilerplate
+
+- A GitHub Release body containing only `**Full Changelog**` or a generic one-line summary is incomplete. Never leave GitHub's `--generate-notes` output as the final description.
+- Before a version is released, add/update its English entry in `.github/release-notes.json`: a concise overview, at least three concrete user-visible highlights, the exact CI/test evidence for that version, and explicit limitations or target-PC acceptance notes.
+- Keep evidence precise. Name the actual Actions run and test count only after reading that run's completed result. Do not recycle a previous version's CI result or imply hosted CI proves physical USB display, audio endpoint, weather-account, DPI or long-running hardware behaviour.
+- `scripts/sync-release-notes.cjs` renders each entry into a full release body and updates every published release through the GitHub API. `.github/workflows/windows-ci.yml` runs it after validation and release publication. Missing/invalid release-note entries intentionally fail the workflow; add the new tag's entry before pushing the release version.
+- After the workflow runs, fetch the published Release records and verify their live `body` values. Do not say descriptions were updated until that read-back confirms them.
+- Update the versioned BUILD-REPORT with the actual CI run, test results, installer byte size and SHA-256; update the HANDOFF and cumulative development log. Follow [RELEASE-NOTES-GUIDELINES.md](RELEASE-NOTES-GUIDELINES.md).
 
 ## Music / display invariants
 

@@ -7,6 +7,9 @@
 - Windows 验收命令：NexusMonitor-2.2.12-Windows-验收命令.txt
 - 统一构建入口：NexusMonitor-2.2.12-BUILD-RELEASE.cjs
 - 唯一跨版本日志：NexusMonitor-DEVELOPMENT-LOG-CN.md
+- Release 说明规范：[RELEASE-NOTES-GUIDELINES.md](RELEASE-NOTES-GUIDELINES.md)
+- 全部版本的英文 Release 文案源：.github/release-notes.json
+- 自动同步与覆盖校验：scripts/sync-release-notes.cjs
 - 架构与硬性约束：AGENTS.md
 - 版本一致性检查：node scripts/validate-release-version.cjs
 
@@ -16,13 +19,14 @@
 - 垂直方向不可手动缩放；横向 HUD 仍可缩放，拖动、靠边停靠、自动隐藏和独立详情窗保持可用。
 - 所有纵向 HUD 卡片按自身内容自然占高，防止异步数据加载与换行把卡片压扁。
 - 可用高度低于 1180px 时整块隐藏可选的未来三天预报；不超过 920px 时额外压缩间距。
-- Windows CI 和安装包信息不在源码提交前预判；以版本构建报告的实测记录为准。
+- Windows CI Run #258 已通过：271/271 主进程回归测试，Renderer、WASAPI、PawnIO、.NET、硬件/存储、NSIS 安装包和 SHA-256 均成功。目标 PC 的实际视觉验收仍待确认。
 
 ## 项目通用约束
 
 - 个人仓库直接在 main 开发，不创建功能分支或 PR，除非用户明确要求。
 - 所有行为版本递增；统一同步 VERSION、package / lockfile、HardwareService、Renderer 版本字段和版本化构建入口。
 - 只记录实际跑过的测试；CI 不代表实机硬件验收。
+- Release 不得只写 Full Changelog。每版至少包含真实变更摘要、具体亮点、该版本实测验证和已知限制；发布后必须读取 Release API 回查文案。
 - Windows PowerShell 中使用 npm.cmd / npx.cmd。
 
 ## 2.2.11 已正式发布

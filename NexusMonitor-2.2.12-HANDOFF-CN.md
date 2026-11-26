@@ -4,7 +4,10 @@
 **开发基线：** 2.2.11  
 **唯一工作基线：** GitHub main  
 **目标：** 修复垂直 HUD 在异步加载硬件/天气数据后，文字溢出内部卡片的问题。  
-**Windows CI / Release：** 以构建报告为准；本文件不预先声称测试通过。
+**Windows CI：** [Run #258 — success](https://github.com/xiaobei206/NexusMonitor/actions/runs/45735313607)  
+**正式 Release：** https://github.com/xiaobei206/NexusMonitor/releases/tag/v2.2.12  
+**安装包：** 160,069,864 bytes；SHA-256 `979a2a8c7c4fbefaf593d0e5e076cadda73862409ca6f790ecc27de9a5bf04ac`  
+**实机验收：** 等用户在目标 Windows PC 上确认完整加载后的 HUD 文字均留在卡片内。
 
 ## 文件索引
 

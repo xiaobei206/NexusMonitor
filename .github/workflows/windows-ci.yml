@@ -140,6 +140,12 @@ jobs:
           $tag = "v$version"
           gh release create $tag $installer $checksum --target $env:GITHUB_SHA --title "NexusMonitor $version" --generate-notes
 
+      - name: Synchronize substantive descriptions for all published Releases
+        if: steps.source.outputs.has_source == 'true' && github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/sync-release-notes.cjs
+
       - name: Upload installer as workflow artifact
         if: steps.source.outputs.has_source == 'true' && steps.release.outputs.needs_release == 'true'
         uses: actions/upload-artifact@v7

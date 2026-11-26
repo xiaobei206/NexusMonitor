@@ -1,0 +1,156 @@
+{
+  "v2.2.12": {
+    "summary": "Stabilizes the vertical hardware HUD so live telemetry and weather updates no longer compress cards and push text outside their borders.",
+    "highlights": [
+      "Uses a fixed 340 × 1200 logical-pixel design size for the vertical HUD, clamped to the display work area; manual resizing is disabled in vertical mode.",
+      "Ignores legacy per-display manual heights and applies the same sizing policy on startup and orientation changes, while horizontal HUD resizing remains available.",
+      "Prevents the hardware, mini-player, weather and clock sections from flex-shrinking. On shorter work areas, the complete optional three-day forecast is hidden and the remaining HUD content stays scrollable."
+    ],
+    "validation": "Windows CI Run #258 passed: synchronized version checks, 271/271 main-process regression tests, Renderer TypeScript/Vite build, native WASAPI build, PawnIO resource verification, .NET HardwareService, hardware/storage tests, and Windows installer plus SHA-256 generation.",
+    "caveat": "Please visually verify the HUD after all hardware and weather fields load on the target PC, especially on 1080p or shorter work areas; hosted CI cannot verify every physical display layout.",
+    "previousTag": "v2.2.11"
+  },
+  "v2.2.11": {
+    "summary": "Adds an extensible China public-holiday calendar based on official State Council notices, with future-year lookup and safe local caching.",
+    "highlights": [
+      "Bundles annual holiday and adjusted-workday schedules for 2017–2027 and parses official notices covering date ranges, abbreviated dates, cross-year dates and make-up workdays.",
+      "Looks up unbundled years in the background, validates candidate dates and official government sources, caches accepted results by year and refreshes the calendar through IPC.",
+      "Keeps existing cached data when a query or parse fails; it does not guess holidays or workdays for unpublished schedules."
+    ],
+    "validation": "Windows CI Run #254 passed, including 270/270 main-process regression tests, Renderer TypeScript/Vite, WASAPI, PawnIO, .NET HardwareService, hardware/storage tests, installer packaging and SHA-256 publication.",
+    "caveat": "The shipped 2020 schedule still follows the original annual notice and does not include the later January 26, 2020 holiday-extension amendment. Review the versioned build report before relying on historical 2020 dates; future-year networking also needs target-PC verification.",
+    "previousTag": "v2.2.10"
+  },
+  "v2.2.10": {
+    "summary": "Separates USB video audio controls from the shared music player and makes simultaneous video and music playback explicit.",
+    "highlights": [
+      "Adds video-specific output-device selection, volume and mute settings, with defaults and migration for older settings.",
+      "Allows video audio and Music Service playback to run concurrently. A non-blocking, dismissible overlap notice offers user-selected pause-music or mute-video actions without changing either source when ignored.",
+      "Binds a requested non-default audio endpoint before playback; if the endpoint cannot be verified, the video path stays muted and reports the problem instead of silently switching to the Windows default device."
+    ],
+    "validation": "Windows CI Run #217 passed the version gate, main-process regression tests, Renderer build, native WASAPI, PawnIO, .NET HardwareService, hardware/storage tests, installer packaging and checksum publication.",
+    "caveat": "Real video codecs, endpoint hot-plug behavior and sound from the physical USB display speaker still require testing on the target Windows PC. This release does not claim bit-perfect video or music output.",
+    "previousTag": "v2.2.9"
+  },
+  "v2.2.9": {
+    "summary": "Unifies playback-mode state across the main player, floating HUD and supported USB display controls.",
+    "highlights": [
+      "Replaces separate shuffle and repeat controls with four modes: Shuffle, Sequential, Repeat One and Repeat All.",
+      "Uses a shuffle bag so tracks are not repeated within a shuffle round, then reshuffles for the next round; Previous follows shuffle history.",
+      "Persists playback mode and shuffle history in the main-process Music Service and migrates older shuffle/repeat settings."
+    ],
+    "validation": "Windows CI Run #213 passed the version gate, Node regression suite, Renderer build, native WASAPI, PawnIO, .NET HardwareService, hardware/storage tests, installer packaging, SHA-256 and Release publication.",
+    "caveat": "Hosted CI does not play the user's local library. Verify repeat boundaries, shuffle history, pause/resume and actual output devices on the target PC.",
+    "previousTag": "v2.2.8"
+  },
+  "v2.2.8": {
+    "summary": "Fixes stale-media and playback-state races encountered during seeking, track changes and repeat playback.",
+    "highlights": [
+      "Invalidates obsolete track/source generations and unloads old media sources when switching tracks, so stale callbacks cannot take control of the active track.",
+      "Waits for the seeked event before restoring playback and protects repeat seek/resume from transient paused states.",
+      "Adds regression coverage for interrupted play requests and source-generation handling."
+    ],
+    "validation": "Windows CI Run #209 passed the final code path: version consistency, main-process/music tests, Renderer TypeScript/Vite, native WASAPI, PawnIO, .NET HardwareService, storage tests, installer, checksum and Release publication.",
+    "caveat": "Test real local files and seek/repeat boundaries on the target PC; successful automated tests do not prove every codec/profile behaves identically in the user's library.",
+    "previousTag": "v2.2.7"
+  },
+  "v2.2.7": {
+    "summary": "Prevents a transient paused state from interrupting the new play request at the end of a looping track.",
+    "highlights": [
+      "Routes media playback through a shared safe-play helper and uses playback-attempt IDs to invalidate stale play promises.",
+      "Avoids sending temporary paused state to the main process while an ended-event restart or play request is pending.",
+      "Treats expected AbortError interruptions from normal state changes as non-fatal while preserving genuine playback errors."
+    ],
+    "validation": "Windows CI Run #204 passed the version gate, main-process regression suite, Renderer TypeScript/Vite build, native WASAPI, PawnIO, .NET HardwareService, hardware/storage tests, installer and SHA-256 publication.",
+    "caveat": "This fixes the software playback race, not the separate historical P4 WASAPI Exclusive no-sound issue. Verify single-track and playlist loops with the real library.",
+    "previousTag": "v2.2.6"
+  },
+  "v2.2.6": {
+    "summary": "Expands weather-source support and makes air-quality categories explicit about the standard used.",
+    "highlights": [
+      "Adds QWeather V1, WeatherCN's standard API and Caiyun V2.6 while retaining Open-Meteo, WeatherAPI and OpenWeather.",
+      "Encrypts locally held provider secrets; QWeather uses a locally generated Ed25519 key and JWT, WeatherCN uses its API-key header and cached Location Key, and Caiyun uses HMAC-SHA256 signing.",
+      "Carries AQI standard and source metadata through the overview, HUD, USB weather card and Turing weather clock, distinguishing China-MEP from US-EPA values."
+    ],
+    "validation": "Windows CI Run #201 passed version validation, main and Renderer tests/builds, native WASAPI, PawnIO, .NET HardwareService, hardware/storage tests, installer and Release asset publication.",
+    "caveat": "Using a provider requires valid user-owned credentials and service access. Hosted CI does not prove the user's keys, quotas or network path work; test provider connectivity on the target PC.",
+    "previousTag": "v2.2.5"
+  },
+  "v2.2.5": {
+    "summary": "Improves global text readability and expands the preferred vertical HUD layout to better fit its monitoring and music content.",
+    "highlights": [
+      "Raises shared typography tokens and improves text sizes in the music library, track lists, player popovers and output-device settings.",
+      "Sets the vertical HUD preferred height to 1200 logical pixels while clamping actual bounds to the display work area.",
+      "Uses tighter spacing and hides lower-priority multi-day forecast content on short work areas, preserving live metrics, current weather and the clock."
+    ],
+    "validation": "The published Windows release workflow generated the installer and SHA-256 sidecar. The versioned build report records the initial docking-coordinate assertion mismatch and its correction; do not mistake the first failed run for the final release result.",
+    "caveat": "The preferred height is not guaranteed to fit every display or DPI configuration. Verify the full loaded HUD and typography on the target PC.",
+    "previousTag": "v2.2.4"
+  },
+  "v2.2.4": {
+    "summary": "Fixes music output-device routing so the shared audio graph is bound to the selected endpoint before playback begins.",
+    "highlights": [
+      "Creates the AudioContext with the selected output-device ID and explicitly sets and verifies its sink before connecting the media element.",
+      "Rejects an unavailable non-default endpoint instead of silently connecting to the Windows default output.",
+      "Adds regression coverage for sink binding order and failure handling; the normal-output recovery path remains available when the exclusive route fails."
+    ],
+    "validation": "Windows CI Run #192 passed: 238/238 Node regression tests, Renderer build, native WASAPI, PawnIO, .NET HardwareService, hardware/storage tests, NSIS installer, SHA-256 and Release upload.",
+    "caveat": "The Renderer Float32-to-WASAPI path is not claimed to be bit-perfect. Actual P4 endpoint selection, audible output, device changes and recovery must be checked on the target PC.",
+    "previousTag": "v2.2.3"
+  },
+  "v2.2.3": {
+    "summary": "Hardens WASAPI playback recovery and adds optional automatic local or online lyrics.",
+    "highlights": [
+      "Does not treat an opened WASAPI endpoint as proof that PCM is rendering; shared output stays audible until native PCM is accepted and rendered.",
+      "Falls back to ordinary output if no valid PCM frames arrive within the timeout, and restores the normal audio path after exclusive close or runtime failure.",
+      "Prefers a same-name local LRC file, then queries LRCLIB using track metadata only; synchronized lyrics follow playback time while plain lyrics remain readable static text."
+    ],
+    "validation": "Windows CI Run #186 passed: 238/238 Node regression tests, Renderer build, native WASAPI, PawnIO, .NET HardwareService, storage tests, installer, checksum and Release publication.",
+    "caveat": "The lyrics service may be unavailable or rate-limited, and real P4 speaker playback still requires target-PC testing. This release does not claim bit-perfect output.",
+    "previousTag": "v2.2.2"
+  },
+  "v2.2.2": {
+    "summary": "Improves WASAPI PCM-format compatibility, especially for mono endpoints, and clarifies USB music-only mode controls.",
+    "highlights": [
+      "Probes both mono and stereo PCM using classic WAVEFORMATEX and WAVEFORMATEXTENSIBLE structures, preferring stereo when a compatible candidate exists.",
+      "Adds detailed format-candidate and HRESULT diagnostics, and retries classic WAVEFORMATEX when exclusive initialization rejects the extensible structure.",
+      "Keeps the Renderer transport stereo and explicitly downmixes to mono when needed; shortens the music-only action label to “Apply Mode.”"
+    ],
+    "validation": "Windows CI Run #179 passed: 234/234 main-process tests, Renderer build, native WASAPI, PawnIO verification, .NET HardwareService, hardware/storage tests, NSIS installer, SHA-256 and Release publication.",
+    "caveat": "Mono downmix changes channel data and is not bit-perfect. The target PC must still verify real P4 speaker output, endpoint isolation and device hot-plug behaviour.",
+    "previousTag": "v2.2.1"
+  },
+  "v2.2.1": {
+    "summary": "Introduces the unified local Music Service and the first complete shared-player platform across the app and secondary displays.",
+    "highlights": [
+      "Adds a persistent single playback host, library navigation, playlists, metadata/artwork, M3U/M3U8, ReplayGain, a ten-band equalizer with presets, local LRC lyrics and a sleep timer.",
+      "Adds Windows output-device routing and a native WASAPI Exclusive PCM path, plus six USB display modes and a wallpaper-with-background-music mode.",
+      "Keeps music playback alive when the main window is hidden to the system tray and preserves the selected USB display identity when restoring output."
+    ],
+    "validation": "Windows CI Run #175 passed: 225/225 Node tests, Renderer build, native WASAPI, PawnIO verification, .NET HardwareService, storage tests, NSIS installer, SHA-256 and Release upload.",
+    "caveat": "Gapless/crossfade dual decks and decoder-to-device bit-perfect playback are not included. Real USB speaker routing, codec playback and sleep/wake behaviour require target-PC acceptance.",
+    "previousTag": "v2.2.0"
+  },
+  "v2.2.0": {
+    "summary": "Adds the original global MP3 player and window-lifecycle foundation for music that remains active while the main window is hidden.",
+    "highlights": [
+      "Adds MP3 import and folder scanning, search, playlists, playback controls, seek and application volume, with shuffle and repeat options.",
+      "Introduces a single persistent music host shared by the main-window dock, vertical HUD mini-player and supported USB output controls.",
+      "Restores the saved USB output display early in startup and keeps audio state in the main process; startup restores track state paused rather than playing unexpectedly."
+    ],
+    "validation": "The published Windows release includes an NSIS installer and SHA-256 sidecar. The original PR validation passed 188/188 Node tests, but that PR run is not substituted for the final main-branch release build record.",
+    "caveat": "This initial release focused on MP3 and the first shared-player foundation; later releases expanded formats, playback controls and output handling. Verify USB display and real audio behaviour on the target PC.",
+    "previousTag": "v2.1.8"
+  },
+  "v2.1.8": {
+    "summary": "Fixes the Electron 45 console-message event signature and preserves the existing startup and HUD recovery protections.",
+    "highlights": [
+      "Uses Electron 45's positional console-message callback parameters, correcting the TypeScript errors introduced by treating the second argument as a details object.",
+      "Adds a regression test to lock down the event signature and retains first-frame gating, Renderer error handling, legacy-settings tolerance and default HUD startup.",
+      "Preserves the earlier USB secondary-display positioning fixes for negative desktop coordinates."
+    ],
+    "validation": "Windows Server 2025 / Node 24 / .NET 10 CI run 42239092025 passed the 14 version-consistency checks, main tests, Renderer build, PawnIO verification, .NET HardwareService, storage tests, NSIS packaging and SHA-256 generation.",
+    "caveat": "COM3 Turing refresh, ESP32-P4 USB display handling, mixed-DPI layouts, hot-plug and long-duration hardware behaviour still require testing on the target Windows PC.",
+    "previousTag": null
+  }
+}

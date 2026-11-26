@@ -752,7 +752,7 @@ Property 'volume' does not exist on type 'AudioHTMLAttributes<HTMLAudioElement>'
 - 首次提交的 Windows CI Run #194 在 `tests/widget-docking.test.cjs` 的新增测试中失败：测试把显式右侧停靠窗口的垂直坐标预期为 y=18，但现有布局算法把该停靠状态的扩高窗口夹到工作区顶部 y=0；实际尺寸 340×1200 正确，另 240 项测试通过、版本一致性门禁通过。该失败是新测试的坐标预期与现有停靠语义不一致，不是构建/类型错误。已将断言改为实际约束结果 y=0 并触发下一轮验证。
 
 
-## 2.2.12 — 垂直悬浮窗固定布局与内容防压缩（2026-11-26，CI 待完成）
+## 2.2.12 — 垂直悬浮窗固定布局与内容防压缩（2026-11-26，已正式发布）
 
 ### 用户反馈与目标
 
@@ -767,7 +767,15 @@ Property 'volume' does not exist on type 'AudioHTMLAttributes<HTMLAudioElement>'
 - 可用高度低于完整设计高度时，优先整块隐藏未来三天预报（包括标题）；低于 920px 时继续采用更紧凑的间距。完整高度下仍保留三天预报。
 - 新增固定窗口尺寸、不可缩放、自然高度布局和短屏预报策略回归测试，并同步 2.2.12 版本元数据。
 
-### 验证边界
+### 最终 Windows CI 与正式发布收口
 
-- 本节提交触发的 Windows CI / Release 结果须在流水线完成后填入本节与版本构建报告；提交前不宣称测试通过。
-- 自动化测试不能替代目标机实际启动验收：应确认冷启动、硬件与天气数据加载后的卡片不再溢字；在 1080p 及较短工作区下确认预报折叠与滚动行为。
+- Windows CI [Run #258](https://github.com/xiaobei206/NexusMonitor/actions/runs/45735313607) 全流程 success：版本一致性门禁、Node 271/271、Renderer TypeScript/Vite、native WASAPI、PawnIO 官方资源 SHA、.NET HardwareService、Hardware/Storage tests、NSIS、SHA-256、GitHub Release 与 workflow artifact 均通过。
+- 正式 Release：[v2.2.12](https://github.com/xiaobei206/NexusMonitor/releases/tag/v2.2.12)。安装包 160,069,864 bytes，SHA-256 `979a2a8c7c4fbefaf593d0e5e076cadda73862409ca6f790ecc27de9a5bf04ac`。
+- 安装包未代码签名。自动化验证无法取代目标机实际视觉验收：仍需确认冷启动和硬件/天气字段加载完成后，文字始终留在卡片内；短屏预报折叠、滚动、拖动、停靠和方向切换均符合预期。
+
+## 2026-11-26 — GitHub Release 文案补全与防回归
+
+- 核查所有已发布版本，发现大多数 Release body 仅为 GitHub 自动生成的 `Full Changelog` 行，缺少面向使用者的变更说明。
+- 为所有现存 14 个正式版本建立英文文案源 `.github/release-notes.json`；每版列出真实功能、实际 CI 证据和重要限制。
+- 新增 `scripts/sync-release-notes.cjs` 和回归测试；Windows CI 在 Release 创建后通过 GitHub API 同步所有已发布 Release 的 body，并在缺少条目或内容不完整时失败，避免未来版本继续发布空白说明。
+- 新增根目录 `RELEASE-NOTES-GUIDELINES.md`，规定每个版本必须有有意义的英文摘要、3 条以上具体亮点、该版本验证证据与目标机验收边界；发布后必须读取 API 核对真实 Release body。
