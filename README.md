@@ -1,4 +1,4 @@
-# NexusMonitor 2.2.14 — Electron Edition (telemetry chart grids and total-power history)
+# NexusMonitor 2.2.14 — Electron Edition (released; Windows CI Run #45743775825 passed)
 
 > **新对话 / 新开发者接手：先读 [START-HERE-NEXT-GPT.md](START-HERE-NEXT-GPT.md) 和根目录 [AGENTS.md](AGENTS.md)。** 入口文档列出阅读顺序、源码目录地图、验证命令与硬件验收边界。
 

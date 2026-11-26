@@ -2,9 +2,9 @@
 
 **版本：** 2.2.14  
 **基线：** 2.2.13  
-**状态：** 源码已提交；Windows CI 验证中，尚未确认安装包发布。  
-**Workflow Run：** 待实际 workflow 启动后补充  
-**GitHub Release：** 待验证
+**状态：** 已正式发布，Windows CI 全流程成功  
+**Workflow Run：** [Run #45743775825](https://github.com/xiaobei206/NexusMonitor/actions/runs/45743775825)  
+**GitHub Release：** [NexusMonitor 2.2.14](https://github.com/xiaobei206/NexusMonitor/releases/tag/v2.2.14)
 
 ## 变更摘要
 
@@ -12,18 +12,28 @@
 - 悬浮窗大卡片中的智能功耗摘要增加最近 60 次有效采样的总功耗曲线。
 - 曲线使用现有功耗摘要逻辑；来源模式切换时重置历史，避免把不同来源的瓦特值误连为同一趋势。
 
-## 验证状态
+## 验证结果
 
-- 版本一致性门禁：待 CI。
-- Main / Node 回归测试：待 CI。
-- Renderer TypeScript 与 Vite 生产构建：待 CI。
-- WASAPI、PawnIO、.NET HardwareService、Hardware/Storage 测试：待 CI。
-- Windows NSIS 安装包、SHA-256、GitHub Release 与 artifact 上传：待 CI。
+- 版本一致性门禁：14/14 通过。
+- Main / Node 回归测试：278/278 通过，0 失败。
+- Renderer TypeScript 与 Vite 生产构建：成功。
+- 原生 WASAPI 模块：成功。
+- PawnIO MCHBAR 资源校验与准备：成功。
+- .NET HardwareService 构建：成功。
+- Hardware/Storage 测试：成功。
+- Windows NSIS 安装包打包：成功。
+- SHA-256 生成：成功。
+- GitHub Release 发布、Release 描述同步、workflow artifact 上传：成功。
 
 ## 安装包与校验值
 
-CI 未完成前不填写安装包大小、SHA-256 或发布链接，以免把未验证数据误当成最终结果。
+- 文件：`NexusMonitor-2.2.14-Setup.exe`
+- 大小：**160,070,599 bytes**
+- SHA-256：`047927336373a2ce5f9b40160fa2007e5266723ac2f7b2d19bd26a5528fdd308`
+- [下载安装包](https://github.com/xiaobei206/NexusMonitor/releases/download/v2.2.14/NexusMonitor-2.2.14-Setup.exe)
+- [SHA-256 sidecar](https://github.com/xiaobei206/NexusMonitor/releases/download/v2.2.14/NexusMonitor-2.2.14-Setup.exe.sha256)
+- 未代码签名：项目没有配置代码签名证书。
 
 ## 尚待目标 PC 实测
 
-需在目标 Windows 电脑验证深色/浅色主题下的网格对比度、曲线辨识度、主程序小卡片空间、悬浮窗大卡片滚动、功耗源切换及真实硬件遥测。Hosted Windows CI 不等同于目标机实测。
+Hosted Windows CI 成功不等同于目标电脑 GUI/DPI 验收。仍需确认深浅色主题下网格对比度、主程序小卡片空间、曲线辨识度、悬浮窗大卡片滚动、功耗来源切换及真实硬件遥测。

@@ -1,4 +1,4 @@
-## 2.2.14（硬件曲线淡网格与悬浮窗总功耗历史曲线；CI 验证待运行）
+## 2.2.14（硬件曲线淡网格与悬浮窗总功耗历史曲线；已正式发布，Windows CI Run #45743775825 success）
 
 ### 用户目标
 - 统一主程序与悬浮窗详情卡片的历史曲线背景，增加低对比度网格，方便观察 CPU/GPU、内存、磁盘读写与网络上传下载的变化。
@@ -10,9 +10,15 @@
 - 当曲线数据来源模式在电池放电与 CPU/GPU 合计之间切换时清空旧样本，防止不同口径的数据连接成误导性曲线。
 - 新增 UI 源码回归断言，检查网格样式、曲线入口与功耗口径切换重置。
 
+### 构建与验证
+- Windows CI Run #264 全流程 success：[workflow run](https://github.com/xiaobei206/NexusMonitor/actions/runs/45743775825)。14/14 版本一致性检查、278/278 Main/Node 回归测试、Renderer TypeScript/Vite、WASAPI、PawnIO、.NET HardwareService、Hardware/Storage 测试、NSIS 安装包、SHA-256、Release 发布、Release 文案同步与 artifact 上传均成功。
+- 正式 Release：[v2.2.14](https://github.com/xiaobei206/NexusMonitor/releases/tag/v2.2.14)。安装包 `NexusMonitor-2.2.14-Setup.exe`，160,070,599 bytes；SHA-256 `047927336373a2ce5f9b40160fa2007e5266723ac2f7b2d19bd26a5528fdd308`。未配置代码签名证书，因此未签名。
+
 ### 验收边界
-- 此提交包含源码、版本元数据和回归检查；Windows CI、安装包大小与 SHA-256 尚待实际 workflow 结果，不能提前视为已发布。
-- 仍需目标 Windows PC 查看深色/浅色主题、曲线可辨识度、悬浮窗滚动布局及无可用功耗传感器时的等待状态。
+- Hosted Windows CI 证明源码、测试和打包流程通过，但不等于目标 Windows PC 的 GUI/DPI 实测。
+- 仍需在目标 Windows PC 查看深色/浅色主题、曲线可辨识度、悬浮窗滚动布局及真实功耗传感器的采样表现。
+
+---
 
 ---
 
