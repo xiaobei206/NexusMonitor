@@ -1,0 +1,21 @@
+NexusMonitor 2.2.14 Windows 验收命令
+
+在 Windows clone 根目录执行：
+
+npm.cmd ci --include=dev --no-audit --no-fund
+node .\scripts\validate-release-version.cjs
+node .\NexusMonitor-2.2.14-BUILD-RELEASE.cjs --validate-only
+npm.cmd run test:main
+npm.cmd run build:renderer
+npm.cmd run build:wasapi
+dotnet build .\HardwareService\HardwareService.csproj -c Release
+npm.cmd run test:storage
+
+曲线与功耗趋势验收：
+1. 在主程序总览页确认 CPU、GPU 与内存历史曲线有细淡的横纵网格，线条和填充仍清晰可辨。
+2. 在主程序的各硬件指标小卡片确认网格没有压过曲线，也没有明显改变卡片高度。
+3. 展开悬浮窗大卡片，检查 CPU、GPU、内存、磁盘读写、网络下载/上传曲线均出现一致的低对比度网格。
+4. 确认“TOTAL POWER HISTORY”位于功耗摘要数据下方，最多显示最近 60 次有效采样；有 CPU/GPU 或电池放电数据时应随新遥测更新。
+5. 确认切换电池放电与 CPU/GPU 合计功耗来源后，旧历史不会与新来源连成一条线；无有效传感器时显示等待数据。
+6. 分别检查深色、浅色主题以及悬浮窗详情的横向/纵向布局，确保网格线足够淡、曲线可辨识且没有横向溢出。
+7. Windows CI 与源码测试不等同于目标电脑实机验收；只记录实际完成的项目。

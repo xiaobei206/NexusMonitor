@@ -84,3 +84,14 @@ test('music library and output settings use readable text sizes', () => {
 });
 
 
+
+test('hardware history sparklines use subtle grids and floating total-power history stays mode-consistent', () => {
+  assert.ok(app.includes('className="spark-grid-line horizontal"'));
+  assert.ok(app.includes('className="spark-grid-line vertical"'));
+  assert.ok(app.includes('power: number[];'));
+  assert.ok(app.includes('power: append(power.mode === old.powerMode ? old.power : [], power.valueW)'));
+  assert.ok(app.includes('<span>TOTAL POWER HISTORY</span>'));
+  assert.ok(app.includes('<Sparkline values={history.power} color="#f2b44f" height={72} fill maxValue={0}/>'));
+  assert.match(css, /\.spark-grid-line\{[^}]*stroke-opacity:\.11/);
+  assert.match(css, /\.spark-grid-line\.vertical\{stroke-opacity:\.06\}/);
+});

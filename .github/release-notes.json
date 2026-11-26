@@ -1,4 +1,15 @@
 {
+  "v2.2.14": {
+    "summary": "Adds low-contrast two-axis reference grids to telemetry history charts and a mode-safe total-power trend to the floating HUD detail panel.",
+    "highlights": [
+      "Adds subtle horizontal and vertical guide lines to shared Sparkline charts in the main dashboard and floating detail panel without replacing the existing theme-aware curve colors.",
+      "Adds a 60-sample total-power history chart beneath the floating HUD power summary, using the same validated CPU/GPU or battery-discharge summary as the current reading.",
+      "Clears historical power samples when the summary source mode changes, avoiding a misleading line between CPU/GPU wattage and negative battery-discharge values; adds UI source regression coverage."
+    ],
+    "validation": "Windows CI validation queued for this commit; the version gate, regression totals, Renderer build, installer size and SHA-256 will be recorded after the workflow completes.",
+    "caveat": "The trend reflects only currently valid sensor-backed summary values and is not a wall-socket power measurement; hosted CI cannot verify target-PC display rendering or actual hardware sensor availability.",
+    "previousTag": "v2.2.13"
+  },
   "v2.2.12": {
     "summary": "Stabilizes the vertical hardware HUD so live telemetry and weather updates no longer compress cards and push text outside their borders.",
     "highlights": [

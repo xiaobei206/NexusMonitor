@@ -18,6 +18,7 @@ import { renderTuringDashboard, renderTuringWeatherClock } from './turing-dashbo
 import { getWeatherSceneAsset } from './weather-scene';
 import { selectTuringDisk, selectTuringGpu, selectTuringNetwork, selectNetworkInterfaces } from './turing-selection';
 import { resolvePowerSummary } from './power-summary';
+import type { PowerSummaryMode } from './power-summary';
 import { getAqiPresentation } from './aqi';
 import { getDiskVolumeUsage, getSystemVolume } from './storage-view';
 import { findTuringAutoConnectPort } from './turing-autoconnect';
@@ -141,6 +142,11 @@ function Sparkline({ values, color, height = 42, fill = false, maxValue = 100 }:
   const min = Math.min(...values, 0), max = Math.max(...values, maxValue), span = max - min || 1;
   const points = values.map((v,i) => `${(i/(values.length-1))*100},${height - 4 - ((v-min)/span)*(height-9)}`).join(' ');
   return <svg className="sparkline" viewBox={`0 0 100 ${height}`} preserveAspectRatio="none" style={{height}}>
+    {[0.25, 0.5, 0.75].map(fraction => {
+      const y = height - 4 - fraction * (height - 9);
+      return <line key={`h-${fraction}`} x1="0" x2="100" y1={y} y2={y} className="spark-grid-line horizontal"/>;
+    })}
+    {[25, 50, 75].map(x => <line key={`v-${x}`} x1={x} x2={x} y1="4" y2={height - 5} className="spark-grid-line vertical"/>)}
     {fill && <polygon points={`0,${height} ${points} 100,${height}`} fill={color} opacity=".12"/>}
     <polyline points={points} fill="none" stroke={color} strokeWidth="2.1" vectorEffect="non-scaling-stroke" strokeLinecap="round" strokeLinejoin="round"/>
   </svg>;
@@ -193,6 +199,8 @@ type WidgetHistory = {
   networkRx: number[];
   networkTx: number[];
   network: number[];
+  power: number[];
+  powerMode: PowerSummaryMode;
 };
 type WidgetDragState = {
   pointerId: number;
@@ -570,6 +578,8 @@ function WidgetView({ snapshot, settings, history, weather, detailOnly = false, 
             <div><small>剩余时间</small><b>{powerSummary.batteryRemainingSeconds == null ? '—' : `${Math.floor(powerSummary.batteryRemainingSeconds / 3600)}h ${Math.floor((powerSummary.batteryRemainingSeconds % 3600) / 60)}m`}</b></div>
             <div><small>电池充电功率</small><b>{powerSummary.batteryChargeW == null ? '—' : `${fmt(powerSummary.batteryChargeW,1)} W`}</b></div>
           </div>
+          <div className="widget-chart-label"><span>TOTAL POWER HISTORY</span><small>最近 60 次采样 · W</small></div>
+          <Sparkline values={history.power} color="#f2b44f" height={72} fill maxValue={0}/>
           <div className="widget-detail-foot">{powerSummary.mode === 'cpu-gpu' ? `仅合计 ${powerSummary.componentCount} 个有效 CPU/GPU 功耗传感器，不代表整机插座功耗。` : powerSummary.mode === 'battery-discharge' ? '电池放电时优先显示放电功率，按负数表示；其它电池容量、电压、电流与剩余时间独立列出。' : '等待有效 CPU Package、GPU 或电池放电功率传感器；0 W 不作为有效遥测。平台功率单独显示，不冒充 CPU/GPU 合计。'}</div>
         </article>}
         {showWidgetMetric('weather') && <article className={`widget-detail-card widget-weather-detail ${settings.orientation === 'vertical' ? 'widget-weather-detail-vertical' : ''}`}>
@@ -609,7 +619,7 @@ function MainApp() {
   const [snapshot,setSnapshot] = useState<Nullable<SystemSnapshot>>(null);
   const [weather,setWeather] = useState<Nullable<WeatherSnapshot>>(null);
   const [serviceStatus,setServiceStatus] = useState<ServiceStatus>(initialServiceStatus);
-  const [history,setHistory] = useState<WidgetHistory>({cpu:[],gpu:[],memory:[],diskRead:[],diskWrite:[],networkRx:[],networkTx:[],network:[]});
+  const [history,setHistory] = useState<WidgetHistory>({cpu:[],gpu:[],memory:[],diskRead:[],diskWrite:[],networkRx:[],networkTx:[],network:[],power:[],powerMode:'unavailable'});
   const [clock,setClock] = useState(new Date());
   const [toast,setToast] = useState('');
   const widgetQuery = new URLSearchParams(window.location.search);
@@ -698,6 +708,7 @@ function MainApp() {
       const networkRx = historyNetworks.length ? historyNetworks.reduce((sum, nic) => sum + nic.rxBytesPerSec, 0) : null;
       const networkTx = historyNetworks.length ? historyNetworks.reduce((sum, nic) => sum + nic.txBytesPerSec, 0) : null;
       const systemDisk = data.disks?.find(disk => (disk.volumeNames ?? []).some(name => name.replace(/[\\/]+$/, '').toUpperCase() === 'C:')) ?? data.disks?.[0];
+      const power = resolvePowerSummary(data);
       setHistory(old => ({
         cpu: append(old.cpu, data.cpu?.load),
         gpu: append(old.gpu, data.gpus?.[0]?.load),
@@ -707,6 +718,8 @@ function MainApp() {
         networkRx: append(old.networkRx, networkRx),
         networkTx: append(old.networkTx, networkTx),
         network: append(old.network, networkRx == null || networkTx == null ? null : Math.min(100, (networkRx + networkTx) / 1048576 / 10 * 100)),
+        power: append(power.mode === old.powerMode ? old.power : [], power.valueW),
+        powerMode: power.mode,
       }));
     });
     const unWeather = window.nexus.onWeather((w: WeatherSnapshot | null) => { if (alive && w) setWeather(w); });
@@ -779,7 +792,7 @@ function MainApp() {
       {['监控中心','设备输出','个性化','扩展管理','管理'].map(group => <div className="nav-group" key={group}><div className="nav-group-title">{group}</div>{navItems.filter(n=>n.group===group).map(item=>{
         const Icon=item.icon; return <button key={item.id} className={`nav-item ${page===item.id?'active':''}`} onClick={()=>setPage(item.id)}><Icon size={17}/><span>{item.label}</span>{page===item.id&&<i/>}</button>;
       })}</div>)}
-      <div className="sidebar-bottom"><div className={`service-chip ${serviceState==='online'?'online':'offline'}`}><span className="pulse-dot"/><div><b>{serviceStatus.phase==='degraded'?'服务响应超时':serviceState==='online'?'本机服务在线':'等待硬件服务'}</b><small>{serviceState==='online'?'LOCAL TELEMETRY':serviceStatus.phase==='restarting'?'RESTARTING':'LOCALHOST :18765'}</small></div></div><div className="sidebar-footer"><span>NEXUS MONITOR</span><span>2.2.13</span></div></div>
+      <div className="sidebar-bottom"><div className={`service-chip ${serviceState==='online'?'online':'offline'}`}><span className="pulse-dot"/><div><b>{serviceStatus.phase==='degraded'?'服务响应超时':serviceState==='online'?'本机服务在线':'等待硬件服务'}</b><small>{serviceState==='online'?'LOCAL TELEMETRY':serviceStatus.phase==='restarting'?'RESTARTING':'LOCALHOST :18765'}</small></div></div><div className="sidebar-footer"><span>NEXUS MONITOR</span><span>2.2.14</span></div></div>
     </aside>
 
     <main className="main-area">
@@ -1644,6 +1657,6 @@ function SettingsPage({settings,updateSettings,notify}:any){
       <p className="panel-note">每项独立开关。这里控制悬浮窗窄条及展开卡片中的模块；主界面总览的显示项目保持独立设置。单个底层传感器可在“硬件与网络”页面收藏。</p>
       <div className="widget-visibility-grid">{widgetOptions.map(([id,label])=><label className="widget-visibility-option" key={id}><input type="checkbox" checked={widgetVisible.includes(id)} onChange={()=>toggleWidgetMetric(id)}/><span>{label}</span></label>)}</div>
     </section>
-    <section className="panel about-panel"><div className="about-emblem">N</div><div><b>NexusMonitor 2.2.13</b><span>Electron + React UI · .NET 10 Hardware Service</span><small>本机优先，不需要账户；硬件数据通过 127.0.0.1 本地接口传递。</small></div><span className="count-pill">DEVELOPMENT BUILD</span></section>
+    <section className="panel about-panel"><div className="about-emblem">N</div><div><b>NexusMonitor 2.2.14</b><span>Electron + React UI · .NET 10 Hardware Service</span><small>本机优先，不需要账户；硬件数据通过 127.0.0.1 本地接口传递。</small></div><span className="count-pill">DEVELOPMENT BUILD</span></section>
   </>;
 }
