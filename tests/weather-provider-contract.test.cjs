@@ -67,13 +67,12 @@ test('settings expose all weather providers and distinguish the AQI standard', (
   assert.match(app, /数据来源声明/);
 });
 
-test('vertical HUD ignores saved heights and uses a fixed non-resizable design size', () => {
-  assert.ok(main.includes('width: 340, height: 1200, minWidth: 340, minHeight: 700'));
-  assert.match(main, /resizable: !vertical/);
-  assert.match(main, /widgetWindow\.setResizable\(currentSettings\.orientation !== 'vertical'\)/);
-  assert.doesNotMatch(main, /const savedHeight =/);
-  assert.doesNotMatch(main, /const rememberedHeight =/);
-  assert.ok(read('src/main/widget-docking.ts').includes('preferredVerticalHeight = 1200'));
+test('vertical HUD restores saved heights and exposes persistent native resize control', () => {
+  assert.match(main, /resizable: !vertical \|\| currentSettings\.widgetResizeEnabled !== false/);
+  assert.match(main, /label: '允许调整窗口大小'/);
+  assert.match(main, /widgetVerticalDisplaySizes/);
+  assert.ok(read('src/main/widget-docking.ts').includes('width: 340, height: 900'));
+  assert.ok(read('src/main/widget-docking.ts').includes('preferredVerticalHeight = 900'));
 });
 
 test('AQI presentation uses Chinese MEP and US EPA labels for the same numeric bands', () => {

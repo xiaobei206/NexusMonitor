@@ -35,13 +35,12 @@ test('floating HUD labels use readable metadata text instead of micro text', () 
 });
 
 
-test('vertical HUD uses a fixed 1200px design height and cannot be manually resized', () => {
-  assert.ok(main.includes('width: 340, height: 1200, minWidth: 340, minHeight: 700'));
-  assert.match(main, /resizable: !vertical/);
-  assert.match(main, /widgetWindow\.setResizable\(currentSettings\.orientation !== 'vertical'\)/);
-  assert.doesNotMatch(main, /const savedHeight =/);
-  assert.doesNotMatch(main, /const rememberedHeight =/);
-  assert.ok(docking.includes('preferredVerticalHeight = 1200'));
+test('vertical HUD resizes freely by default, remembers its size and keeps short-screen forecast behavior', () => {
+  assert.match(main, /resizable: !vertical \|\| currentSettings\.widgetResizeEnabled !== false/);
+  assert.match(main, /widgetWindow\.setResizable\(currentSettings\.orientation !== 'vertical' \|\| currentSettings\.widgetResizeEnabled !== false\)/);
+  assert.match(main, /widgetVerticalDisplaySizes/);
+  assert.ok(docking.includes('width: 340, height: 900'));
+  assert.ok(docking.includes('preferredVerticalHeight = 900'));
   assert.match(css, /@media\(max-height:1180px\)[\s\S]*?\.widget-shell\.vertical \.widget-vertical-daily-block\{display:none\}/);
 });
 
