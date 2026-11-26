@@ -1,4 +1,5 @@
 import { app, BrowserWindow, Tray, Menu, ipcMain, nativeImage, dialog, shell, screen, safeStorage, clipboard } from 'electron';
+import type { MenuItemConstructorOptions } from 'electron';
 import { createHash, createPrivateKey, createPublicKey, generateKeyPairSync, randomUUID, sign as cryptoSign } from 'node:crypto';
 import { spawn } from 'node:child_process';
 import type { ChildProcess } from 'node:child_process';
@@ -14,7 +15,7 @@ import { RotatingLogger } from './logger';
 import { restartDelayMs } from './service-backoff';
 import { SnapshotCoordinator } from './snapshot-coordinator';
 import { fitWindowToWorkArea } from './window-layout';
-import { clampWidgetBounds, dockWidgetBounds, hideWidgetBounds, resolveDockEdge, resizeWidgetForOrientation } from './widget-docking';
+import { clampWidgetBounds, dockWidgetBounds, hideWidgetBounds, resolveDockEdge, resizeWidgetForOrientation, resolveSavedVerticalWidgetSize } from './widget-docking';
 import type { DockEdge } from './widget-docking';
 import { calculateWidgetDetailLayout } from './widget-detail-window';
 import { isFullscreenOnWidgetDisplay } from './fullscreen-detection';
@@ -921,6 +922,11 @@ function getPublicSettings() {
 
 function saveSettings(next: Record<string, unknown>) {
   const previous = { ...currentSettings };
+  // Flush the portrait size before changing orientation, or a late timer can
+  // otherwise record the portrait dimensions as a horizontal window size.
+  if (previous.orientation === 'vertical' && next.orientation !== undefined && next.orientation !== previous.orientation && widgetWindow && !widgetWindow.isDestroyed()) {
+    persistWidgetDimensionsNow(widgetWindow);
+  }
   currentSettings = { ...currentSettings, ...next };
   if (previous.usbDisplayMode !== currentSettings.usbDisplayMode && currentSettings.usbDisplayMode === 'music-only') {
     usbDisplayRestorePending = false;
@@ -956,18 +962,24 @@ function saveSettings(next: Record<string, unknown>) {
     if (widgetEdgeHidden) revealWidgetFromEdge();
     const currentBounds = widgetWindow.getBounds();
     const display = screen.getDisplayMatching(currentBounds);
+    const rawSizeMap = currentSettings.widgetVerticalDisplaySizes;
+    const sizeMap = rawSizeMap && typeof rawSizeMap === 'object' && !Array.isArray(rawSizeMap) ? rawSizeMap as Record<string, unknown> : {};
+    const rawPositionMap = currentSettings.widgetDisplayPositions;
+    const positionMap = rawPositionMap && typeof rawPositionMap === 'object' && !Array.isArray(rawPositionMap) ? rawPositionMap as Record<string, unknown> : {};
+    const verticalSize = resolveSavedVerticalWidgetSize(sizeMap[String(display.id)], positionMap[String(display.id)]);
     const layout = resizeWidgetForOrientation(
       currentBounds,
       display.workArea,
       currentSettings.orientation === 'vertical' ? 'vertical' : 'horizontal',
       widgetDockEdge,
       18,
-      1200,
+      verticalSize.height,
+      verticalSize.width,
     );
     widgetRestoreBounds = null;
     widgetRestoreMinSize = null;
     widgetEdgeHidden = false;
-    widgetWindow.setResizable(currentSettings.orientation !== 'vertical');
+    widgetWindow.setResizable(currentSettings.orientation !== 'vertical' || currentSettings.widgetResizeEnabled !== false);
     widgetWindow.setMinimumSize(layout.minWidth, layout.minHeight);
     widgetWindow.setBounds(layout.bounds, false);
     if (currentSettings.orientation !== 'vertical' && widgetCalendarWindow && !widgetCalendarWindow.isDestroyed()) {
@@ -1615,25 +1627,32 @@ function moveWidgetTo(position: { x: number; y: number }) {
   return true;
 }
 
+function persistWidgetDimensionsNow(win: BrowserWindow) {
+  if (widgetResizeSaveTimer) { clearTimeout(widgetResizeSaveTimer); widgetResizeSaveTimer = null; }
+  if (widgetWindow !== win || win.isDestroyed() || currentSettings.orientation !== 'vertical') return;
+  const bounds = win.getBounds();
+  const display = screen.getDisplayMatching(bounds);
+  const rawPositions = currentSettings.widgetDisplayPositions;
+  const positions = rawPositions && typeof rawPositions === 'object' && !Array.isArray(rawPositions) ? rawPositions as Record<string, unknown> : {};
+  const previous = positions[String(display.id)];
+  const previousRecord = previous && typeof previous === 'object' && !Array.isArray(previous) ? previous as Record<string, unknown> : {};
+  const rawSizeMap = currentSettings.widgetVerticalDisplaySizes;
+  const sizeMap = rawSizeMap && typeof rawSizeMap === 'object' && !Array.isArray(rawSizeMap) ? rawSizeMap as Record<string, unknown> : {};
+  saveSettings({
+    widgetLastDisplayId: display.id,
+    widgetDisplayPositions: {
+      ...positions,
+      [String(display.id)]: { ...previousRecord, x: bounds.x, y: bounds.y, width: bounds.width, height: bounds.height, dockEdge: widgetDockEdge },
+    },
+    widgetVerticalDisplaySizes: { ...sizeMap, [String(display.id)]: { width: bounds.width, height: bounds.height } },
+  });
+}
+
 function scheduleWidgetDimensionPersistence(win: BrowserWindow) {
   if (widgetResizeSaveTimer) clearTimeout(widgetResizeSaveTimer);
   widgetResizeSaveTimer = setTimeout(() => {
     widgetResizeSaveTimer = null;
-    if (widgetWindow !== win || win.isDestroyed() || currentSettings.orientation !== 'vertical') return;
-    const bounds = win.getBounds();
-    const display = screen.getDisplayMatching(bounds);
-    const positions = currentSettings.widgetDisplayPositions && typeof currentSettings.widgetDisplayPositions === 'object'
-      ? currentSettings.widgetDisplayPositions as Record<string, unknown> : {};
-    const previous = positions[String(display.id)];
-    const previousRecord = previous && typeof previous === 'object' && !Array.isArray(previous)
-      ? previous as Record<string, unknown> : {};
-    saveSettings({
-      widgetLastDisplayId: display.id,
-      widgetDisplayPositions: {
-        ...positions,
-        [String(display.id)]: { ...previousRecord, x: bounds.x, y: bounds.y, width: bounds.width, height: bounds.height, dockEdge: widgetDockEdge },
-      },
-    });
+    persistWidgetDimensionsNow(win);
   }, 350);
 }
 
@@ -1693,8 +1712,22 @@ function revealWidgetFromEdge() {
 }
 
 function buildWidgetContextMenu() {
-  const menu = Menu.buildFromTemplate([
+  const resizeOption: MenuItemConstructorOptions | null = currentSettings.orientation === 'vertical' ? {
+    label: '允许调整窗口大小',
+    type: 'checkbox',
+    checked: currentSettings.widgetResizeEnabled !== false,
+    click: item => {
+      if (widgetWindow && !widgetWindow.isDestroyed()) persistWidgetDimensionsNow(widgetWindow);
+      saveSettings({ widgetResizeEnabled: item.checked });
+      if (widgetWindow && !widgetWindow.isDestroyed()) {
+        widgetWindow.setMinimumSize(280, 420);
+        widgetWindow.setResizable(item.checked);
+      }
+    },
+  } : null;
+  const template: MenuItemConstructorOptions[] = [
     { label: '固定位置', type: 'checkbox', checked: currentSettings.widgetPinned === true, click: item => { saveSettings({ widgetPinned: item.checked }); } },
+    ...(resizeOption ? [resizeOption] : []),
     { label: '始终置顶', type: 'checkbox', checked: widgetAlwaysOnTopEnabled(), click: item => { saveSettings({ widgetAlwaysOnTop: item.checked }); } },
     { label: '靠边自动隐藏', type: 'checkbox', checked: currentSettings.widgetAutoHide === true, click: item => { saveSettings({ widgetAutoHide: item.checked }); } },
     { label: '全屏时自动让位', type: 'checkbox', checked: currentSettings.widgetSmartFullscreen !== false, click: item => { saveSettings({ widgetSmartFullscreen: item.checked }); } },
@@ -1702,7 +1735,8 @@ function buildWidgetContextMenu() {
     { label: '打开主界面', click: () => { if (!mainWindow || mainWindow.isDestroyed()) createMainWindow(); mainWindow?.show(); mainWindow?.focus(); } },
     { type: 'separator' },
     { label: '退出 NexusMonitor', click: () => { quitting = true; app.quit(); } },
-  ]);
+  ];
+  const menu = Menu.buildFromTemplate(template);
   menu.popup({ window: widgetWindow ?? undefined });
 }
 
@@ -1727,10 +1761,13 @@ function toggleWidget(force?: boolean) {
   const savedPositionRecord = rawSavedPosition && typeof rawSavedPosition === 'object' && !Array.isArray(rawSavedPosition)
     ? rawSavedPosition as Record<string, unknown>
     : null;
-  // Use a fixed design height for the complete vertical HUD. The actual window
-  // is clamped to the selected display's work area, but old saved heights are ignored.
+  const rawSizeMap = currentSettings.widgetVerticalDisplaySizes;
+  const sizeMap = rawSizeMap && typeof rawSizeMap === 'object' && !Array.isArray(rawSizeMap) ? rawSizeMap as Record<string, unknown> : {};
+  // Restore the new portrait-size map; migrate only valid legacy portrait bounds.
+  // First-run and invalid values fall back to 340×900, then clamp to the work area.
+  const verticalSize = resolveSavedVerticalWidgetSize(sizeMap[String(display.id)], savedPositionRecord);
   const layout = fitWindowToWorkArea(area, vertical
-    ? { width: 340, height: 1200, minWidth: 340, minHeight: 700, margin: 18, horizontalAnchor: 'right', verticalAnchor: 'top' }
+    ? { width: verticalSize.width, height: verticalSize.height, minWidth: 280, minHeight: 420, margin: 18, horizontalAnchor: 'right', verticalAnchor: 'top' }
     : { width: 980, height: 112, minWidth: 760, minHeight: 96, margin: 18, horizontalAnchor: 'right', verticalAnchor: 'top' });
   const savedPosition = savedPositionRecord
     && typeof savedPositionRecord.x === 'number' && Number.isFinite(savedPositionRecord.x)
@@ -1752,13 +1789,14 @@ function toggleWidget(force?: boolean) {
   }
   widgetWindow = new BrowserWindow({
     ...layout,
-    frame: false, transparent: true, backgroundColor: '#00000000', resizable: !vertical,
+    frame: false, transparent: true, backgroundColor: '#00000000', resizable: !vertical || currentSettings.widgetResizeEnabled !== false,
     alwaysOnTop: widgetAlwaysOnTopEnabled(), skipTaskbar: true, hasShadow: false,
     webPreferences: { preload: join(__dirname, '../preload/index.js'), contextIsolation: true, nodeIntegration: false, sandbox: true, additionalArguments: ['--nexus-widget'] },
   });
   if (isDev) void widgetWindow.loadURL('http://127.0.0.1:5173/?widget=1');
   else void widgetWindow.loadFile(join(app.getAppPath(), 'dist', 'index.html'), { query: { widget: '1' } });
   const thisWidget = widgetWindow;
+  widgetWindow.on('close', () => { if (currentSettings.orientation === 'vertical') persistWidgetDimensionsNow(thisWidget); });
   widgetWindow.on('move', repositionWidgetDetailWindow);
   widgetWindow.on('resize', () => { repositionWidgetDetailWindow(); if (widgetWindow) scheduleWidgetDimensionPersistence(widgetWindow); });
   widgetWindow.on('closed', () => {

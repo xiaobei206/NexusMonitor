@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { resolveDockEdge, dockWidgetBounds, hideWidgetBounds, expandDockedWidget, resizeWidgetForOrientation } = require('../.test-build/main/widget-docking.js');
+const { resolveDockEdge, dockWidgetBounds, hideWidgetBounds, expandDockedWidget, resizeWidgetForOrientation, resolveSavedVerticalWidgetSize } = require('../.test-build/main/widget-docking.js');
 const area = { x: 100, y: 50, width: 1280, height: 720 };
 const bounds = { x: 1080, y: 70, width: 180, height: 112 };
 
@@ -39,35 +39,40 @@ test('orientation resize restores canonical horizontal dimensions after vertical
   assert.equal(horizontal.minHeight, 96);
 });
 
-test('orientation resize restores canonical vertical dimensions after horizontal mode', () => {
+test('orientation resize restores the smaller default vertical dimensions after horizontal mode', () => {
   const monitor = { x: 1920, y: 0, width: 1440, height: 900 };
   const horizontal = { x: 2362, y: 18, width: 980, height: 112 };
   const vertical = resizeWidgetForOrientation(horizontal, monitor, 'vertical', null);
   assert.deepEqual(vertical.bounds, { x: 3002, y: 18, width: 340, height: 864 });
-  assert.equal(vertical.minWidth, 340);
-  assert.equal(vertical.minHeight, 700);
+  assert.equal(vertical.minWidth, 280);
+  assert.equal(vertical.minHeight, 420);
 });
 
 
-test('vertical HUD prefers its full 1200px design height where the display permits it', () => {
+test('vertical HUD honors a requested saved size where the display permits it', () => {
   const monitor = { x: 0, y: 0, width: 2560, height: 1440 };
-  const vertical = resizeWidgetForOrientation(
-    { x: 2200, y: 18, width: 340, height: 900 },
-    monitor,
-    'vertical',
-    'right',
-  );
-  assert.deepEqual(vertical.bounds, { x: 2202, y: 0, width: 340, height: 1200 });
-  assert.equal(vertical.minHeight, 700);
+  const vertical = resizeWidgetForOrientation({ x: 2200, y: 18, width: 340, height: 900 }, monitor, 'vertical', 'right', 18, 1200, 360);
+  assert.deepEqual(vertical.bounds, { x: 2182, y: 0, width: 360, height: 1200 });
+  assert.equal(vertical.minWidth, 280);
+  assert.equal(vertical.minHeight, 420);
 });
 
-test('vertical HUD restores a custom height within supported bounds', () => {
+test('vertical HUD restores custom width and height and clamps oversized values to the work area', () => {
   const monitor = { x: 0, y: 0, width: 1920, height: 1440 };
   const current = { x: 1540, y: 80, width: 340, height: 960 };
-  const restored = resizeWidgetForOrientation(current, monitor, 'vertical', null, 18, 820);
+  const restored = resizeWidgetForOrientation(current, monitor, 'vertical', null, 18, 820, 360);
   assert.equal(restored.bounds.height, 820);
-  const clamped = resizeWidgetForOrientation(current, monitor, 'vertical', null, 18, 1500);
-  assert.equal(clamped.bounds.height, 1200);
+  assert.equal(restored.bounds.width, 360);
+  const clamped = resizeWidgetForOrientation(current, monitor, 'vertical', null, 18, 1500, 800);
+  assert.equal(clamped.bounds.height, 1404);
+  assert.equal(clamped.bounds.width, 800);
+});
+
+test('saved vertical size has priority, migrates legacy portrait bounds, and safely rejects invalid values', () => {
+  assert.deepEqual(resolveSavedVerticalWidgetSize({ width: 360, height: 820 }, { width: 340, height: 960 }), { width: 360, height: 820 });
+  assert.deepEqual(resolveSavedVerticalWidgetSize(null, { width: 340, height: 760 }), { width: 340, height: 760 });
+  assert.deepEqual(resolveSavedVerticalWidgetSize({ width: 980, height: 112 }, { width: 980, height: 112 }), { width: 340, height: 900 });
+  assert.deepEqual(resolveSavedVerticalWidgetSize({ width: Number.NaN, height: 700 }, null), { width: 340, height: 900 });
 });
 
 test('orientation resize preserves a genuinely floating HUD center and clamps it to the work area', () => {

@@ -2,6 +2,21 @@ import type { WorkArea } from './window-layout';
 
 export type DockEdge = 'left' | 'right' | 'top' | 'bottom';
 export interface WidgetBounds { x: number; y: number; width: number; height: number; }
+export interface WidgetSize { width: number; height: number; }
+
+/** Prefer the current per-display size, then migrate compatible legacy portrait bounds. */
+export function resolveSavedVerticalWidgetSize(saved: unknown, legacy: unknown = null): WidgetSize {
+  const read = (value: unknown): WidgetSize | null => {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+    const candidate = value as Record<string, unknown>;
+    const width = candidate.width;
+    const height = candidate.height;
+    if (typeof width !== 'number' || !Number.isFinite(width) || width < 280 || width > 5000) return null;
+    if (typeof height !== 'number' || !Number.isFinite(height) || height < 420 || height > 10000) return null;
+    return { width: Math.round(width), height: Math.round(height) };
+  };
+  return read(saved) ?? read(legacy) ?? { width: 340, height: 900 };
+}
 
 export function clampWidgetBounds(bounds: WidgetBounds, area: WorkArea): WidgetBounds {
   const width = Math.max(1, Math.min(Math.round(bounds.width), area.width));
@@ -108,7 +123,8 @@ export interface WidgetOrientationLayout {
 /**
  * Resize the existing HUD when switching orientation without destroying the
  * BrowserWindow. Preserve the nearest intentional anchor (left/right/top/bottom)
- * or the floating window's center, and always return the canonical compact size.
+ * or the floating window's center. Vertical dimensions can come from saved
+ * per-display size memory; horizontal HUD geometry remains canonical.
  */
 export function resizeWidgetForOrientation(
   current: WidgetBounds,
@@ -116,13 +132,14 @@ export function resizeWidgetForOrientation(
   orientation: WidgetOrientation,
   dockEdge: DockEdge | null,
   margin = 18,
-  preferredVerticalHeight = 1200,
+  preferredVerticalHeight = 900,
+  preferredVerticalWidth = 340,
 ): WidgetOrientationLayout {
   const safeMargin = Math.max(0, Math.floor(margin));
   const availableWidth = Math.max(1, Math.floor(area.width - safeMargin * 2));
   const availableHeight = Math.max(1, Math.floor(area.height - safeMargin * 2));
-  const preferredWidth = orientation === 'vertical' ? 340 : 980;
-  const preferredHeight = orientation === 'vertical' ? Math.max(700, Math.min(1200, Math.round(preferredVerticalHeight))) : 112;
+  const preferredWidth = orientation === 'vertical' ? Math.max(280, Math.round(preferredVerticalWidth)) : 980;
+  const preferredHeight = orientation === 'vertical' ? Math.max(420, Math.round(preferredVerticalHeight)) : 112;
   const width = Math.max(1, Math.min(preferredWidth, availableWidth));
   const height = Math.max(1, Math.min(preferredHeight, availableHeight));
   const rightGap = area.x + area.width - (current.x + current.width);
@@ -147,7 +164,7 @@ export function resizeWidgetForOrientation(
   const bounds = clampWidgetBounds({ x, y, width, height }, area);
   return {
     bounds,
-    minWidth: Math.min(orientation === 'vertical' ? 340 : 760, width),
-    minHeight: Math.min(orientation === 'vertical' ? 700 : 96, height),
+    minWidth: Math.min(orientation === 'vertical' ? 280 : 760, width),
+    minHeight: Math.min(orientation === 'vertical' ? 420 : 96, height),
   };
 }

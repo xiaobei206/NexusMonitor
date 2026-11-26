@@ -19,15 +19,23 @@ test('vertical HUD uses a dedicated icon-led information layout with weekday and
   assert.match(app, /<span>\{dateText\}<\/span><small>\{weekdayText\}<\/small>/);
 });
 
-test('horizontal HUD remains separate and vertical HUD uses a fixed non-resizable design size', () => {
+test('vertical HUD restores the saved per-display size and uses a smaller first-run fallback', () => {
   assert.match(app, /: <>\s*<div className="widget-brand">/);
   assert.match(app, /widget-stat cpu-stat/);
-  assert.ok(main.includes('width: 340, height: 1200, minWidth: 340'));
-  assert.match(main, /resizable: !vertical/);
-  assert.match(main, /widgetWindow\.setResizable\(currentSettings\.orientation !== 'vertical'\)/);
-  assert.doesNotMatch(main, /const savedHeight =/);
-  assert.doesNotMatch(main, /const rememberedHeight =/);
+  assert.match(main, /resolveSavedVerticalWidgetSize\(sizeMap\[String\(display\.id\)\], savedPositionRecord\)/);
+  assert.match(main, /height: verticalSize\.height, minWidth: 280, minHeight: 420/);
+  assert.match(main, /width: 340, height: 900/);
+  assert.match(main, /resizable: !vertical \|\| currentSettings\.widgetResizeEnabled !== false/);
+  assert.match(main, /widgetVerticalDisplaySizes/);
 });
+
+test('vertical HUD right-click menu controls persistent resizing and size locking', () => {
+  assert.match(main, /label: '允许调整窗口大小'/);
+  assert.match(main, /checked: currentSettings\.widgetResizeEnabled !== false/);
+  assert.match(main, /saveSettings\(\{ widgetResizeEnabled: item\.checked \}\)/);
+  assert.match(main, /widgetWindow\.setResizable\(item\.checked\)/);
+  assert.match(main, /persistWidgetDimensionsNow\(thisWidget\)/);
+  assert.match(css, /\.widget-shell\.vertical \.widget-bar\{width:100%;min-width:0;flex:1 1 auto\}/);
 
 test('vertical HUD sections keep natural height and hide the complete optional daily forecast on shorter screens', () => {
   assert.match(css, /\.widget-shell\.vertical \.widget-bar > \.widget-vertical-row,[\s\S]*?flex: 0 0 auto;/);
@@ -66,4 +74,5 @@ test('vertical HUD exposes a dedicated calendar launcher without changing the ho
   assert.match(main, /widget:open-calendar/);
   assert.match(main, /currentSettings\.orientation !== 'vertical'/);
   assert.match(app, /: <>\s*<div className="widget-brand">/);
+});
 });

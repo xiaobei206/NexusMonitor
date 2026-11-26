@@ -822,3 +822,7 @@ body{font-size:var(--text-body);line-height:1.5}
 .usb-video-overlap-actions button.primary{border-color:#488bd4;background:#246cb6}
 .usb-video-overlap-actions button.primary:hover{background:#2d80d5}
 @media(max-width:600px){.usb-video-overlap-actions{justify-content:stretch}.usb-video-overlap-actions button{flex:1}.usb-video-audio-setting{grid-template-columns:1fr}.usb-video-output-actions button{flex:1}}
+
+
+/* The vertical HUD is natively resizable; make the content column follow saved window width. */
+.widget-shell.vertical .widget-bar{width:100%;min-width:0;flex:1 1 auto}
