@@ -1,4 +1,4 @@
-## 2.2.15（竖向 HUD 按内容自动锁定最小高度；CI 验证待运行）
+## 2.2.15（竖向 HUD 按内容自动锁定最小高度；已正式发布，Windows CI Run #45931132667 success）
 
 ### 用户反馈与目标
 - 用户发现竖向悬浮窗缩到一定高度后才出现内部滚动条；这个临界高度正好就是当前可见信息需要的最小高度。
@@ -11,9 +11,15 @@
 - 当天气或可见内容增加导致现有窗口低于新下限时，自动扩展到可容纳高度；若靠屏幕底边停靠，则保持底边锚定。
 - 横向模式不调用动态最小高度接口；小屏下现有的可选预报隐藏策略保持不变。
 
+### 构建与验证
+- Windows CI Run #269 全流程 success：[workflow run](https://github.com/xiaobei206/NexusMonitor/actions/runs/45931132667)。14/14 版本一致性检查、280/280 Main/Node 回归测试、Renderer TypeScript/Vite、WASAPI、PawnIO、.NET HardwareService、Hardware/Storage 测试、NSIS 安装包、SHA-256、Release 发布、Release 文案同步与 artifact 上传均成功。
+- 正式 Release：[v2.2.15](https://github.com/xiaobei206/NexusMonitor/releases/tag/v2.2.15)。安装包 `NexusMonitor-2.2.15-Setup.exe`，160070866 bytes；SHA-256 `1dd1895ad45ba061264f2d7b2f2b2e577a1d9e781caad038efafb7bb697580d1`。未配置代码签名证书，因此未签名。
+
 ### 验收边界
-- 此提交包含源码、版本元数据和回归测试；Windows CI、安装包大小与 SHA-256 尚待实际 workflow 结果。
-- 仍需目标 Windows PC 实测竖向自由拉伸临界值、宽度变化后内容换行、天气/指标增删、底边停靠以及小于内容总高度的显示器工作区。工作区高度不足时仍以不越界为优先，极端情况下保留滚动兜底。
+- Hosted Windows CI 证明源码、测试和打包流程通过，但不等于目标 Windows PC 的 GUI/DPI 实测。
+- 仍需目标 Windows PC 实测竖向自由拉伸临界值、宽度变化后内容换行、天气/指标增删、底边停靠、多屏/DPI 以及短屏工作区兜底。若显示器工作区本身不足以容纳全部内容，系统会优先保证窗口不越界，仍可能保留滚动兜底。
+
+---
 
 ---
 

@@ -11,6 +11,14 @@ npm.cmd run build:wasapi
 dotnet build .\HardwareService\HardwareService.csproj -c Release
 npm.cmd run test:storage
 
+已发布安装包信息：
+版本：2.2.15
+CI：[Run #45931132667](https://github.com/xiaobei206/NexusMonitor/actions/runs/45931132667)
+安装包：https://github.com/xiaobei206/NexusMonitor/releases/download/v2.2.15/NexusMonitor-2.2.15-Setup.exe
+大小：160070866 bytes
+SHA-256：1dd1895ad45ba061264f2d7b2f2b2e577a1d9e781caad038efafb7bb697580d1
+SHA-256 文件：https://github.com/xiaobei206/NexusMonitor/releases/download/v2.2.15/NexusMonitor-2.2.15-Setup.exe.sha256
+
 竖向 HUD 自适应最小高度验收：
 1. 在正常高度显示器上启动竖向悬浮窗，等待所有指标、天气、音乐信息加载完成。
 2. 从窗口底部向上拖动高度。窗口应在当前可见内容刚好放得下的位置停止，不能再缩到出现滚动条。

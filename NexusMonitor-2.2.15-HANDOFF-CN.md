@@ -3,7 +3,9 @@
 **版本：** 2.2.15  
 **基线：** 2.2.14  
 **唯一工作基线：** GitHub main  
-**状态：** 源码已提交；Windows CI 待验证。
+**状态：** 已正式发布；Windows CI 全流程成功  
+**CI：** [Run #45931132667](https://github.com/xiaobei206/NexusMonitor/actions/runs/45931132667)  
+**Release：** [NexusMonitor 2.2.15](https://github.com/xiaobei206/NexusMonitor/releases/tag/v2.2.15)
 
 ## 文件索引
 
@@ -14,7 +16,7 @@
 - `tests/widget-docking.test.cjs`、`tests/widget-vertical-layout.test.cjs`：覆盖高度下限策略、工作区限制、Renderer 观察器和 IPC 授权边界。
 - `NexusMonitor-2.2.15-BUILD-RELEASE.cjs`：版本校验与本地 Windows 构建入口。
 - `NexusMonitor-2.2.15-Windows-验收命令.txt`：构建命令和目标机验收步骤。
-- `NexusMonitor-2.2.15-BUILD-REPORT.md`：记录真实 CI 和发布数据。
+- `NexusMonitor-2.2.15-BUILD-REPORT.md`：实际 CI、测试、安装包与 SHA-256 记录。
 
 ## 当前行为设计
 
@@ -27,8 +29,15 @@
 
 ## CI 与安装包
 
-Windows CI、回归测试、安装包大小与 SHA-256 待实际完成后补录，不提前宣称通过。
+- [Windows CI Run #269](https://github.com/xiaobei206/NexusMonitor/actions/runs/45931132667) 全流程成功。
+- 版本一致性：14/14 检查通过。
+- Main / Node 回归测试：280/280 通过。
+- Renderer TypeScript/Vite、WASAPI、PawnIO、.NET HardwareService、Hardware/Storage、NSIS 安装包、SHA-256、Release 文案同步及 artifact 上传均成功。
+- 安装包：`NexusMonitor-2.2.15-Setup.exe`，160070866 bytes。
+- SHA-256：`1dd1895ad45ba061264f2d7b2f2b2e577a1d9e781caad038efafb7bb697580d1`。
+- [下载 Windows 安装包](https://github.com/xiaobei206/NexusMonitor/releases/download/v2.2.15/NexusMonitor-2.2.15-Setup.exe)
+- 未配置代码签名证书，因此安装包未签名。
 
 ## 目标 PC 实机验收
 
-检查竖向 HUD 向上拖动时停在内容刚好放下的位置、不会出现滚动条；宽度变化导致换行、天气预报变化、勾选/隐藏指标、边缘吸附、底边锚定、多屏/DPI 和短屏兜底。横向 HUD 应与 2.2.14 表现一致。
+检查竖向 HUD 向上拖动时停在内容刚好放下的位置、不会出现滚动条；宽度变化导致换行、天气预报变化、勾选/隐藏指标、边缘吸附、底边锚定、多屏/DPI 和短屏兜底。横向 HUD 应与 2.2.14 表现一致。Hosted CI 不等同于目标机 GUI/DPI 实测。

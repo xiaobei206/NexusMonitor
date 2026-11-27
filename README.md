@@ -1,4 +1,4 @@
-# NexusMonitor 2.2.15 — Electron Edition (vertical HUD content-aware minimum height)
+# NexusMonitor 2.2.15 — Electron Edition (released; Windows CI Run #45931132667 passed)
 
 > **新对话 / 新开发者接手：先读 [START-HERE-NEXT-GPT.md](START-HERE-NEXT-GPT.md) 和根目录 [AGENTS.md](AGENTS.md)。** 入口文档列出阅读顺序、源码目录地图、验证命令与硬件验收边界。
 
