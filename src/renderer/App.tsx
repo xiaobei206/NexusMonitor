@@ -456,8 +456,8 @@ function WidgetView({ snapshot, settings, history, weather, detailOnly = false, 
     onPointerLeave={onShellLeave}
   >
     {!detailOnly && <div
-      ref={widgetBarRef}
       className="widget-bar"
+      ref={widgetBarRef}
       role="group"
       tabIndex={0}
       aria-label="单击展开系统监控详情；按住并拖动可移动悬浮条"
