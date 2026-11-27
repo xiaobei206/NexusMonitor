@@ -65,6 +65,7 @@ const api = {
   toggleWidget: () => ipcRenderer.invoke('widget:toggle'),
   showWidget: () => ipcRenderer.invoke('widget:show'),
   setWidgetExpanded: (expanded: boolean) => ipcRenderer.invoke('widget:set-expanded', expanded),
+  setWidgetContentMinimumHeight: (height: number) => ipcRenderer.invoke('widget:set-content-min-height', height),
   notifyWidgetDetailRendererReady: () => ipcRenderer.send('widget:detail-renderer-ready'),
   notifyMainRendererReady: () => ipcRenderer.send('window:main-renderer-ready'),
   notifyWidgetDetailPointer: (inside: boolean) => ipcRenderer.invoke('widget:detail-pointer', inside),

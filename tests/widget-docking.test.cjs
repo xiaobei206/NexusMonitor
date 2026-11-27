@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { resolveDockEdge, dockWidgetBounds, hideWidgetBounds, expandDockedWidget, resizeWidgetForOrientation, resolveSavedVerticalWidgetSize } = require('../.test-build/main/widget-docking.js');
+const { resolveDockEdge, dockWidgetBounds, hideWidgetBounds, expandDockedWidget, resizeWidgetForOrientation, resolveSavedVerticalWidgetSize, resolveVerticalWidgetMinimumHeight } = require('../.test-build/main/widget-docking.js');
 const area = { x: 100, y: 50, width: 1280, height: 720 };
 const bounds = { x: 1080, y: 70, width: 180, height: 112 };
 
@@ -151,4 +151,11 @@ test('orientation changes hide the detached card and resize only the compact HUD
   assert.doesNotMatch(main, /widgetCollapsedBounds|widgetCollapsedMinSize/);
   assert.match(app, /lastOrientation\.current === settings\.orientation/);
   assert.match(app, /setExpanded\(false\)/);
+});
+
+test('vertical HUD minimum height follows natural content but never exceeds the display work area', () => {
+  assert.equal(resolveVerticalWidgetMinimumHeight(812, 1440), 812);
+  assert.equal(resolveVerticalWidgetMinimumHeight(300, 1440), 420, 'existing 420px floor remains');
+  assert.equal(resolveVerticalWidgetMinimumHeight(1500, 1080), 1080, 'small work areas are respected');
+  assert.equal(resolveVerticalWidgetMinimumHeight(Number.NaN, 1080), 420, 'invalid measurements fall back safely');
 });

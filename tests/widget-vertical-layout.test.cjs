@@ -77,3 +77,20 @@ test('vertical HUD exposes a dedicated calendar launcher without changing the ho
   assert.match(app, /: <>\s*<div className="widget-brand">/);
 });
 });
+
+test('vertical HUD native minimum height tracks natural visible content and horizontal HUD is unaffected', () => {
+  const preload = fs.readFileSync(path.join(root, 'src/preload/index.ts'), 'utf8');
+  const types = fs.readFileSync(path.join(root, 'src/renderer/vite-env.d.ts'), 'utf8');
+  assert.match(app, /const widgetBarRef = useRef<HTMLDivElement>\(null\)/);
+  assert.match(app, /new ResizeObserver\(scheduleMeasure\)/);
+  assert.match(app, /new MutationObserver\(\(\) => \{/);
+  assert.match(app, /childrenHeight \+ Math\.max\(0, visibleChildren\.length - 1\) \* gap \+ barPadding \+ shellFrame/);
+  assert.match(app, /window\.nexus\.setWidgetContentMinimumHeight\(minimumHeight\)/);
+  assert.match(app, /settings\.orientation !== 'vertical'/);
+  assert.match(preload, /setWidgetContentMinimumHeight: \(height: number\) => ipcRenderer\.invoke\('widget:set-content-min-height', height\)/);
+  assert.match(types, /setWidgetContentMinimumHeight\(height: number\): Promise<number \| false>/);
+  assert.match(main, /event\.sender !== widgetWindow\.webContents/);
+  assert.match(main, /win\.setMinimumSize\(minimumWidth, minimumHeight\)/);
+  assert.match(main, /bounds\.height < minimumHeight/);
+  assert.match(main, /resolveVerticalWidgetMinimumHeight\(measuredHeight, display\.workArea\.height, 420\)/);
+});

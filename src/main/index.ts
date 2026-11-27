@@ -15,7 +15,7 @@ import { RotatingLogger } from './logger';
 import { restartDelayMs } from './service-backoff';
 import { SnapshotCoordinator } from './snapshot-coordinator';
 import { fitWindowToWorkArea } from './window-layout';
-import { clampWidgetBounds, dockWidgetBounds, hideWidgetBounds, resolveDockEdge, resizeWidgetForOrientation, resolveSavedVerticalWidgetSize } from './widget-docking';
+import { clampWidgetBounds, dockWidgetBounds, hideWidgetBounds, resolveDockEdge, resizeWidgetForOrientation, resolveSavedVerticalWidgetSize, resolveVerticalWidgetMinimumHeight } from './widget-docking';
 import type { DockEdge } from './widget-docking';
 import { calculateWidgetDetailLayout } from './widget-detail-window';
 import { isFullscreenOnWidgetDisplay } from './fullscreen-detection';
@@ -1627,6 +1627,30 @@ function moveWidgetTo(position: { x: number; y: number }) {
   return true;
 }
 
+function applyWidgetContentMinimumHeight(rawHeight: unknown): number | false {
+  const win = widgetWindow;
+  if (!win || win.isDestroyed() || currentSettings.orientation !== 'vertical') return false;
+  const measuredHeight = Number(rawHeight);
+  if (!Number.isFinite(measuredHeight) || measuredHeight < 1 || measuredHeight > 10_000) return false;
+
+  const bounds = win.getBounds();
+  const display = screen.getDisplayMatching(bounds);
+  const minimumHeight = resolveVerticalWidgetMinimumHeight(measuredHeight, display.workArea.height, 420);
+  const [minimumWidth] = win.getMinimumSize();
+  win.setMinimumSize(minimumWidth, minimumHeight);
+
+  // If weather or a visible metric grows after startup, restore enough height
+  // immediately rather than leaving a scrollbar inside the vertical HUD.
+  if (bounds.height < minimumHeight) {
+    const y = widgetDockEdge === 'bottom'
+      ? display.workArea.y + display.workArea.height - minimumHeight
+      : bounds.y;
+    const nextBounds = clampWidgetBounds({ ...bounds, y, height: minimumHeight }, display.workArea);
+    win.setBounds(nextBounds, false);
+  }
+  return minimumHeight;
+}
+
 function persistWidgetDimensionsNow(win: BrowserWindow) {
   if (widgetResizeSaveTimer) { clearTimeout(widgetResizeSaveTimer); widgetResizeSaveTimer = null; }
   if (widgetWindow !== win || win.isDestroyed() || currentSettings.orientation !== 'vertical') return;
@@ -2082,6 +2106,10 @@ ipcMain.handle('app:set-startup', (_event, value: boolean) => {
 ipcMain.handle('widget:toggle', () => toggleWidget());
 ipcMain.handle('widget:show', () => toggleWidget(true));
 ipcMain.handle('widget:set-expanded', (_event, expanded: boolean) => setWidgetExpanded(expanded === true));
+ipcMain.handle('widget:set-content-min-height', (event, height: number) => {
+  if (!widgetWindow || event.sender !== widgetWindow.webContents) return false;
+  return applyWidgetContentMinimumHeight(height);
+});
 ipcMain.on('window:main-renderer-ready', event => {
   const main = mainWindow;
   if (!main || main.isDestroyed() || event.sender !== main.webContents) return;

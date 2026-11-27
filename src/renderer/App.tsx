@@ -214,6 +214,7 @@ type WidgetDragState = {
 function WidgetView({ snapshot, settings, history, weather, detailOnly = false, musicState, musicCommand }: { snapshot: Nullable<SystemSnapshot>; settings: AppSettings; history: WidgetHistory; weather: Nullable<WeatherSnapshot>; detailOnly?: boolean; musicState: MusicState | null; musicCommand: (command: MusicCommand) => void }) {
   const [expanded, setExpanded] = useState(detailOnly);
   const [fadingOut, setFadingOut] = useState(false);
+  const widgetBarRef = useRef<HTMLDivElement>(null);
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const edgeHideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [dockState, setDockState] = useState<{edge: 'left'|'right'|'top'|'bottom'|null; hidden: boolean}>({ edge: null, hidden: false });
@@ -366,6 +367,75 @@ function WidgetView({ snapshot, settings, history, weather, detailOnly = false, 
       if (secondFrame) window.cancelAnimationFrame(secondFrame);
     };
   }, [detailOnly]);
+  useEffect(() => {
+    if (detailOnly || settings.orientation !== 'vertical') return;
+    const bar = widgetBarRef.current;
+    const shell = bar?.closest<HTMLElement>('.widget-shell');
+    if (!bar || !shell) return;
+
+    let frame = 0;
+    let lastRequestedHeight = 0;
+    const measureAndReport = () => {
+      frame = 0;
+      const barStyle = window.getComputedStyle(bar);
+      const shellStyle = window.getComputedStyle(shell);
+      const visibleChildren = Array.from(bar.children).filter(child => {
+        const element = child as HTMLElement;
+        return window.getComputedStyle(element).display !== 'none' && element.getBoundingClientRect().height > 0;
+      });
+      const readPx = (value: string) => Number.parseFloat(value) || 0;
+      const gap = readPx(barStyle.rowGap || barStyle.gap);
+      const childrenHeight = visibleChildren.reduce((total, child) => total + child.getBoundingClientRect().height, 0);
+      const barPadding = readPx(barStyle.paddingTop) + readPx(barStyle.paddingBottom);
+      const shellFrame = readPx(shellStyle.borderTopWidth) + readPx(shellStyle.borderBottomWidth)
+        + readPx(shellStyle.paddingTop) + readPx(shellStyle.paddingBottom);
+      // Measure each direct flex item at its natural height. Do not use
+      // scrollHeight/clientHeight: those include the current viewport height
+      // when there is no overflow and would lock the window too large.
+      const requiredHeight = Math.ceil(
+        childrenHeight + Math.max(0, visibleChildren.length - 1) * gap + barPadding + shellFrame + 2,
+      );
+      const minimumHeight = Math.max(420, requiredHeight);
+      if (Math.abs(minimumHeight - lastRequestedHeight) < 2) return;
+      lastRequestedHeight = minimumHeight;
+      void window.nexus.setWidgetContentMinimumHeight(minimumHeight).catch(() => undefined);
+    };
+    const scheduleMeasure = () => {
+      if (frame) return;
+      frame = window.requestAnimationFrame(measureAndReport);
+    };
+    const resizeObserver = new ResizeObserver(scheduleMeasure);
+    const observedChildren = new Set<Element>();
+    const syncObservedChildren = () => {
+      const currentChildren = new Set(Array.from(bar.children));
+      for (const child of observedChildren) {
+        if (!currentChildren.has(child)) {
+          resizeObserver.unobserve(child);
+          observedChildren.delete(child);
+        }
+      }
+      for (const child of currentChildren) {
+        if (!observedChildren.has(child)) {
+          resizeObserver.observe(child);
+          observedChildren.add(child);
+        }
+      }
+    };
+    resizeObserver.observe(bar);
+    syncObservedChildren();
+    const mutationObserver = new MutationObserver(() => {
+      syncObservedChildren();
+      scheduleMeasure();
+    });
+    mutationObserver.observe(bar, { childList: true });
+    scheduleMeasure();
+    return () => {
+      if (frame) window.cancelAnimationFrame(frame);
+      mutationObserver.disconnect();
+      resizeObserver.disconnect();
+    };
+  }, [detailOnly, settings.orientation]);
+
   const lastOrientation = useRef(settings.orientation);
   useEffect(() => {
     if (lastOrientation.current === settings.orientation) return;
@@ -386,6 +456,7 @@ function WidgetView({ snapshot, settings, history, weather, detailOnly = false, 
     onPointerLeave={onShellLeave}
   >
     {!detailOnly && <div
+      ref={widgetBarRef}
       className="widget-bar"
       role="group"
       tabIndex={0}

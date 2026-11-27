@@ -4,6 +4,18 @@ export type DockEdge = 'left' | 'right' | 'top' | 'bottom';
 export interface WidgetBounds { x: number; y: number; width: number; height: number; }
 export interface WidgetSize { width: number; height: number; }
 
+/** Keep a vertical HUD tall enough for its measured, currently visible contents without exceeding the monitor work area. */
+export function resolveVerticalWidgetMinimumHeight(
+  measuredContentHeight: number,
+  workAreaHeight: number,
+  minimumFloor = 420,
+): number {
+  const available = Number.isFinite(workAreaHeight) ? Math.max(1, Math.floor(workAreaHeight)) : 1;
+  const floor = Math.min(available, Number.isFinite(minimumFloor) ? Math.max(1, Math.floor(minimumFloor)) : 420);
+  const measured = Number.isFinite(measuredContentHeight) ? Math.ceil(measuredContentHeight) : floor;
+  return Math.max(floor, Math.min(available, measured));
+}
+
 /** Prefer the current per-display size, then migrate compatible legacy portrait bounds. */
 export function resolveSavedVerticalWidgetSize(saved: unknown, legacy: unknown = null): WidgetSize {
   const read = (value: unknown): WidgetSize | null => {
