@@ -1,0 +1,23 @@
+NexusMonitor 2.2.15 Windows 验收命令
+
+在 Windows clone 根目录执行：
+
+npm.cmd ci --include=dev --no-audit --no-fund
+node .\scripts\validate-release-version.cjs
+node .\NexusMonitor-2.2.15-BUILD-RELEASE.cjs --validate-only
+npm.cmd run test:main
+npm.cmd run build:renderer
+npm.cmd run build:wasapi
+dotnet build .\HardwareService\HardwareService.csproj -c Release
+npm.cmd run test:storage
+
+竖向 HUD 自适应最小高度验收：
+1. 在正常高度显示器上启动竖向悬浮窗，等待所有指标、天气、音乐信息加载完成。
+2. 从窗口底部向上拖动高度。窗口应在当前可见内容刚好放得下的位置停止，不能再缩到出现滚动条。
+3. 改变窗口宽度，检查窄宽度造成的文字换行会提高原生最小高度；恢复宽度后，下限应随内容自然高度回落。
+4. 在设置中隐藏/显示 CPU、GPU、内存、存储、网络、功耗、天气和传感器模块，检查最小高度同步变化。
+5. 等待天气和音乐内容变化；如果内容增高超过当前窗口，窗口应自动扩展而不是出现滚动条。
+6. 将窗口吸附在屏幕底边，触发内容增高，检查窗口底边仍保持锚定且不越过任务栏工作区。
+7. 检查 420px 安全下限、短屏工作区、多显示器/DPI、重启尺寸记忆和右键调整窗口大小锁定。
+8. 切换横向悬浮窗，确认横向仍可自由压缩，尺寸与 2.2.14 一致。
+9. 当显示器工作区本身小于内容自然高度时，允许保留滚动兜底；不能为了隐藏滚动条而让窗口越过屏幕。

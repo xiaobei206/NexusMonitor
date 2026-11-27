@@ -1,4 +1,4 @@
-# NexusMonitor 2.2.14 — Electron Edition (released; Windows CI Run #45743775825 passed)
+# NexusMonitor 2.2.15 — Electron Edition (vertical HUD content-aware minimum height)
 
 > **新对话 / 新开发者接手：先读 [START-HERE-NEXT-GPT.md](START-HERE-NEXT-GPT.md) 和根目录 [AGENTS.md](AGENTS.md)。** 入口文档列出阅读顺序、源码目录地图、验证命令与硬件验收边界。
 
@@ -18,7 +18,7 @@ The Electron 45 stable channel was current at the project date, and its release 
 
 - Frameless React dashboard with sidebar, system overview and live telemetry cards
 - Separate transparent HUD with independent topmost control, native right-click menu, position pinning, four-edge snapping, optional 10px edge auto-hide, per-display position memory and best-effort fullscreen yielding on the HUD display
-- Readable global desktop typography; horizontal HUD defaults to 980×112. The vertical HUD defaults to 340×900, remembers user-resized dimensions per display, and can be locked/unlocked from its right-click menu. Shorter work areas hide the optional three-day forecast and keep card content at natural height.
+- Readable global desktop typography; horizontal HUD defaults to 980×112 and remains freely compressible. The vertical HUD defaults to 340×900, remembers user-resized dimensions per display, and can be locked/unlocked from its right-click menu. Its native minimum height is measured from the natural height of the currently visible cards, so normal resizing stops before an internal scrollbar appears; optional weather forecast blocks continue to follow the existing short-screen rules.
 - Dynamic CPU/GPU/RAM meters and 60-sample sparklines with subtle horizontal/vertical grids; floating HUD details include a mode-safe total-power history curve
 - Physical-disk overview capacity bars aggregate mounted volumes only when Windows reports an explicit disk/volume mapping; physical capacity and volume capacity are labelled separately.
 - Floating HUD C: storage usage bar alongside existing physical-disk I/O/activity, plus parallel download/upload scales (600 Mbps down / 40 Mbps up) with uncapped numeric readings.

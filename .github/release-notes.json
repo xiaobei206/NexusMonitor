@@ -1,4 +1,15 @@
 {
+  "v2.2.15": {
+    "summary": "Makes the vertical floating HUD stop shrinking at the natural height required by its currently visible content, preventing an internal scrollbar during normal resizing.",
+    "highlights": [
+      "Measures the natural heights of visible vertical HUD sections plus their actual flex gaps, padding and borders; the measured value becomes the native BrowserWindow minimum height.",
+      "Recalculates when direct content blocks resize or visibility changes, including width-driven text wrapping and live weather/music content updates; automatically expands the HUD if its contents grow beyond the current height.",
+      "Keeps the 420px safety floor, clamps the minimum to the current display work area, preserves bottom-edge anchoring when an automatic height correction is needed, and leaves horizontal HUD sizing unchanged."
+    ],
+    "validation": "Windows CI validation queued for this commit; the version gate, regression totals, Renderer build, hardware-service build, installer size and SHA-256 will be recorded after the workflow completes.",
+    "caveat": "On a display work area shorter than the full natural content height, the HUD must respect the display boundary and may retain its existing scroll fallback; target-PC DPI, multi-monitor and resize behavior still require visual acceptance.",
+    "previousTag": "v2.2.14"
+  },
   "v2.2.14": {
     "summary": "Adds low-contrast two-axis reference grids to telemetry history charts and a mode-safe total-power trend to the floating HUD detail panel.",
     "highlights": [
